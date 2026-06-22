@@ -2,7 +2,7 @@
 
 **Status:** ✅ Produção
 **URL:** https://verde-interior-pwa.vercel.app
-**Repositório:** https://github.com/ferworks93-weed/verde-interior (pasta `apps/ponto/`)
+**Repositório:** https://github.com/Verde-Interior/verde-interior (pasta `apps/ponto/`)
 **Pasta local:** `apps/ponto/`
 **Stack:** Vite + JavaScript ES Modules + Supabase
 **Banco:** Supabase — projeto `verde-interior-ponto`

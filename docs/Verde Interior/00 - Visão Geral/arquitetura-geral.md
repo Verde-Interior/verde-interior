@@ -19,7 +19,7 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 - **Status:** produção
 - **Stack:** Vite + JavaScript ES Modules + Supabase (PostgreSQL + Auth + Storage)
 - **Deploy:** Vercel — https://verde-interior-pwa.vercel.app
-- **Repositório:** https://github.com/ferworks93-weed/verde-interior-pwa
+- **Repositório:** https://github.com/Verde-Interior/verde-interior (pasta `apps/ponto/`)
 - **Tipo:** PWA (Progressive Web App) — funciona offline, instalável no celular
 - **Pasta local:** `apps/ponto/`
 
