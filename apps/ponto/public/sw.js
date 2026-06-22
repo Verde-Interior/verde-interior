@@ -1,4 +1,4 @@
-const CACHE = 'vi-ponto-v2';
+const CACHE = 'vi-ponto-v3';
 const ASSETS = [
   '/',
   '/index.html',
