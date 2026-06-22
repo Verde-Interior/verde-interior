@@ -37,17 +37,19 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 ---
 
 ### 2. CRM / Dashboard
-- **Status:** início — estrutura criada, sem componentes implementados ainda
-- **Stack:** React + JSX (Vite)
-- **Deploy:** ainda não
+- **Status:** construído localmente — funcional, aguardando deploy
+- **Stack:** React 18 + JSX (Vite)
+- **Deploy:** pendente
 - **Pasta local:** `apps/crm/`
 
-**O que fará:**
+**O que faz:**
 - Funil Kanban com 5 estágios (leads → aprovados)
-- Gestão de contratos ativos (Locação e Manutenção)
+- Funil de Execução para contratos ativos
+- Dashboard com KPIs do pipeline
 - Roteirizador de visitas por bairro e frequência
-- Solicitação de reposição de plantas
-- Controle de agenda
+- Agenda e gestão de tarefas
+- Busca global (Cmd+K)
+- Persistência via localStorage (Supabase previsto)
 
 **Backlog mapeado:** ver [[04 - CRM Dashboard/README]]
 
