@@ -41,13 +41,26 @@ export function renderPunch() {
 
 function getCoords() {
   return new Promise(resolve => {
-    if (!navigator.geolocation) { resolve(null); return; }
+    if (!navigator.geolocation) { resolve({ coords: null, reason: 'unsupported' }); return; }
     navigator.geolocation.getCurrentPosition(
-      p  => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => resolve(null),
-      { timeout: 5000, maximumAge: 0 }
+      p   => resolve({ coords: { lat: p.coords.latitude, lng: p.coords.longitude }, reason: null }),
+      err => {
+        const reasons = { 1: 'denied', 2: 'unavailable', 3: 'timeout' };
+        resolve({ coords: null, reason: reasons[err.code] || 'error' });
+      },
+      { timeout: 20000, maximumAge: 30000, enableHighAccuracy: true }
     );
   });
+}
+
+function locationToast(reason) {
+  const msgs = {
+    denied:      'Localização bloqueada — autorize no navegador para registrar a posição',
+    unavailable: 'Não foi possível obter localização (GPS indisponível)',
+    timeout:     'Localização demorou demais — registrado sem posição',
+    unsupported: 'Este navegador não suporta geolocalização',
+  };
+  if (msgs[reason]) toast(msgs[reason], false);
 }
 
 export function doPunch() {
@@ -58,9 +71,10 @@ export function doPunch() {
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
   setTimeout(async () => {
     if (!state.PS[state.cu]) state.PS[state.cu] = [];
-    const coords = (np.type === 'entry' || np.type === 'exit') ? await getCoords() : null;
-    const rec    = { type: np.type, time: t, ...(coords || {}) };
-    const dbRec  = await dbAddPunch(state.cu, rec);
+    const needsLoc = np.type === 'entry' || np.type === 'exit';
+    const geo      = needsLoc ? await getCoords() : { coords: null, reason: null };
+    const rec      = { type: np.type, time: t, ...(geo.coords || {}) };
+    const dbRec    = await dbAddPunch(state.cu, rec);
     if (dbRec) rec._id = dbRec.id;
     state.PS[state.cu].push(rec);
     btn.classList.remove('act');
@@ -68,6 +82,7 @@ export function doPunch() {
     save();
     const msgs = { entry: '✓ Entrada registrada', break: 'Intervalo iniciado', return: 'Retorno registrado' };
     toast(msgs[np.type] || 'Ponto registrado');
+    if (needsLoc && geo.reason) locationToast(geo.reason);
   }, 500);
 }
 
@@ -76,8 +91,8 @@ export function doExit() {
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
   if (!state.PS[state.cu]) state.PS[state.cu] = [];
   (async () => {
-    const coords = await getCoords();
-    const rec = { type: 'exit', time: t, ...(coords || {}) };
+    const geo = await getCoords();
+    const rec = { type: 'exit', time: t, ...(geo.coords || {}) };
     const dbRec = await dbAddPunch(state.cu, rec);
     if (dbRec) rec._id = dbRec.id;
     state.PS[state.cu].push(rec);
@@ -103,6 +118,7 @@ export function doExit() {
     renderPunch();
     save();
     toast('✓ Expediente finalizado');
+    if (geo.reason) locationToast(geo.reason);
   })();
 }
 
