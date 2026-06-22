@@ -4,6 +4,7 @@ import { AUTH } from './auth.js';
 
 export function renderPunch() {
   const i  = state.cu;
+  if (!state.EMP[i]) return;
   const st = getStatus(state.PS, i);
   const np = getNext(state.PS, i);
 
