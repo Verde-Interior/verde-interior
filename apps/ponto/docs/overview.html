@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verde Interior — Ponto HD · Documentação</title>
+<style>
+  :root {
+    --g: #2d5a1b; --gl: #4a8c2a; --gb: #f0f5ec; --gc: #c5d9b8;
+    --r: #7a1a1a; --rb: #f5eded;
+    --bg: #f5f4f0; --border: #e8e6df;
+    --text: #1a1a1a; --text2: #6b6966; --text3: #9b9895;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+  header {
+    background: var(--g); color: #fff; padding: 2rem;
+    display: flex; align-items: center; gap: 1.5rem;
+  }
+  .logo { width: 52px; height: 52px; }
+  header h1 { font-size: 1.5rem; font-weight: 700; }
+  header p  { font-size: 13px; opacity: .8; margin-top: 3px; }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    background: var(--gb); color: var(--g); border: 1px solid var(--gc);
+  }
+  .badge.live { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+
+  .section { margin-bottom: 2.5rem; }
+  .section h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text3); margin-bottom: 1rem; padding-bottom: .5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+  .card + .card { margin-top: .75rem; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+  @media (max-width: 600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  .kpi { text-align: center; padding: 1.5rem 1rem; }
+  .kpi .num { font-size: 2rem; font-weight: 800; color: var(--g); }
+  .kpi .lbl { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--gb); color: var(--g); font-weight: 700; text-align: left; padding: 8px 10px; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  code { background: #f1f0ec; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: 'SFMono-Regular', Consolas, monospace; }
+
+  .feat-list { list-style: none; }
+  .feat-list li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; display: flex; align-items: flex-start; gap: 8px; }
+  .feat-list li:last-child { border-bottom: none; }
+  .feat-list .ck { color: var(--g); flex-shrink: 0; margin-top: 1px; }
+  .feat-list .tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; flex-shrink: 0; }
+  .tag-g { background: var(--gb); color: var(--g); }
+  .tag-r { background: var(--rb); color: var(--r); }
+  .tag-o { background: #fff8e1; color: #e65100; }
+
+  .stack-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .stack-item:last-child { border-bottom: none; }
+  .stack-label { font-weight: 600; width: 140px; flex-shrink: 0; color: var(--text2); font-size: 12px; }
+
+  .flow { background: #1a1a1a; color: #d4e8c2; border-radius: var(--radius); padding: 1.25rem; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; line-height: 1.8; }
+  .flow .cm { color: #666; }
+  .flow .kw { color: #79c0ff; }
+  .flow .fn { color: #e3b341; }
+  .flow .st { color: #a5d6a7; }
+
+  .cred-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .cred-row:last-child { border-bottom: none; }
+  .role-badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+  .role-g { background: var(--g); color: #fff; }
+  .role-c { background: #e8e6df; color: var(--text2); }
+
+  .warn { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: .875rem 1rem; font-size: 13px; color: #5d4037; display: flex; gap: 8px; align-items: flex-start; }
+  .warn strong { color: #e65100; }
+
+  .url-block { background: var(--g); color: #d4e8c2; border-radius: 8px; padding: .875rem 1rem; font-family: monospace; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .url-block a { color: #a5d6a7; }
+
+  footer { text-align: center; padding: 2rem; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); margin-top: 2rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="20" fill="#fff" fill-opacity=".15"/>
+    <path d="M50 15 L80 35 L80 65 L50 85 L20 65 L20 35 Z" fill="none" stroke="#fff" stroke-width="3"/>
+    <path d="M50 30 L50 70 M35 42 L65 42 M35 58 L65 58" stroke="#a5d6a7" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>
+  <div>
+    <h1>Verde Interior — Ponto HD</h1>
+    <p>Documentação técnica · Atualizada em 19/06/2026</p>
+  </div>
+  <div style="margin-left:auto">
+    <span class="badge live">● Produção ativa</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- URL -->
+  <div style="margin: 1.5rem 0">
+    <div class="url-block">
+      <span>🌐 App em produção:</span>
+      <a href="https://verde-interior-pwa.vercel.app" target="_blank">https://verde-interior-pwa.vercel.app</a>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="section">
+    <h2>Resumo do Projeto</h2>
+    <div class="grid3">
+      <div class="card kpi"><div class="num">8</div><div class="lbl">Colaboradores cadastrados</div></div>
+      <div class="card kpi"><div class="num">2</div><div class="lbl">Perfis (Gestor / Colaborador)</div></div>
+      <div class="card kpi"><div class="num">Fase 2</div><div class="lbl">Backend Supabase completo</div></div>
+    </div>
+  </div>
+
+  <!-- Stack -->
+  <div class="section">
+    <h2>Stack Tecnológico</h2>
+    <div class="card">
+      <div class="stack-item"><span class="stack-label">Frontend</span>HTML + CSS + JavaScript ES Modules (sem framework)</div>
+      <div class="stack-item"><span class="stack-label">Build</span>Vite</div>
+      <div class="stack-item"><span class="stack-label">Backend</span>Supabase — PostgreSQL + Auth + Storage + Edge Functions</div>
+      <div class="stack-item"><span class="stack-label">Autenticação</span>Supabase Auth (JWT) — email <code>{username}@vi.app</code></div>
+      <div class="stack-item"><span class="stack-label">Mapas</span>Leaflet.js + OpenStreetMap (gratuito, sem API key)</div>
+      <div class="stack-item"><span class="stack-label">Geocodificação</span>Nominatim / OpenStreetMap (gratuito, sem API key)</div>
+      <div class="stack-item"><span class="stack-label">PWA</span>manifest.json + Service Worker (cache-first)</div>
+      <div class="stack-item"><span class="stack-label">Deploy</span>Vercel — auto-deploy via GitHub push</div>
+      <div class="stack-item"><span class="stack-label">Repositório</span><a href="https://github.com/ferworks93-weed/verde-interior-pwa" target="_blank">github.com/ferworks93-weed/verde-interior-pwa</a></div>
+    </div>
+  </div>
+
+  <!-- Credenciais -->
+  <div class="section">
+    <h2>Credenciais de Acesso</h2>
+    <div class="card">
+      <div class="cred-row">
+        <div><strong>fernando</strong> <span class="role-badge role-g">Gestor</span></div>
+        <div style="font-size:13px;color:var(--text2)">Senha: <code>Bebel2007</code></div>
+      </div>
+      <div class="cred-row"><div>beto <span class="role-badge role-c">Colaborador</span></div><code>ponto0</code></div>
+      <div class="cred-row"><div>brenno <span class="role-badge role-c">Colaborador</span></div><code>ponto1</code></div>
+      <div class="cred-row"><div>bruno <span class="role-badge role-c">Colaborador</span></div><code>ponto2</code></div>
+      <div class="cred-row"><div>carlos <span class="role-badge role-c">Colaborador</span></div><code>ponto3</code></div>
+      <div class="cred-row"><div>greg <span class="role-badge role-c">Colaborador</span></div><code>ponto4</code></div>
+      <div class="cred-row"><div>miriam <span class="role-badge role-c">Colaborador</span></div><code>ponto5</code></div>
+      <div class="cred-row"><div>pedro <span class="role-badge role-c">Colaborador</span></div><code>ponto6</code></div>
+      <div class="cred-row"><div>peterson <span class="role-badge role-c">Colaborador</span></div><code>ponto7</code></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:2.5rem">
+
+    <!-- Funcionalidades Colaborador -->
+    <div class="section" style="margin-bottom:0">
+      <h2>Funcionalidades — Colaborador</h2>
+      <div class="card">
+        <ul class="feat-list">
+          <li><span class="ck">✓</span> Bater ponto (entrada / intervalo / retorno / saída)</li>
+          <li><span class="ck">✓</span> Geolocalização na entrada e saída</li>
+          <li><span class="ck">✓</span> Relógio ao vivo (HH:MM:SS)</li>
+          <li><span class="ck">✓</span> Cards do dia — horas trabalhadas, saldo</li>
+          <li><span class="ck">✓</span> Espelho mensal com seletor dinâmico de mês</li>
+          <li><span class="ck">✓</span> Banco de horas — últimas 4 semanas com dados reais</li>
+          <li><span class="ck">✓</span> Perfil individual com progresso da meta</li>
+          <li><span class="ck">✓</span> Justificativas com upload de anexos</li>
+          <li><span class="ck">✓</span> Notificações de lembrete de ponto</li>
+          <li><span class="ck">✓</span> Troca de senha</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Funcionalidades Gestor -->
+    <div class="section" style="margin-bottom:0">
+      <h2>Funcionalidades — Gestor</h2>
+      <div class="card">
+        <ul class="feat-list">
+          <li><span class="ck">✓</span> Dashboard — KPIs + tabela de status em tempo real</li>
+          <li><span class="ck">✓</span> Alertas automáticos (banco negativo, atrasos)</li>
+          <li><span class="ck">✓</span> Edição de registros em qualquer data</li>
+          <li><span class="ck">✓</span> Mapa de localização de entrada/saída</li>
+          <li><span class="ck">✓</span> Endereço da localização via geocodificação</li>
+          <li><span class="ck">✓</span> Aprovação de justificativas</li>
+          <li><span class="ck">✓</span> Exportação CSV (espelho, resumo, banco)</li>
+          <li><span class="ck">✓</span> Adicionar / editar / remover colaboradores</li>
+          <li><span class="ck">✓</span> Edição manual de banco, dias e horas trabalhadas</li>
+          <li><span class="ck">✓</span> Progresso mensal da equipe (barras)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Banco de dados -->
+  <div class="section">
+    <h2>Banco de Dados — Tabelas Supabase</h2>
+    <div class="card" style="overflow-x:auto">
+      <table>
+        <tr><th>Tabela</th><th>Colunas principais</th><th>Observação</th></tr>
+        <tr><td><code>employees</code></td><td>id, name, cargo, contract_type, daily_hours, bank_minutes, worked_hours, extra_hours, due_hours, days_worked</td><td>Stats acumuladas pelo app</td></tr>
+        <tr><td><code>profiles</code></td><td>id (auth.uid), employee_id, role</td><td>Vincula Auth user ao employee</td></tr>
+        <tr><td><code>punch_records</code></td><td>id, employee_id, date, type, time, obs, lat, lng</td><td>lat/lng opcionais (geoloc)</td></tr>
+        <tr><td><code>justifications</code></td><td>id, employee_id, date, type, description, status, files</td><td>files = JSON + Supabase Storage</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Fluxo de dados -->
+  <div class="section">
+    <h2>Fluxo de Dados — Bater Ponto</h2>
+    <div class="flow">
+<span class="cm">// Colaborador clica no botão de ponto</span>
+<span class="kw">doPunch</span>() <span class="cm">// punch.js</span>
+  → <span class="fn">getCoords</span>()       <span class="cm">// tenta geolocalização (5s timeout)</span>
+  → <span class="fn">dbAddPunch</span>()     <span class="cm">// INSERT punch_records (lat/lng só se não null)</span>
+  → <span class="st">state.PS[idx].push</span>(rec)
+  → <span class="fn">renderPunch</span>()    <span class="cm">// atualiza UI</span>
+
+<span class="cm">// Ao finalizar expediente</span>
+<span class="kw">doExit</span>()
+  → <span class="fn">getCoords</span>()
+  → <span class="fn">dbAddPunch</span>()
+  → <span class="cm">calcula saldo do dia</span>
+  → <span class="fn">dbUpdateEmployeeStats</span>()  <span class="cm">// UPDATE employees SET bank_minutes, worked_hours...</span>
+
+<span class="cm">// Gestor abre Editar Registros</span>
+<span class="kw">renderEdit</span>() → <span class="fn">renderPunchMap</span>(recs)
+  → <span class="cm">cria mapa Leaflet com pins entrada (verde) / saída (vermelho)</span>
+  → <span class="fn">geocode</span>(lat, lng)  <span class="cm">// Nominatim → "Rua Tal, 123 — Cidade"</span>
+    </div>
+  </div>
+
+  <!-- Segurança -->
+  <div class="section">
+    <h2>Segurança</h2>
+    <div class="card">
+      <ul class="feat-list">
+        <li><span class="ck">✓</span><span><strong>RLS ativo</strong> — colaborador acessa apenas os próprios dados no Supabase</span></li>
+        <li><span class="ck">✓</span><span><strong>Colaborador não pode deletar</strong> registros de ponto (UI + JS + RLS)</span></li>
+        <li><span class="ck">✓</span><span><strong>Edge Function <code>create-user</code></strong> — só gestor autenticado cria novos usuários Auth</span></li>
+        <li><span class="ck">✓</span><span><strong>Anon key</strong> no frontend (nunca a service_role key)</span></li>
+        <li><span class="ck">✓</span><span><strong>Variáveis de ambiente</strong> via Vercel env — nunca no código-fonte</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Avisos -->
+  <div class="section">
+    <h2>Avisos Importantes</h2>
+    <div class="warn" style="margin-bottom:.75rem">
+      <strong>⚠️</strong>
+      <span>A <strong>service_role key</strong> do Supabase <strong>nunca deve ir para o frontend</strong>. Só usar em <code>scripts/seed.js</code> e Edge Functions no servidor.</span>
+    </div>
+    <div class="warn">
+      <strong>📋</strong>
+      <span>Ao executar o SQL de reset (<code>DELETE FROM punch_records</code>), os registros são <strong>permanentemente apagados</strong>. Não há desfazer.</span>
+    </div>
+  </div>
+
+  <!-- Próximos passos -->
+  <div class="section">
+    <h2>Próximos Passos Sugeridos</h2>
+    <div class="card">
+      <ul class="feat-list">
+        <li><span style="color:var(--text3)">○</span><span>Reset de senha via e-mail (Supabase Auth já suporta — falta UI) <span class="tag tag-g">fácil</span></span></li>
+        <li><span style="color:var(--text3)">○</span><span>Gestor redefine senha de colaborador pelo painel <span class="tag tag-g">fácil</span></span></li>
+        <li><span style="color:var(--text3)">○</span><span>Exportação XLSX com SheetJS <span class="tag tag-o">médio</span></span></li>
+        <li><span style="color:var(--text3)">○</span><span>Relatório de frequência (faltas e atrasos por mês) <span class="tag tag-o">médio</span></span></li>
+        <li><span style="color:var(--text3)">○</span><span>Gráfico de evolução do banco de horas por mês <span class="tag tag-o">médio</span></span></li>
+        <li><span style="color:var(--text3)">○</span><span>Auditoria — log de quem editou qual registro <span class="tag tag-r">complexo</span></span></li>
+        <li><span style="color:var(--text3)">○</span><span>Web Push API (notificações mesmo com app fechado) <span class="tag tag-r">complexo</span></span></li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Verde Interior — Ponto HD · Documentação gerada em 19/06/2026 · Desenvolvido com Claude Code
+</footer>
+
+</body>
+</html>

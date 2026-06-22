@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano de Execução — Heimr</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap');
+
+  :root {
+    --green-dark: #1a3328;
+    --green-mid: #2d5a47;
+    --green-accent: #3d7a5e;
+    --green-light: #e8f2ee;
+    --red: #c0392b;
+    --sand: #f5f0e8;
+    --white: #ffffff;
+    --gray-100: #f7f7f5;
+    --gray-200: #ebebea;
+    --gray-400: #a0a09e;
+    --gray-600: #5a5a58;
+    --gray-900: #1c1c1a;
+    --border: #dcdcda;
+    --status-ok: #2d7a4f;
+    --status-pending: #c07a00;
+    --step-size: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-900);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── HEADER ── */
+  .doc-header {
+    background: var(--green-dark);
+    color: var(--white);
+    padding: 28px 36px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+  }
+  .header-brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 38px; height: 38px;
+    background: var(--red);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    flex-shrink: 0;
+  }
+  .brand-text { display: flex; flex-direction: column; gap: 1px; }
+  .brand-name {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px; font-weight: 800;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .brand-sub { font-size: 10px; color: #8aab9a; letter-spacing: 0.08em; text-transform: uppercase; }
+  .header-meta { text-align: right; font-size: 11px; color: #8aab9a; display: flex; flex-direction: column; gap: 4px; }
+  .header-meta .doc-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--white); line-height: 1.2;
+  }
+  .header-meta .doc-client { font-size: 12px; color: #aac9b8; font-weight: 500; }
+  .badge {
+    display: inline-block;
+    background: var(--green-accent);
+    color: var(--white);
+    font-size: 9px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px;
+    align-self: flex-end;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .doc-body { max-width: 960px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  /* ── INFO BAR ── */
+  .info-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden; margin-bottom: 24px;
+  }
+  .info-cell {
+    background: var(--white);
+    padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .info-label { font-size: 9px; font-weight: 600; color: var(--gray-400); letter-spacing: 0.1em; text-transform: uppercase; }
+  .info-value { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+  .info-value.editable {
+    border-bottom: 1.5px dashed var(--border);
+    min-width: 120px; color: var(--gray-600);
+  }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 28px; }
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--green-light);
+  }
+  .section-icon {
+    width: 22px; height: 22px;
+    background: var(--green-dark);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--white);
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--green-dark);
+  }
+  .section-count {
+    margin-left: auto;
+    font-size: 10px; font-weight: 600;
+    color: var(--gray-400);
+  }
+
+  /* ── PLANT TABLE ── */
+  .plant-table { width: 100%; border-collapse: collapse; }
+  .plant-table th {
+    background: var(--green-dark);
+    color: var(--white);
+    font-size: 9px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 8px 12px; text-align: left;
+  }
+  .plant-table th:first-child { border-radius: 4px 0 0 0; }
+  .plant-table th:last-child { border-radius: 0 4px 0 0; }
+  .plant-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: middle;
+  }
+  .plant-table tr:last-child td { border-bottom: none; }
+  .plant-table tr:nth-child(even) td { background: var(--gray-100); }
+  .plant-table tr:first-child td { background: var(--white); }
+  .plant-table { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .plant-table tr { transition: background 0.1s; }
+
+  .qty-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-weight: 700; font-size: 12px;
+    border-radius: 4px;
+  }
+  .op-tag {
+    display: inline-block;
+    font-size: 9px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .op-new { background: #d4edda; color: #1a5c30; }
+  .op-sub { background: #fff3cd; color: #7a5000; }
+  .op-fill { background: #d1ecf1; color: #0c4a54; }
+  .op-move { background: #e2d9f3; color: #4a2d7a; }
+  .op-cour { background: #fde2e2; color: #7a1f1f; }
+
+  .note-inline { font-size: 10px; color: var(--gray-400); font-style: italic; }
+
+  /* ── STEP CARDS ── */
+  .steps-grid { display: flex; flex-direction: column; gap: 10px; }
+  .step-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: row;
+  }
+  .step-number {
+    background: var(--green-dark);
+    border-radius: 7px 0 0 7px;
+    flex-shrink: 0;
+    width: 48px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 20px; font-weight: 800;
+    color: rgba(255,255,255,0.25);
+    line-height: 1;
+  }
+  .step-body { padding: 14px 16px; flex: 1; min-width: 0; }
+  .step-title {
+    font-weight: 700; font-size: 12px;
+    color: var(--green-dark);
+    margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .step-tasks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; }
+  .step-tasks li {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 12px;
+    color: var(--gray-600);
+    line-height: 1.5;
+  }
+  .step-tasks li .bullet {
+    flex-shrink: 0;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    border: 1.5px solid var(--green-accent);
+    background: transparent;
+    margin-top: 5px;
+  }
+  .step-tasks li strong { color: var(--gray-900); font-weight: 600; }
+  .step-alert {
+    margin-top: 10px;
+    background: var(--sand);
+    border-left: 3px solid var(--green-accent);
+    border-radius: 0 4px 4px 0;
+    padding: 7px 10px;
+    font-size: 11px; color: var(--gray-600);
+  }
+  .step-alert strong { color: var(--gray-900); }
+
+  /* ── SUPPLIES ── */
+  .supplies-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .supply-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .supply-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .supply-text .supply-name { font-weight: 600; font-size: 12px; color: var(--gray-900); }
+  .supply-text .supply-note { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+  .supply-card.courtesy { border-color: var(--green-accent); background: var(--green-light); }
+  .supply-card.courtesy .supply-name { color: var(--green-dark); }
+
+  /* ── PHOTO SECTION ── */
+  .photo-section { margin-bottom: 28px; }
+
+  /* Botão de adicionar foto */
+  .photo-add-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    background: var(--white);
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 12px;
+  }
+  .photo-add-area:hover { border-color: var(--green-accent); background: var(--green-light); }
+  .photo-add-area span { font-size: 12px; font-weight: 600; color: var(--gray-400); letter-spacing: 0.04em; }
+  .photo-add-area .add-icon { font-size: 18px; }
+
+  /* Grid de cards de foto */
+  .photo-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  /* Card individual */
+  .photo-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .photo-card-img-wrap {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: var(--gray-200);
+    overflow: hidden;
+  }
+  .photo-card-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  .photo-card-remove {
+    position: absolute; top: 5px; right: 5px;
+    background: rgba(0,0,0,0.6); color: #fff;
+    border: none; border-radius: 50%;
+    width: 22px; height: 22px;
+    font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .photo-card-img-wrap:hover .photo-card-remove { opacity: 1; }
+  .photo-card-meta {
+    padding: 7px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+    border-top: 1px solid var(--border);
+  }
+  .photo-card-moment {
+    font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .photo-card-moment.antes { color: var(--status-pending); }
+  .photo-card-moment.depois { color: var(--status-ok); }
+  .photo-card-area {
+    font-size: 10px; color: var(--gray-600); font-weight: 500;
+  }
+
+  /* Modal de seleção */
+  .photo-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .photo-modal-overlay.open { display: flex; }
+  .photo-modal {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 24px;
+    width: 440px; max-width: 94vw;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .photo-modal h3 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--green-dark); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .modal-label { font-size: 11px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; display: block; }
+  .modal-pills {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .modal-pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    font-size: 11px; font-weight: 600;
+    cursor: pointer; background: var(--white);
+    color: var(--gray-600);
+    transition: all 0.12s;
+  }
+  .modal-pill:hover { border-color: var(--green-accent); color: var(--green-dark); }
+  .modal-pill.selected { background: var(--green-dark); color: var(--white); border-color: var(--green-dark); }
+  .modal-pill.selected-antes { background: #c07a00; color: #fff; border-color: #c07a00; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .modal-btn {
+    padding: 8px 18px; border-radius: 6px; border: none;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer;
+  }
+  .modal-btn.cancel { background: var(--gray-200); color: var(--gray-600); }
+  .modal-btn.confirm { background: var(--green-dark); color: var(--white); }
+  .modal-btn.confirm:disabled { opacity: 0.4; cursor: default; }
+  .modal-divider { height: 1px; background: var(--border); }
+
+  @media print {
+    .photo-add-area { display: none !important; }
+    .photo-modal-overlay { display: none !important; }
+    .photo-card-remove { display: none !important; }
+    .photo-cards-grid { grid-template-columns: repeat(3, 1fr); }
+    #photoFileInput { display: none !important; }
+  }
+
+  /* ── CHECKLIST SIGN-OFF ── */
+  .signoff {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .sign-field { display: flex; flex-direction: column; gap: 6px; }
+  .sign-label { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.1em; }
+  .sign-line {
+    border: none; border-bottom: 1.5px solid var(--border);
+    height: 36px; width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; color: var(--gray-900);
+    background: transparent; outline: none;
+  }
+  .sign-line:focus { border-bottom-color: var(--green-accent); }
+
+  /* ── FINAL CHECKLIST ── */
+  .check-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .check-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--gray-600);
+  }
+  .check-item input[type=checkbox] { accent-color: var(--green-dark); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    background: var(--green-dark);
+    color: #7aaa90;
+    font-size: 10px;
+    text-align: center;
+    padding: 14px 24px;
+    letter-spacing: 0.05em;
+    margin-top: 0;
+  }
+
+  /* ── PDF BUTTON ── */
+  .pdf-btn-wrapper {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 999;
+  }
+  .pdf-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--green-dark);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .pdf-btn:hover { background: var(--green-accent); transform: translateY(-1px); }
+  .pdf-btn:active { transform: translateY(0); }
+  .pdf-btn svg { flex-shrink: 0; }
+
+  /* ── PRINT ── */
+  @media print {
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    body { background: white !important; font-size: 11px; }
+
+    .pdf-btn-wrapper { display: none !important; }
+
+    .doc-header { background: var(--green-dark) !important; padding: 16px 20px; }
+    .doc-body { max-width: 100%; padding: 10px 0 24px; }
+    .info-bar { margin-bottom: 14px; break-inside: avoid; }
+
+    /* Nunca quebrar dentro de cards e blocos */
+    .section          { break-inside: avoid; margin-bottom: 16px; }
+    .step-card        { break-inside: avoid; break-before: auto; }
+    .supply-card      { break-inside: avoid; }
+    .signoff          { break-inside: avoid; }
+    .photo-slot       { break-inside: avoid; border: 1px solid var(--border) !important; }
+    .photo-grid       { break-inside: avoid; }
+    .check-list       { break-inside: avoid; }
+    .steps-grid       { break-inside: avoid; }
+    .supplies-grid    { break-inside: avoid; }
+    .plant-table tr   { break-inside: avoid; }
+
+    /* Seções que devem sempre começar em nova página se não couberem */
+    .section + .section { break-before: auto; }
+
+    /* Footer simples, sem fixed */
+    .doc-footer {
+      background: var(--green-dark) !important;
+      position: relative;
+      margin-top: 16px;
+    }
+
+    /* Ocultar controles interativos */
+    .slot-add-btn   { display: none !important; }
+    .thumb-remove   { display: none !important; }
+    .slot-empty     { display: none !important; }
+    input[type=file]{ display: none !important; }
+
+    /* Inputs de texto mostram o conteúdo sem bordas */
+    input:not([type=checkbox]):not([type=file]),
+    textarea { border: none !important; box-shadow: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="doc-header">
+  <div class="header-brand">
+    <div class="brand-mark"></div>
+    <div class="brand-text">
+      <span class="brand-name">Verde Interior</span>
+      <span class="brand-sub">Paisagismo Corporativo</span>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span class="badge">Ordem de Serviço</span>
+    <span class="doc-title">Plano de Execução de Serviço</span>
+    <span class="doc-client">Cliente: Heimr</span>
+  </div>
+</div>
+
+<div class="doc-body">
+
+  <!-- INFO BAR -->
+  <div class="info-bar">
+    <div class="info-cell">
+      <span class="info-label">Data</span>
+      <input class="info-value editable sign-line" placeholder="__/__/____" style="border-bottom:1.5px dashed var(--border); font-size:13px; font-weight:600;">
+    </div>
+    <div class="info-cell">
+      <span class="info-label">Líder de Equipe</span>
+      <input class="info-value editable sign-line" placeholder="Nome" style="border-bottom:1.5px dashed var(--border); font-size:13px; font-weight:600;">
+    </div>
+    <div class="info-cell">
+      <span class="info-label">Equipe</span>
+      <input class="info-value editable sign-line" placeholder="Colaboradores" style="border-bottom:1.5px dashed var(--border); font-size:13px; font-weight:600;">
+    </div>
+    <div class="info-cell">
+      <span class="info-label">Contato Local</span>
+      <input class="info-value editable sign-line" placeholder="Marcelo / Keyla" style="border-bottom:1.5px dashed var(--border); font-size:13px; font-weight:600;">
+    </div>
+  </div>
+
+  <!-- SCOPE: PLANTAS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">🌿</div>
+      <span class="section-title">Escopo — Plantas e Vasos</span>
+      <span class="section-count">14 itens</span>
+    </div>
+
+    <table class="plant-table">
+      <thead>
+        <tr>
+          <th style="width:40px">Qtd</th>
+          <th>Item</th>
+          <th>Local</th>
+          <th>Operação</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ÁREA DA TV -->
+        <tr>
+          <td colspan="5" style="background:var(--green-light); font-size:10px; font-weight:700; color:var(--green-dark); padding:6px 12px; letter-spacing:0.06em; text-transform:uppercase;">📺 Área da TV</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">1</span></td>
+          <td><strong>Vaso Cônico Bege M</strong> + Zamioculca</td>
+          <td>Área da TV</td>
+          <td><span class="op-tag op-new">Instalação</span></td>
+          <td class="note-inline">Com argila, manta, prato coletor e acabamento</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">1</span></td>
+          <td><strong>Vaso Cônico Bege G</strong> + Lança de São Jorge</td>
+          <td>Área da TV</td>
+          <td><span class="op-tag op-new">Instalação</span></td>
+          <td class="note-inline">Conjunto harmônico ao lado da TV</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">1</span></td>
+          <td><strong>Vaso Cônico Bege G</strong> + Cheflera</td>
+          <td>Ao lado do Sofá / Caminha</td>
+          <td><span class="op-tag op-new">Instalação</span></td>
+          <td class="note-inline">Próximo ao sofá e caminha do cachorro</td>
+        </tr>
+        <!-- RECEPÇÃO -->
+        <tr>
+          <td colspan="5" style="background:var(--green-light); font-size:10px; font-weight:700; color:var(--green-dark); padding:6px 12px; letter-spacing:0.06em; text-transform:uppercase;">🚪 Recepção / Entrada</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">6</span></td>
+          <td><strong>Dracena Pau D'Água</strong></td>
+          <td>Recepção / Entrada</td>
+          <td><span class="op-tag op-sub">Substituição</span></td>
+          <td class="note-inline">Substituir 6 Podocarpos antigos</td>
+        </tr>
+        <!-- SALAS INTERNAS -->
+        <tr>
+          <td colspan="5" style="background:var(--green-light); font-size:10px; font-weight:700; color:var(--green-dark); padding:6px 12px; letter-spacing:0.06em; text-transform:uppercase;">🏢 Salas Internas e Janela</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">1</span></td>
+          <td><strong>Dracena Sanderiana</strong></td>
+          <td>Nova sala (indicada por Marcelo)</td>
+          <td><span class="op-tag op-move">Realocação + Troca</span></td>
+          <td class="note-inline">Vai para o vaso do Fícus antigo, que será movido para a nova sala</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">1</span></td>
+          <td><strong>Pleomele Fita</strong> (nova)</td>
+          <td>Sala Fechada</td>
+          <td><span class="op-tag op-sub">Substituição</span></td>
+          <td class="note-inline">Substituir a Pleomele Fita antiga</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">1</span></td>
+          <td><strong>Pleomele Verde</strong> (nova)</td>
+          <td>Janela</td>
+          <td><span class="op-tag op-sub">Substituição</span></td>
+          <td class="note-inline">Substituir a antiga Pleomele Fita da janela</td>
+        </tr>
+        <!-- FLOREIRAS -->
+        <tr>
+          <td colspan="5" style="background:var(--green-light); font-size:10px; font-weight:700; color:var(--green-dark); padding:6px 12px; letter-spacing:0.06em; text-transform:uppercase;">🌱 Floreiras</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">+</span></td>
+          <td><strong>Mini Espadas de São Jorge</strong> (potinhos)</td>
+          <td>Floreira Vazia</td>
+          <td><span class="op-tag op-fill">Preenchimento</span></td>
+          <td class="note-inline">Paulo leva em potinhos. Preencher de forma densa e alinhada</td>
+        </tr>
+        <tr>
+          <td><span class="qty-badge">+</span></td>
+          <td><strong>Mini Espadas de São Jorge</strong> (extras)</td>
+          <td>Segunda Floreira</td>
+          <td><span class="op-tag op-cour">Cortesia</span></td>
+          <td class="note-inline">Manutenção, adubação e replantio — cortesia para a Keyla</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SUPPLIES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">🧰</div>
+      <span class="section-title">Insumos Técnicos</span>
+    </div>
+    <div class="supplies-grid">
+      <div class="supply-card">
+        <span class="supply-icon">📦</span>
+        <div class="supply-text">
+          <div class="supply-name">Pratos coletores</div>
+          <div class="supply-note">3 unidades — já vêm com os vasos novos</div>
+        </div>
+      </div>
+      <div class="supply-card">
+        <span class="supply-icon">🪨</span>
+        <div class="supply-text">
+          <div class="supply-name">Argila expandida</div>
+          <div class="supply-note">Para os 3 vasos novos, 9 reformados e 2 floreiras</div>
+        </div>
+      </div>
+      <div class="supply-card">
+        <span class="supply-icon">🧱</span>
+        <div class="supply-text">
+          <div class="supply-name">Manta de bidim + substrato premium</div>
+          <div class="supply-note">Todos os vasos novos, reformados e floreiras</div>
+        </div>
+      </div>
+      <div class="supply-card">
+        <span class="supply-icon">🌲</span>
+        <div class="supply-text">
+          <div class="supply-name">Casca de pinus polida ou musgo</div>
+          <div class="supply-note">Acabamento em todos os itens</div>
+        </div>
+      </div>
+      <div class="supply-card">
+        <span class="supply-icon">💊</span>
+        <div class="supply-text">
+          <div class="supply-name">Fortificantes e aminoácidos</div>
+          <div class="supply-note">Aplicar no pós-plantio de todos os itens</div>
+        </div>
+      </div>
+      <div class="supply-card">
+        <span class="supply-icon">🗑️</span>
+        <div class="supply-text">
+          <div class="supply-name">Lonas plásticas e sacos de descarte</div>
+          <div class="supply-note">Proteção do piso e descarte dos Podocarpos</div>
+        </div>
+      </div>
+      <div class="supply-card courtesy">
+        <span class="supply-icon">🎁</span>
+        <div class="supply-text">
+          <div class="supply-name">Cortesia — Mão de obra + insumos</div>
+          <div class="supply-note">Reforma completa da segunda floreira para a Keyla</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXECUTION STEPS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">▶</div>
+      <span class="section-title">Roteiro de Execução — Passo a Passo</span>
+    </div>
+    <div class="steps-grid">
+
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-body">
+          <div class="step-title">Alinhamento Inicial e Isolamento</div>
+          <ul class="step-tasks">
+            <li><span class="bullet"></span><span><strong>Briefing com Marcelo</strong> logo na chegada: confirmar qual é a nova sala para o vaso do Fícus.</span></li>
+            <li><span class="bullet"></span><span><strong>Forrar o piso</strong> com lona plástica na área da TV, recepção, corredor das floreiras e salas com janelas.</span></li>
+          </ul>
+          <div class="step-alert">⚡ <strong>Crítico:</strong> Não mover nenhum vaso antes de proteger o piso corporativo.</div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-body">
+          <div class="step-title">Montagem dos Vasos Novos (Área da TV e Sofá)</div>
+          <ul class="step-tasks">
+            <li><span class="bullet"></span><span><strong>Setor TV:</strong> montar Vaso M (Zamioculca) e Vaso G (Lança de São Jorge) como conjunto harmônico.</span></li>
+            <li><span class="bullet"></span><span><strong>Setor Sofá:</strong> montar Vaso G com a Cheflera ao lado do sofá e da caminha do cachorro.</span></li>
+            <li><span class="bullet"></span><span>Todos com a montagem padrão: <strong>argila → manta → substrato → planta → acabamento → prato coletor.</strong></span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-body">
+          <div class="step-title">Substituições Técnicas</div>
+          <ul class="step-tasks">
+            <li><span class="bullet"></span><span><strong>Recepção:</strong> remover os 6 Podocarpos e substratos antigos. Higienizar vasos. Instalar as 6 Dracenas Pau D'Água.</span></li>
+            <li><span class="bullet"></span><span><strong>Vaso do Fícus:</strong> mover para a sala indicada por Marcelo. Retirar o Fícus, higienizar e instalar a Dracena Sanderiana.</span></li>
+            <li><span class="bullet"></span><span><strong>Sala Fechada:</strong> retirar a Pleomele Fita antiga e instalar a nova.</span></li>
+            <li><span class="bullet"></span><span><strong>Janela:</strong> retirar a antiga Pleomele Fita e instalar a nova Pleomele Verde.</span></li>
+          </ul>
+          <div class="step-alert">📌 <strong>Atenção:</strong> Após substituir o Fícus pela Dracena Sanderiana, o vaso deverá ser movido para a nova sala. <strong>Confirmar o local com o Marcelo antes de iniciar a substituição.</strong></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">4</div>
+        <div class="step-body">
+          <div class="step-title">Trabalho nas Floreiras</div>
+          <ul class="step-tasks">
+            <li><span class="bullet"></span><span><strong>Floreira Vazia:</strong> Paulo utiliza as mudas em potinhos para preencher de forma densa e alinhada.</span></li>
+            <li><span class="bullet"></span><span><strong>Floreira Cortesia:</strong> manutenção preventiva, limpeza, adubação e replantio com espadas extras — cortesia para a Keyla.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">5</div>
+        <div class="step-body">
+          <div class="step-title">Acabamento, Nutrição e Limpeza Final</div>
+          <ul class="step-tasks">
+            <li><span class="bullet"></span><span>Aplicar <strong>aminoácidos e fortificantes</strong> em todas as plantas novas e reformadas.</span></li>
+            <li><span class="bullet"></span><span>Finalizar com <strong>casca de pinus ou musgo</strong> em todas as superfícies de terra expostas.</span></li>
+            <li><span class="bullet"></span><span><strong>Limpar as folhas</strong> de todas as espécies com pano úmido. Higienizar a face externa de todos os vasos.</span></li>
+            <li><span class="bullet"></span><span>Recolher as lonas, ensacar os Podocarpos e resíduos. <strong>Deixar o espaço impecável.</strong></span></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHOTO SECTION -->
+  <div class="photo-section">
+    <div class="section-header">
+      <div class="section-icon">📷</div>
+      <span class="section-title">Registro Fotográfico</span>
+    </div>
+
+    <!-- Área de adicionar -->
+    <div class="photo-add-area" id="photoAddArea">
+      <span class="add-icon">＋</span>
+      <span>Adicionar foto — clique ou arraste aqui</span>
+    </div>
+
+    <!-- Grid de cards das fotos adicionadas -->
+    <div class="photo-cards-grid" id="photoCardsGrid"></div>
+  </div>
+
+  <!-- Modal de seleção -->
+  <div class="photo-modal-overlay" id="photoModal">
+    <div class="photo-modal">
+      <h3>Adicionar Foto</h3>
+
+      <div>
+        <span class="modal-label">Momento</span>
+        <div class="modal-pills" id="pillsMomento">
+          <button class="modal-pill" data-val="antes">Antes</button>
+          <button class="modal-pill" data-val="depois">Depois</button>
+        </div>
+      </div>
+
+      <div class="modal-divider"></div>
+
+      <div>
+        <span class="modal-label">Área <span style="font-weight:400;color:var(--gray-400)">(pode selecionar mais de uma)</span></span>
+        <div class="modal-pills" id="pillsArea">
+          <button class="modal-pill" data-val="Área da TV">Área da TV</button>
+          <button class="modal-pill" data-val="Recepção / Entrada">Recepção / Entrada</button>
+          <button class="modal-pill" data-val="Sala Fechada">Sala Fechada</button>
+          <button class="modal-pill" data-val="Janela">Janela</button>
+          <button class="modal-pill" data-val="Floreiras">Floreiras</button>
+          <button class="modal-pill" data-val="Sofá / Caminha">Sofá / Caminha</button>
+          <button class="modal-pill" data-val="Geral">Geral</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="modalCancel">Cancelar</button>
+        <button class="modal-btn confirm" id="modalConfirm" disabled>Escolher foto</button>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none">
+
+  <!-- FINAL CHECKLIST -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">✓</div>
+      <span class="section-title">Checklist de Conclusão</span>
+    </div>
+    <div style="background:var(--white); border:1px solid var(--border); border-radius:8px; padding:16px 20px;">
+      <div class="check-list">
+        <label class="check-item"><input type="checkbox"> Vasos novos instalados e nivelados</label>
+        <label class="check-item"><input type="checkbox"> Podocarpos removidos e descartados</label>
+        <label class="check-item"><input type="checkbox"> Dracenas Pau D'Água instaladas (6 un.)</label>
+        <label class="check-item"><input type="checkbox"> Dracena Sanderiana instalada na nova sala</label>
+        <label class="check-item"><input type="checkbox"> Pleomele Fita substituída (sala fechada)</label>
+        <label class="check-item"><input type="checkbox"> Pleomele Verde instalada (janela)</label>
+        <label class="check-item"><input type="checkbox"> Floreira vazia preenchida (Mini Espadas)</label>
+        <label class="check-item"><input type="checkbox"> Floreira cortesia realizada para Keyla</label>
+        <label class="check-item"><input type="checkbox"> Casca de pinus/musgo aplicado em tudo</label>
+        <label class="check-item"><input type="checkbox"> Aminoácidos e fortificantes aplicados</label>
+        <label class="check-item"><input type="checkbox"> Folhas limpas, vasos higienizados</label>
+        <label class="check-item"><input type="checkbox"> Lona recolhida, ambiente impecável</label>
+        <label class="check-item"><input type="checkbox"> Fotos de conclusão registradas</label>
+        <label class="check-item"><input type="checkbox"> Aprovação do responsável coletada</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN-OFF -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">✍</div>
+      <span class="section-title">Aprovação e Assinaturas</span>
+    </div>
+    <div class="signoff">
+      <div class="sign-field">
+        <span class="sign-label">Líder de Equipe — Verde Interior</span>
+        <input class="sign-line" placeholder="Nome e assinatura">
+        <input class="sign-line" placeholder="Horário de conclusão" style="margin-top:6px; font-size:11px; color:var(--gray-400);">
+      </div>
+      <div class="sign-field">
+        <span class="sign-label">Responsável do Cliente</span>
+        <input class="sign-line" placeholder="Nome e assinatura">
+        <input class="sign-line" placeholder="Horário de aprovação" style="margin-top:6px; font-size:11px; color:var(--gray-400);">
+      </div>
+      <div class="sign-field" style="grid-column: 1/-1;">
+        <span class="sign-label">Observações Finais</span>
+        <textarea style="width:100%; border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-family:'Inter',sans-serif; font-size:12px; color:var(--gray-600); resize:vertical; min-height:52px; outline:none;" placeholder="Anotações, pendências ou próximos passos..."></textarea>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer">
+  Verde Interior Paisagismo — Documento Interno · Gerado para uso operacional
+</div>
+
+<script>
+  // ── PHOTO SYSTEM ──
+  const photoAddArea   = document.getElementById('photoAddArea');
+  const photoModal     = document.getElementById('photoModal');
+  const modalCancel    = document.getElementById('modalCancel');
+  const modalConfirm   = document.getElementById('modalConfirm');
+  const photoFileInput = document.getElementById('photoFileInput');
+  const cardsGrid      = document.getElementById('photoCardsGrid');
+
+  let selectedMomento = null;
+  let selectedAreas   = [];
+  let pendingFiles    = null; // arquivos vindos de drag & drop
+
+  function openModal() {
+    selectedMomento = null;
+    selectedAreas   = [];
+    pendingFiles    = null;
+    modalConfirm.disabled = true;
+    document.querySelectorAll('#pillsMomento .modal-pill, #pillsArea .modal-pill')
+      .forEach(p => p.classList.remove('selected', 'selected-antes'));
+    photoModal.classList.add('open');
+  }
+
+  function closeModal() {
+    photoModal.classList.remove('open');
+  }
+
+  function checkConfirmReady() {
+    modalConfirm.disabled = !(selectedMomento && selectedAreas.length > 0);
+  }
+
+  // Pills — Momento
+  document.querySelectorAll('#pillsMomento .modal-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#pillsMomento .modal-pill')
+        .forEach(p => p.classList.remove('selected', 'selected-antes'));
+      selectedMomento = pill.dataset.val;
+      pill.classList.add(selectedMomento === 'antes' ? 'selected-antes' : 'selected');
+      checkConfirmReady();
+    });
+  });
+
+  // Pills — Área (seleção múltipla)
+  document.querySelectorAll('#pillsArea .modal-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const val = pill.dataset.val;
+      if (pill.classList.contains('selected')) {
+        pill.classList.remove('selected');
+        selectedAreas = selectedAreas.filter(v => v !== val);
+      } else {
+        pill.classList.add('selected');
+        selectedAreas.push(val);
+      }
+      checkConfirmReady();
+    });
+  });
+
+  // Abrir modal ao clicar na área
+  photoAddArea.addEventListener('click', openModal);
+
+  // Fechar modal
+  modalCancel.addEventListener('click', closeModal);
+  photoModal.addEventListener('click', (e) => { if (e.target === photoModal) closeModal(); });
+
+  // Confirmar: se veio de drag usa pendingFiles, senão abre file picker
+  modalConfirm.addEventListener('click', () => {
+    const momento = selectedMomento;
+    const area    = selectedAreas.join(' + ');
+    closeModal();
+
+    if (pendingFiles) {
+      // Processa arquivos do drag & drop
+      pendingFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (ev) => addPhotoCard(ev.target.result, momento, area);
+        reader.readAsDataURL(file);
+      });
+      pendingFiles = null;
+    } else {
+      // Guarda contexto e abre file picker
+      photoFileInput._momento = momento;
+      photoFileInput._area    = area;
+      photoFileInput.click();
+    }
+  });
+
+  // Processar arquivos do file picker
+  photoFileInput.addEventListener('change', (e) => {
+    const momento = photoFileInput._momento;
+    const area    = photoFileInput._area;
+    Array.from(e.target.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => addPhotoCard(ev.target.result, momento, area);
+      reader.readAsDataURL(file);
+    });
+    photoFileInput.value = '';
+  });
+
+  // Drag & drop na área de adicionar
+  photoAddArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    photoAddArea.style.borderColor = 'var(--green-accent)';
+    photoAddArea.style.background  = 'var(--green-light)';
+  });
+  photoAddArea.addEventListener('dragleave', () => {
+    photoAddArea.style.borderColor = '';
+    photoAddArea.style.background  = '';
+  });
+  photoAddArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    photoAddArea.style.borderColor = '';
+    photoAddArea.style.background  = '';
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    pendingFiles = files;
+    openModal();
+  });
+
+  function addPhotoCard(src, momento, area) {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'photo-card-img-wrap';
+
+    const img = document.createElement('img');
+    img.src = src;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'photo-card-remove';
+    removeBtn.title = 'Remover foto';
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', () => card.remove());
+
+    imgWrap.appendChild(img);
+    imgWrap.appendChild(removeBtn);
+
+    const meta = document.createElement('div');
+    meta.className = 'photo-card-meta';
+
+    const momentoEl = document.createElement('span');
+    momentoEl.className = `photo-card-moment ${momento}`;
+    momentoEl.textContent = momento === 'antes' ? '● Antes' : '● Depois';
+
+    const areaEl = document.createElement('span');
+    areaEl.className = 'photo-card-area';
+    areaEl.textContent = area;
+
+    meta.appendChild(momentoEl);
+    meta.appendChild(areaEl);
+    card.appendChild(imgWrap);
+    card.appendChild(meta);
+    cardsGrid.appendChild(card);
+  }
+</script>
+
+<!-- Libs para gerar PDF no browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- PDF BUTTON -->
+<div class="pdf-btn-wrapper">
+  <button class="pdf-btn" id="pdfBtn" onclick="gerarPDF()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="18" x2="12" y2="12"/>
+      <line x1="9" y1="15" x2="15" y2="15"/>
+    </svg>
+    <span id="pdfBtnLabel">Gerar PDF</span>
+  </button>
+</div>
+
+<script>
+  async function gerarPDF() {
+    const btn = document.getElementById('pdfBtn');
+    const label = document.getElementById('pdfBtnLabel');
+
+    // Estado de loading
+    btn.disabled = true;
+    label.textContent = 'Gerando...';
+
+    // Oculta elementos de UI durante a captura
+    btn.closest('.pdf-btn-wrapper').style.display = 'none';
+    const addArea = document.getElementById('photoAddArea');
+    if (addArea) addArea.style.display = 'none';
+
+    try {
+      const { jsPDF } = window.jspdf;
+
+      // Configurações A4
+      const A4_W_MM = 210;
+      const A4_H_MM = 297;
+      const MARGIN_MM = 10;
+      const contentW_MM = A4_W_MM - MARGIN_MM * 2;
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      // Captura o documento inteiro em alta resolução
+      const canvas = await html2canvas(document.body, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.body.scrollWidth,
+        windowHeight: document.body.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+      // Dimensões reais da captura em mm
+      const pxToMm = contentW_MM / canvas.width;
+      const totalH_MM = canvas.height * pxToMm;
+
+      // Divide em páginas A4
+      const pageContentH_MM = A4_H_MM - MARGIN_MM * 2;
+      let yOffset = 0;
+      let pageNum = 0;
+
+      while (yOffset < totalH_MM) {
+        if (pageNum > 0) doc.addPage();
+
+        // Recorta a fatia desta página
+        const sliceH_px = Math.min(
+          pageContentH_MM / pxToMm,
+          canvas.height - yOffset / pxToMm
+        );
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = Math.ceil(sliceH_px);
+
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(
+          canvas,
+          0, Math.round(yOffset / pxToMm),
+          canvas.width, pageCanvas.height,
+          0, 0,
+          canvas.width, pageCanvas.height
+        );
+
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.92);
+        const sliceH_mm = pageCanvas.height * pxToMm;
+
+        doc.addImage(pageImg, 'JPEG', MARGIN_MM, MARGIN_MM, contentW_MM, sliceH_mm);
+
+        yOffset += pageContentH_MM;
+        pageNum++;
+      }
+
+      doc.save('Plano-Execucao-Heimr.pdf');
+
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      alert('Erro ao gerar o PDF. Tente novamente.');
+    } finally {
+      // Restaura o botão e área de foto
+      btn.closest('.pdf-btn-wrapper').style.display = '';
+      if (addArea) addArea.style.display = '';
+      btn.disabled = false;
+      label.textContent = 'Gerar PDF';
+    }
+  }
+</script>
+
+</body>
+</html>

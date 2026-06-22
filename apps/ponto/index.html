@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verde Interior — Ponto HD</title>
+
+<meta name="theme-color" content="#2d5a1b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ponto HD">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Ponto HD">
+<meta name="msapplication-TileColor" content="#2d5a1b">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<div id="ls">
+  <div class="lcard">
+    <div class="llogo">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="4" transform="rotate(45 50 50)" fill="#7a1a1a"/>
+        <circle cx="50" cy="50" r="32" fill="#3d0f0f"/>
+        <ellipse cx="50" cy="26" rx="11" ry="17" fill="#4a8c2a" transform="rotate(-20 50 26)"/>
+        <ellipse cx="74" cy="50" rx="11" ry="17" fill="#4a8c2a" transform="rotate(70 74 50)"/>
+        <ellipse cx="50" cy="74" rx="11" ry="17" fill="#4a8c2a" transform="rotate(-20 50 74)"/>
+        <ellipse cx="26" cy="50" rx="11" ry="17" fill="#4a8c2a" transform="rotate(70 26 50)"/>
+        <circle cx="50" cy="50" r="7" fill="#7a1a1a"/>
+        <circle cx="50" cy="50" r="4" fill="#3d0f0f"/>
+      </svg>
+      <div class="lv">Verde</div>
+      <div class="li">interior</div>
+    </div>
+    <div class="ltitle">Bem-vindo(a)</div>
+    <div class="lsub">Entre com seu usuário e senha</div>
+    <div class="lfield">
+      <label>Usuário</label>
+      <input type="text" id="lu" placeholder="usuário"
+        autocomplete="username" autocapitalize="none" spellcheck="false"
+        onkeydown="if(event.key==='Enter')document.getElementById('lp').focus()">
+    </div>
+    <div class="lfield">
+      <label>Senha</label>
+      <input type="password" id="lp" placeholder="••••••••"
+        autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')AUTH.login()">
+    </div>
+    <div class="lerrmsg" id="lerrmsg">
+      <i class="fa-solid fa-circle-xmark"></i>
+      <span id="lerrtxt">Usuário ou senha incorretos</span>
+    </div>
+    <button class="lbtn" id="lbtn" onclick="AUTH.login()">
+      <span id="lbtntxt"><i class="fa-solid fa-right-to-bracket"></i>&nbsp;Entrar</span>
+      <div class="lspinner" id="lspinner"></div>
+    </button>
+    <div class="lfooter">Ponto &amp; Banco de Horas — Verde Interior</div>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="4" transform="rotate(45 50 50)" fill="#7a1a1a"/>
+        <circle cx="50" cy="50" r="32" fill="#3d0f0f"/>
+        <ellipse cx="50" cy="26" rx="11" ry="17" fill="#4a8c2a" transform="rotate(-20 50 26)"/>
+        <ellipse cx="74" cy="50" rx="11" ry="17" fill="#4a8c2a" transform="rotate(70 74 50)"/>
+        <ellipse cx="50" cy="74" rx="11" ry="17" fill="#4a8c2a" transform="rotate(-20 50 74)"/>
+        <ellipse cx="26" cy="50" rx="11" ry="17" fill="#4a8c2a" transform="rotate(70 26 50)"/>
+        <circle cx="50" cy="50" r="7" fill="#7a1a1a"/>
+        <circle cx="50" cy="50" r="4" fill="#3d0f0f"/>
+      </svg>
+    </div>
+    <div class="nav-name">
+      <div class="top">Verde</div>
+      <div class="bot">interior</div>
+    </div>
+    <span class="sav-ind" id="sav"><i class="fa-solid fa-floppy-disk"></i> salvo</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="ntb on" id="nb-colab" onclick="setV('colab',this)"><i class="fa-solid fa-user"></i> Colaborador</button>
+    <button class="ntb" id="nb-admin" onclick="setV('admin',this)"><i class="fa-solid fa-chart-line"></i> Gestor</button>
+    <button class="ntb" id="nb-config" onclick="setV('config',this)" title="Configurações"><i class="fa-solid fa-gear"></i></button>
+  </div>
+
+  <div id="sessao-wrap" style="display:none;align-items:center;gap:7px">
+    <span class="sbadge" id="sessao-badge">—</span>
+    <button class="loutbtn" onclick="AUTH.logout()">
+      <i class="fa-solid fa-right-from-bracket"></i> Sair
+    </button>
+  </div>
+</nav>
+
+<div class="app">
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════ COLABORADOR ══════════════════════ -->
+<div id="vw-colab" class="vw on">
+  <div style="margin-bottom:1rem">
+    <div class="sl">Colaborador</div>
+    <div class="bar" id="ubar"></div>
+  </div>
+  <div class="bar" id="ctabs">
+    <button class="ch on" onclick="setSv('ponto',this)">Bater Ponto</button>
+    <button class="ch" onclick="setSv('espelho',this)">Espelho</button>
+    <button class="ch" onclick="setSv('banco',this)">Banco de Horas</button>
+    <button class="ch" onclick="setSv('perfil',this)">Meu Perfil</button>
+    <button class="ch" onclick="setSv('just',this)">Justificativa</button>
+  </div>
+
+  <!-- PONTO -->
+  <div id="sv-ponto" class="sv on">
+    <div class="card" style="margin-bottom:1rem">
+      <div class="punch-hero">
+        <div class="clk-wrap">
+          <div class="clk" id="clk">--:--:--</div>
+          <div class="cdt" id="cdt"></div>
+        </div>
+        <div class="pb-wrap">
+          <button class="pb" id="pbtn" onclick="doPunch()">
+            <i class="fa-solid fa-fingerprint"></i>
+            <span id="plbl">Registrar</span>
+          </button>
+        </div>
+        <div style="margin-top:1rem"><span class="ps-badge so" id="pstat">Sem registro hoje</span></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1.25rem" id="xrow"></div>
+      <div class="cg3">
+        <div class="mc"><div class="ml">Entrada</div><div class="mv" id="ce" style="font-size:17px">--:--</div></div>
+        <div class="mc"><div class="ml">Trabalhadas</div><div class="mv neu" id="cw" style="font-size:17px">0h00</div></div>
+        <div class="mc"><div class="ml">Saldo hoje</div><div class="mv" id="cs" style="font-size:17px">--</div></div>
+      </div>
+    </div>
+    <div id="trecs"></div>
+  </div>
+
+  <!-- ESPELHO -->
+  <div id="sv-espelho" class="sv">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div class="sl" style="margin:0">Espelho mensal</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="msel" onchange="renderMirror()" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text)">
+          <option value="2026-05">Maio 2026</option>
+          <option value="2026-04">Abril 2026</option>
+        </select>
+        <button class="bsm" onclick="printMirror()" title="Imprimir espelho"><i class="fa-solid fa-print"></i></button>
+      </div>
+    </div>
+    <div id="mlist"></div>
+    <div id="mtotals"></div>
+  </div>
+
+  <!-- BANCO -->
+  <div id="sv-banco" class="sv">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem">
+        <span style="font-size:14px;color:var(--text2);font-weight:500">Saldo acumulado</span>
+        <span style="font-size:22px;font-weight:700" id="btot">0h00</span>
+      </div>
+      <div class="bt"><div class="bf" id="bbar" style="width:50%;background:#1D9E75"></div></div>
+    </div>
+    <div class="cg3">
+      <div class="mc"><div class="ml">Horas extras</div><div class="mv pos" id="bext">0h00</div></div>
+      <div class="mc"><div class="ml">Horas devidas</div><div class="mv neg" id="bdue">0h00</div></div>
+      <div class="mc"><div class="ml">Meta mensal</div><div class="mv neu" id="bmeta">176h</div></div>
+    </div>
+    <div class="sl">Semanas — maio 2026</div>
+    <div id="wbd"></div>
+  </div>
+
+  <!-- PERFIL -->
+  <div id="sv-perfil" class="sv">
+    <div class="card" id="prof-card"></div>
+    <div class="sl">Indicadores do mês</div>
+    <div id="prof-stats"></div>
+    <div id="prof-alerts" style="margin-top:.75rem"></div>
+    <div class="card" style="margin-top:1rem">
+      <div class="sl" style="margin-bottom:1rem">Alterar senha</div>
+      <div class="fr"><label>Nova senha</label><input type="password" id="np1" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="fr"><label>Confirmar senha</label><input type="password" id="np2" placeholder="repita a nova senha" autocomplete="new-password"></div>
+      <button class="bg" onclick="changePassword()"><i class="fa-solid fa-key"></i> Alterar senha</button>
+    </div>
+  </div>
+
+  <!-- JUSTIFICATIVA -->
+  <div id="sv-just" class="sv">
+    <div class="card">
+      <div class="sl" style="margin-bottom:1rem">Enviar justificativa</div>
+      <div class="fr"><label>Data da ocorrência</label><input type="date" id="jdate"></div>
+      <div class="fr">
+        <label>Tipo</label>
+        <select id="jtype">
+          <option>Falta</option><option>Atraso</option><option>Saída antecipada</option>
+          <option>Esquecimento de ponto</option><option>Licença médica</option><option>Outro</option>
+        </select>
+      </div>
+      <div class="fr"><label>Descrição</label><textarea id="jdesc" placeholder="Descreva o motivo detalhadamente..."></textarea></div>
+      <div class="fr">
+        <label>Anexos <span style="font-weight:400;color:var(--text3)">(imagens, PDF, Word — máx. 5)</span></label>
+        <div class="upload-zone" id="drop-zone"
+             ondragover="handleDrag(event,true)" ondragleave="handleDrag(event,false)" ondrop="handleDrop(event)">
+          <input type="file" id="file-input" multiple accept="image/*,.pdf,.doc,.docx" onchange="handleFiles(this.files)">
+          <div class="upload-zone-txt">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size:24px;display:block;margin-bottom:8px;color:var(--text3)"></i>
+            <strong>Clique para selecionar</strong> ou arraste aqui<br>
+            <span style="font-size:11px;color:var(--text3)">JPG, PNG, PDF, DOC</span>
+          </div>
+        </div>
+        <div class="attach-list" id="attach-list"></div>
+      </div>
+      <button class="bg" onclick="sendJust()"><i class="fa-solid fa-paper-plane"></i> Enviar justificativa</button>
+    </div>
+    <div class="sl">Minhas justificativas</div>
+    <div id="mjusts"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ ADMIN ══════════════════════ -->
+<div id="vw-admin" class="vw">
+  <div class="bar" id="atabs">
+    <button class="ch on" onclick="setAs('dash',this)">Dashboard</button>
+    <button class="ch" onclick="setAs('alertas',this)">Alertas</button>
+    <button class="ch" onclick="setAs('editar',this)">Editar Registros</button>
+    <button class="ch" onclick="setAs('aprovacoes',this)">Aprovações</button>
+    <button class="ch" onclick="setAs('relatorio',this)">Relatório</button>
+  </div>
+
+  <div id="as-dash" class="as on">
+    <div class="cg4">
+      <div class="mc"><div class="ml">Presentes</div><div class="mv pos" id="dp">0</div></div>
+      <div class="mc"><div class="ml">Ausentes</div><div class="mv neg" id="da">0</div></div>
+      <div class="mc"><div class="ml">Atrasados</div><div class="mv wrn" id="dl">0</div></div>
+      <div class="mc"><div class="ml">Intervalo</div><div class="mv" id="dbrk" style="color:#EF9F27">0</div></div>
+    </div>
+    <div class="sl">Status da equipe</div>
+    <div style="overflow-x:auto">
+      <table class="tt">
+        <thead><tr><th style="width:20%">Nome</th><th style="width:10%">Ctto</th><th style="width:13%">Entrada</th><th style="width:18%">Status</th><th style="width:13%">Trab.</th><th style="width:12%">Saldo</th><th style="width:14%">Banco</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:1.25rem" id="dash-chart"></div>
+  </div>
+
+  <div id="as-alertas" class="as">
+    <div class="sl">Alertas automáticos</div>
+    <div id="alerts-list"></div>
+  </div>
+
+  <div id="as-editar" class="as">
+    <div class="sl" style="margin-bottom:6px">Colaborador</div>
+    <div class="bar" id="eubar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
+      <div class="sl" style="margin:0" id="etit">Registros</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="edate" onchange="renderEdit()" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text)"></select>
+        <button class="bg" style="font-size:12px;padding:6px 13px" onclick="openAdd()"><i class="fa-solid fa-plus"></i> Adicionar</button>
+      </div>
+    </div>
+    <div id="elist"></div>
+    <div id="punch-map-wrap" style="display:none;margin-top:1rem">
+      <div class="sl" style="margin-bottom:.5rem"><i class="fa-solid fa-location-dot" style="color:#E24B4A;margin-right:5px"></i>Localização dos registros</div>
+      <div id="punch-map-addr" style="margin-bottom:.75rem"></div>
+      <div id="punch-map-container" style="height:260px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden"></div>
+    </div>
+    <div style="margin-top:1rem;padding:1.25rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius);display:none" id="addform">
+      <div class="sl" style="margin-bottom:1rem">Novo registro manual</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+        <div class="fr" style="margin:0"><label>Tipo</label>
+          <select id="atype"><option value="entry">Entrada</option><option value="break">Intervalo</option><option value="return">Retorno</option><option value="exit">Saída</option></select>
+        </div>
+        <div class="fr" style="margin:0"><label>Horário</label><input type="time" id="atime"></div>
+      </div>
+      <div class="fr"><label>Observação (opcional)</label><input type="text" id="aobs" placeholder="Ex: ajuste manual autorizado pelo gestor"></div>
+      <div style="display:flex;gap:8px">
+        <button class="bg" onclick="saveAdd()"><i class="fa-solid fa-check"></i> Salvar</button>
+        <button class="bsm" onclick="closeAdd()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="as-aprovacoes" class="as">
+    <div class="sl">Justificativas pendentes</div>
+    <div id="plist"></div>
+  </div>
+
+  <div id="as-relatorio" class="as">
+    <div class="card">
+      <div class="sl" style="margin-bottom:1rem">Exportar relatório</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+        <div class="fr" style="margin:0"><label>Início</label><input type="date" id="rs" value="2026-05-01"></div>
+        <div class="fr" style="margin:0"><label>Fim</label><input type="date" id="re" value="2026-05-31"></div>
+      </div>
+      <div class="fr"><label>Colaborador</label><select id="ru"><option value="all">Todos</option></select></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="bg" onclick="expCSV('espelho')"><i class="fa-solid fa-calendar"></i> Espelho completo</button>
+        <button class="bsm" onclick="expCSV('resumo')"><i class="fa-solid fa-file-lines"></i> Resumo mensal</button>
+        <button class="bsm" onclick="expCSV('banco')"><i class="fa-solid fa-clock"></i> Banco de horas</button>
+      </div>
+    </div>
+    <div class="sl">Resumo — maio 2026</div>
+    <div style="overflow-x:auto">
+      <table class="tt">
+        <thead><tr><th style="width:18%">Nome</th><th style="width:10%">Ctto</th><th style="width:10%">Dias</th><th style="width:13%">Trab.</th><th style="width:9%">Meta</th><th style="width:11%">Extras</th><th style="width:11%">Devidas</th><th style="width:18%">Banco</th></tr></thead>
+        <tbody id="repbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ CONFIG ══════════════════════ -->
+<div id="vw-config" class="vw">
+  <div class="sl">Configurações da equipe</div>
+  <div class="card">
+    <div class="sl" style="margin-bottom:1rem">Adicionar colaborador</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+      <div class="fr" style="margin:0"><label>Nome completo</label><input type="text" id="cfg-name" placeholder="Ex: Ana Lima"></div>
+      <div class="fr" style="margin:0"><label>Cargo</label><input type="text" id="cfg-cargo" placeholder="Ex: Designer"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+      <div class="fr" style="margin:0"><label>Tipo de contrato</label>
+        <select id="cfg-c"><option value="CLT">CLT</option><option value="PJ">PJ</option><option value="Estágio">Estágio</option></select>
+      </div>
+      <div class="fr" style="margin:0"><label>Jornada diária (horas)</label>
+        <input type="number" id="cfg-j" value="8" min="1" max="12" step="0.5" placeholder="Ex: 8">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+      <div class="fr" style="margin:0"><label>Usuário (login)</label><input type="text" id="cfg-user" placeholder="Ex: ana" autocapitalize="none" spellcheck="false"></div>
+      <div class="fr" style="margin:0"><label>Senha inicial</label><input type="text" id="cfg-pw" placeholder="Ex: ponto9"></div>
+    </div>
+    <button class="bg" onclick="addEmp()"><i class="fa-solid fa-user-plus"></i> Adicionar colaborador</button>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+    <div class="sl" style="margin:0">Equipe atual — <span id="cfg-count">0</span> colaboradores</div>
+  </div>
+  <div id="cfg-list"></div>
+
+  <div class="card" style="margin-top:1.25rem" id="creds-card">
+    <div class="sl" style="margin-bottom:.75rem">Credenciais de acesso</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:.875rem">Distribua individualmente a cada colaborador.</div>
+    <div id="creds-list"></div>
+  </div>
+
+  <div class="card" style="margin-top:1.25rem;border-color:#E24B4A">
+    <div class="sl" style="margin-bottom:.5rem;color:#A32D2D">Zona de perigo</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:.875rem">Remove todos os registros de ponto e justificativas do localStorage.</div>
+    <button class="br-btn" onclick="resetAll()"><i class="fa-solid fa-trash"></i> Limpar todos os dados</button>
+  </div>
+</div>
+</div><!-- /app -->
+
+<!-- Modal editar colaborador -->
+<div id="edit-emp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:min(480px,100%);max-height:90vh;overflow-y:auto">
+    <div class="sl" style="margin-bottom:1.25rem">Editar colaborador</div>
+    <input type="hidden" id="edit-emp-idx">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+      <div class="fr" style="margin:0"><label>Nome</label><input type="text" id="edit-name"></div>
+      <div class="fr" style="margin:0"><label>Cargo</label><input type="text" id="edit-cargo"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+      <div class="fr" style="margin:0"><label>Contrato</label>
+        <select id="edit-c"><option value="CLT">CLT</option><option value="PJ">PJ</option><option value="Estágio">Estágio</option></select>
+      </div>
+      <div class="fr" style="margin:0"><label>Jornada (h/dia)</label>
+        <input type="number" id="edit-j" min="1" max="12" step="0.5">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1.25rem">
+      <div class="fr" style="margin:0"><label>Banco (min)</label><input type="number" id="edit-bank"></div>
+      <div class="fr" style="margin:0"><label>Dias trabalhados</label><input type="number" id="edit-days" min="0"></div>
+      <div class="fr" style="margin:0"><label>Horas trabalhadas</label><input type="number" id="edit-worked" min="0" step="0.5"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="bg" onclick="saveEditEmp()"><i class="fa-solid fa-check"></i> Salvar</button>
+      <button class="bsm" onclick="closeEditEmp()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PWA Install Banner -->
+<div id="pwa-banner">
+  <div class="pwa-banner-left">
+    <div class="pwa-banner-icon">
+      <svg width="28" height="28" viewBox="0 0 100 100">
+        <rect x="15" y="15" width="70" height="70" rx="4" transform="rotate(45 50 50)" fill="#7a1a1a"/>
+        <circle cx="50" cy="50" r="32" fill="#3d0f0f"/>
+        <ellipse cx="50" cy="26" rx="11" ry="17" fill="#4a8c2a" transform="rotate(-20 50 26)"/>
+        <ellipse cx="74" cy="50" rx="11" ry="17" fill="#4a8c2a" transform="rotate(70 74 50)"/>
+        <ellipse cx="50" cy="74" rx="11" ry="17" fill="#4a8c2a" transform="rotate(-20 50 74)"/>
+        <ellipse cx="26" cy="50" rx="11" ry="17" fill="#4a8c2a" transform="rotate(70 26 50)"/>
+        <circle cx="50" cy="50" r="7" fill="#7a1a1a"/>
+      </svg>
+    </div>
+    <div class="pwa-banner-text">
+      <div class="t">Instalar Ponto HD</div>
+      <div class="s">Acesse offline como app nativo</div>
+    </div>
+  </div>
+  <div class="pwa-banner-actions">
+    <button class="bsm" onclick="dismissInstall()">Agora não</button>
+    <button class="bg" onclick="installPWA()"><i class="fa-solid fa-download"></i> Instalar</button>
+  </div>
+</div>
+
+<!-- PWA Update Banner -->
+<div id="pwa-update">
+  <span><i class="fa-solid fa-arrows-rotate" style="margin-right:6px"></i> Nova versão disponível</span>
+  <button class="pwa-update-btn" onclick="applyUpdate()">Atualizar agora</button>
+</div>
+
+<!-- Offline indicator -->
+<div id="offline-bar"><i class="fa-solid fa-wifi-slash" style="margin-right:6px"></i> Você está offline — dados salvos localmente</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
