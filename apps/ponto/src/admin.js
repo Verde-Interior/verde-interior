@@ -94,7 +94,7 @@ export function buildEditDates() {
   }).join('');
 }
 
-let _map = null;
+const _maps = {};
 
 async function geocode(lat, lng) {
   try {
@@ -110,18 +110,22 @@ async function geocode(lat, lng) {
   } catch { return ''; }
 }
 
-function renderPunchMap(recs) {
+export function renderPunchMap(recs, prefix = 'punch-map') {
   const entry = recs.find(r => r.type === 'entry' && r.lat != null);
   const exit  = recs.find(r => r.type === 'exit'  && r.lat != null);
 
-  const wrap = document.getElementById('punch-map-wrap');
+  const wrapId      = prefix === 'punch-map' ? 'punch-map-wrap'      : `${prefix}-wrap`;
+  const addrId      = prefix === 'punch-map' ? 'punch-map-addr'      : `${prefix}-addr`;
+  const containerId = prefix === 'punch-map' ? 'punch-map-container' : `${prefix}-container`;
+
+  const wrap = document.getElementById(wrapId);
   if (!wrap) return;
 
   if (!entry && !exit) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
 
   // Endereços como texto acima do mapa
-  const addrDiv = document.getElementById('punch-map-addr');
+  const addrDiv = document.getElementById(addrId);
   if (addrDiv) addrDiv.innerHTML = '<div style="font-size:12px;color:var(--text3)">Carregando endereços…</div>';
 
   const addrPromises = [];
@@ -138,10 +142,11 @@ function renderPunchMap(recs) {
   });
 
   // Destruir mapa anterior e recriar o elemento DOM (fix para Leaflet com display:none)
-  if (_map) { _map.remove(); _map = null; }
-  const container = document.getElementById('punch-map-container');
+  if (_maps[prefix]) { _maps[prefix].remove(); _maps[prefix] = null; }
+  const container = document.getElementById(containerId);
+  const mapElId   = `${prefix}-leaflet`;
   const fresh = document.createElement('div');
-  fresh.id = 'punch-map';
+  fresh.id = mapElId;
   fresh.style.cssText = 'width:100%;height:260px';
   container.innerHTML = '';
   container.appendChild(fresh);
@@ -149,10 +154,11 @@ function renderPunchMap(recs) {
   // Inicializar após o browser calcular o layout
   requestAnimationFrame(() => {
     const center = entry ? [entry.lat, entry.lng] : [exit.lat, exit.lng];
-    _map = window.L.map('punch-map').setView(center, 16);
+    const map = window.L.map(mapElId).setView(center, 16);
+    _maps[prefix] = map;
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap', maxZoom: 19,
-    }).addTo(_map);
+    }).addTo(map);
 
     const mkIcon = color => window.L.divIcon({
       className: '',
@@ -160,14 +166,14 @@ function renderPunchMap(recs) {
       iconSize: [14, 14], iconAnchor: [7, 7],
     });
 
-    if (entry) window.L.marker([entry.lat, entry.lng], { icon: mkIcon('#1D9E75') }).addTo(_map).bindPopup(`<b>Entrada</b> ${entry.time}`);
-    if (exit)  window.L.marker([exit.lat,  exit.lng],  { icon: mkIcon('#E24B4A') }).addTo(_map).bindPopup(`<b>Saída</b> ${exit.time}`);
+    if (entry) window.L.marker([entry.lat, entry.lng], { icon: mkIcon('#1D9E75') }).addTo(map).bindPopup(`<b>Entrada</b> ${entry.time}`);
+    if (exit)  window.L.marker([exit.lat,  exit.lng],  { icon: mkIcon('#E24B4A') }).addTo(map).bindPopup(`<b>Saída</b> ${exit.time}`);
 
     if (entry && exit) {
-      _map.fitBounds(window.L.latLngBounds([[entry.lat, entry.lng], [exit.lat, exit.lng]]), { padding: [40, 40] });
+      map.fitBounds(window.L.latLngBounds([[entry.lat, entry.lng], [exit.lat, exit.lng]]), { padding: [40, 40] });
     }
 
-    _map.invalidateSize();
+    map.invalidateSize();
   });
 }
 

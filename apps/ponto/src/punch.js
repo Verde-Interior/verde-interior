@@ -1,6 +1,7 @@
 import { state, save, dbAddPunch, dbDeletePunch, dbUpdateEmployeeStats } from './store.js';
 import { F, HM, TM, TKEY, calcWork, getStatus, getNext, toast } from './utils.js';
 import { AUTH } from './auth.js';
+import { renderPunchMap } from './admin.js';
 
 export function renderPunch() {
   const i  = state.cu;
@@ -37,6 +38,8 @@ export function renderPunch() {
         return `<div class="ri"><div><div class="ri-name">${tm.lbl}${p.obs ? ` <span style="font-size:11px;color:var(--text3)">(${p.obs})</span>` : ''}</div></div><div style="display:flex;align-items:center;gap:8px"><span class="rb ${tm.cls}">${p.time}</span>${delBtn}</div></div>`;
       }).join('')}</div>`
     : '<div class="card"><div class="empty"><i class="fa-regular fa-clock"></i>Nenhum registro hoje</div></div>';
+
+  renderPunchMap(recs, 'cpm');
 }
 
 function getCoords() {
