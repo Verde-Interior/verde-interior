@@ -18,6 +18,11 @@ dev-out.txt
 .DS_Store
 Thumbs.db
 
+# Arquivos compactados
+*.zip
+*.rar
+*.7z
+
 # Cache Python
 __pycache__/
 *.pyc
