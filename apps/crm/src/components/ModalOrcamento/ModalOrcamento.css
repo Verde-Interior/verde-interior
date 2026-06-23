@@ -1237,3 +1237,26 @@
   .modal { border-radius: 16px 16px 0 0; max-height: 92vh; align-self: flex-end; }
   .modal__overlay { align-items: flex-end; padding: 0; }
 }
+
+/* ── Histórico de Atividades ── */
+.modal__historico-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.modal__historico-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-secondary, #F9FAFB);
+  border-left: 3px solid #D1D5DB;
+}
+.modal__historico-item--estagio  { border-left-color: #3B82F6; }
+.modal__historico-item--followup { border-left-color: #F59E0B; }
+.modal__historico-item--orcamento{ border-left-color: #10B981; }
+.modal__historico-item--visita   { border-left-color: #8B5CF6; }
+.modal__historico-icone { font-size: 14px; flex-shrink: 0; }
+.modal__historico-desc  { flex: 1; font-size: 13px; color: var(--text-primary, #111827); }
+.modal__historico-data  { font-size: 11px; color: var(--text-muted, #6B7280); flex-shrink: 0; }

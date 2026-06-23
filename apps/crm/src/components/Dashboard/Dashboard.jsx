@@ -109,11 +109,24 @@ export default function Dashboard({ onNavegar }) {
   const [hojeAberto, setHojeAberto]             = useState(true);
   const autoArquivouRef = useRef(false);
   const [, forceUpdate] = useState(0);
+  const [metas, setMetas] = useState(() => {
+    try {
+      const s = localStorage.getItem('crm-metas');
+      if (s) return JSON.parse(s);
+    } catch {}
+    return {};
+  });
 
   useEffect(() => {
     function onNome() { forceUpdate((n) => n + 1); }
     window.addEventListener('crm-nome-usuario-change', onNome);
     return () => window.removeEventListener('crm-nome-usuario-change', onNome);
+  }, []);
+
+  useEffect(() => {
+    function onMeta(e) { setMetas(e.detail ?? {}); }
+    window.addEventListener('crm-metas-change', onMeta);
+    return () => window.removeEventListener('crm-metas-change', onMeta);
   }, []);
 
   const [ordemSecoes, setOrdemSecoes] = useState(() => {
@@ -707,7 +720,7 @@ export default function Dashboard({ onNavegar }) {
             <div className="dashboard__card-header">
               <h2 className="dashboard__secao-titulo">Projeção de Receita</h2>
               <span className="dashboard__receita-meta">
-                Potencial: <strong>{fmt(potencialTotal)}</strong>/mês
+                Previsão do mês: <strong>{fmt(potencialTotal)}</strong>
               </span>
             </div>
 
@@ -743,6 +756,53 @@ export default function Dashboard({ onNavegar }) {
                 30% de chance (pendentes)
               </span>
             </div>
+
+            {(() => {
+              const CATEGORIAS_META = [
+                { id: 'carteira',          label: 'Contratos Recorrentes (Carteira)',
+                  filtro: (l) => (l.tipoServico === 'locacao') || (l.tipoServico === 'manutencao' && l.frequenciaVisita !== 'Pontual') },
+                { id: 'manutencaoPontual', label: 'Manutenção Pontual',
+                  filtro: (l) => l.tipoServico === 'manutencao' && l.frequenciaVisita === 'Pontual' },
+                { id: 'vendas',            label: 'Vendas',
+                  filtro: (l) => l.tipoServico === 'venda' },
+                { id: 'reformas',          label: 'Reformas',
+                  filtro: (l) => l.tipoServico === 'reforma' },
+                { id: 'eventos',           label: 'Eventos',
+                  filtro: (l) => l.tipoServico === 'locacao_evento' },
+              ];
+              const temMeta = CATEGORIAS_META.some((c) => Number(metas[c.id]) > 0);
+              if (!temMeta) return null;
+              return (
+                <div className="dashboard__metas-wrap">
+                  <h3 className="dashboard__metas-titulo">Metas do Mês</h3>
+                  {CATEGORIAS_META.map((cat) => {
+                    const meta = Number(metas[cat.id]) || 0;
+                    if (!meta) return null;
+                    const atual = leads
+                      .filter((l) => l.estagioId === 'orcamento_aprovado' && cat.filtro(l))
+                      .reduce((s, l) => s + (l.valorEstimado ?? 0), 0);
+                    const pct = Math.min(Math.round((atual / meta) * 100), 100);
+                    const cor = pct >= 100 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
+                    return (
+                      <div key={cat.id} className="dashboard__meta-item">
+                        <div className="dashboard__meta-header">
+                          <span className="dashboard__meta-label">{cat.label}</span>
+                          <span className="dashboard__meta-valores">
+                            <strong style={{ color: cor }}>{fmt(atual)}</strong>
+                            <span className="dashboard__meta-sep"> / </span>
+                            {fmt(meta)}
+                            <span className="dashboard__meta-pct" style={{ color: cor }}>{pct}%</span>
+                          </span>
+                        </div>
+                        <div className="dashboard__meta-track">
+                          <div className="dashboard__meta-fill" style={{ width: `${pct}%`, background: cor }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </section>
         );
       }

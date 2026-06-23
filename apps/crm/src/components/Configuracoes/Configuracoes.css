@@ -397,3 +397,25 @@
 .config__btn--danger-outline:hover {
   background: color-mix(in srgb, var(--color-danger) 8%, transparent);
 }
+
+/* ── Meta mensal ── */
+.config__input-prefix {
+  font-size: 13px;
+  color: var(--text-muted, #6B7280);
+  flex-shrink: 0;
+}
+.config__input--meta {
+  width: 120px;
+}
+
+/* ── Metas mensais ── */
+.config__card-desc {
+  font-size: 12px;
+  color: var(--text-muted, #6B7280);
+  margin: -8px 0 12px;
+}
+.config__metas-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}

@@ -78,6 +78,39 @@ export default function Configuracoes() {
     localStorage.setItem('crm-notif-tarefas', String(notifTarefas));
   }, [notifTarefas]);
 
+  // ── Metas por categoria ───────────────────────────────────────────────────
+  const CATEGORIAS_META = [
+    { id: 'carteira',          label: 'Contratos Recorrentes (Carteira)', desc: 'Manutenção e Locação recorrentes' },
+    { id: 'manutencaoPontual', label: 'Manutenção Pontual',              desc: 'Serviços avulsos de manutenção' },
+    { id: 'vendas',            label: 'Vendas',                          desc: 'Venda de vasos e plantas' },
+    { id: 'reformas',          label: 'Reformas',                        desc: 'Reforma de vasos e plantas' },
+    { id: 'eventos',           label: 'Eventos',                         desc: 'Locação para eventos' },
+  ];
+
+  const [metas, setMetas] = useState(() => {
+    try {
+      const s = localStorage.getItem('crm-metas');
+      if (s) return JSON.parse(s);
+    } catch {}
+    return {};
+  });
+  const [metasSalvas, setMetasSalvas] = useState(false);
+
+  function setMeta(id, valor) {
+    setMetas((prev) => ({ ...prev, [id]: valor }));
+  }
+
+  function salvarMetas() {
+    const parsed = {};
+    for (const [k, v] of Object.entries(metas)) {
+      parsed[k] = Number(v) || 0;
+    }
+    localStorage.setItem('crm-metas', JSON.stringify(parsed));
+    window.dispatchEvent(new CustomEvent('crm-metas-change', { detail: parsed }));
+    setMetasSalvas(true);
+    setTimeout(() => setMetasSalvas(false), 2000);
+  }
+
   // ── Pipeline ───────────────────────────────────────────────────────────────
   const [canalPadrao, setCanalPadrao] = useState(
     () => localStorage.getItem('crm-canal-padrao') || 'WhatsApp'
@@ -184,6 +217,42 @@ export default function Configuracoes() {
                     </button>
                   ))}
                 </div>
+              </div>
+            </section>
+
+            {/* Metas */}
+            <section className="config__card">
+              <h2 className="config__card-titulo">Metas Mensais</h2>
+              <p className="config__card-desc">Exibidas como barras de progresso no Dashboard · Deixe em branco para não exibir</p>
+
+              {CATEGORIAS_META.map((cat) => (
+                <div key={cat.id} className="config__linha">
+                  <div className="config__linha-info">
+                    <span className="config__linha-label">{cat.label}</span>
+                    <span className="config__linha-desc">{cat.desc}</span>
+                  </div>
+                  <div className="config__linha-controle config__linha-controle--row">
+                    <span className="config__input-prefix">R$</span>
+                    <input
+                      className="config__input config__input--meta"
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={metas[cat.id] ?? ''}
+                      onChange={(e) => setMeta(cat.id, e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && salvarMetas()}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <div className="config__metas-footer">
+                <button
+                  className={`config__btn ${metasSalvas ? 'config__btn--salvo' : 'config__btn--primary'}`}
+                  onClick={salvarMetas}
+                >
+                  {metasSalvas ? '✓ Salvo' : 'Salvar Metas'}
+                </button>
               </div>
             </section>
 

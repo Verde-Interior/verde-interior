@@ -109,6 +109,7 @@ export default function ModalOrcamento() {
   const lead   = leadSelecionado;
   const servico = TIPOS_SERVICO[lead.tipoServico];
   const isRecorrente          = servico?.faturamento === 'recorrente';
+  const isRecorrenteEfetivo   = isRecorrente && lead.frequenciaVisita !== 'Pontual';
   const mudouParaNaoAprovado  = estagioId === 'orcamento_nao_aprovado';
   const isAprovado            = estagioId === 'orcamento_aprovado';
   const isRecorrenteAprovado  = isAprovado && isRecorrente;
@@ -123,12 +124,12 @@ export default function ModalOrcamento() {
     const valor = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(lead.valorEstimado ?? 0);
     if (msgTipo === 'whatsapp') {
       return `Olá, *${lead.contato}*! 👋\n\nTudo bem? Sou da *Verde Interior Paisagismo Corporativo* e estou entrando em contato a respeito do projeto de *${svcLabel}* para a *${lead.empresa}*.\n\n` +
-        `Preparamos uma proposta personalizada considerando as condições do ambiente (luz artificial, ar-condicionado e seleção de espécies resistentes) com o valor estimado de *${valor}${isRecorrente ? '/mês' : ''}*.\n\n` +
+        `Preparamos uma proposta personalizada considerando as condições do ambiente (luz artificial, ar-condicionado e seleção de espécies resistentes) com o valor estimado de *${valor}${isRecorrenteEfetivo ? '/mês' : ''}*.\n\n` +
         `Podemos agendar uma conversa para apresentar os detalhes? 😊\n\n_Verde Interior · Paisagismo Corporativo_`;
     }
     return `Assunto: Proposta de ${svcLabel} — ${lead.empresa}\n\nPrezado(a) ${lead.contato},\n\nEspero que esteja bem.\n\n` +
       `Conforme conversado, segue nossa proposta de *${svcLabel}* para a ${lead.empresa}.\n\n` +
-      `Valor estimado: ${valor}${isRecorrente ? '/mês' : ''}\n` +
+      `Valor estimado: ${valor}${isRecorrenteEfetivo ? '/mês' : ''}\n` +
       (lead.quantidadeVasos ? `Quantidade de vasos: ${lead.quantidadeVasos}\n` : '') +
       `\nNossos serviços incluem seleção de espécies resistentes a ambientes com ar-condicionado e luz artificial, além de manutenção periódica.\n\n` +
       `Fico à disposição para esclarecer qualquer dúvida.\n\nAtenciosamente,\nEquipe Verde Interior`;
@@ -250,6 +251,25 @@ export default function ModalOrcamento() {
   function handleSalvar() {
     if (mudouParaNaoAprovado && !motivoPerda) { setErrMotivo(true); return; }
 
+    const hoje = new Date().toISOString().split('T')[0];
+    const novasEntradas = [];
+    const ts = Date.now();
+
+    if (estagioId !== lead.estagioId) {
+      const novoEst = ESTAGIOS.find((e) => e.id === estagioId);
+      novasEntradas.push({ id: `h-${ts}-e`, tipo: 'estagio', descricao: `Movido para ${novoEst?.label ?? estagioId}`, data: hoje });
+    }
+    if (proximoFollowUp && proximoFollowUp !== lead.proximoFollowUp) {
+      novasEntradas.push({ id: `h-${ts}-f`, tipo: 'followup', descricao: `Follow-up agendado para ${new Date(proximoFollowUp + 'T12:00').toLocaleDateString('pt-BR')}`, data: hoje });
+    }
+    if (anexos.length > (lead.orcamentoAnexos?.length ?? 0)) {
+      novasEntradas.push({ id: `h-${ts}-a`, tipo: 'orcamento', descricao: 'Orçamento anexado', data: hoje });
+    }
+    const idsExistentes = new Set((lead.visitas ?? []).map((v) => v.id));
+    visitas.filter((v) => v.data && !idsExistentes.has(v.id)).forEach((v, i) => {
+      novasEntradas.push({ id: `h-${ts}-v${i}`, tipo: 'visita', descricao: `Visita técnica agendada para ${new Date(v.data + 'T12:00').toLocaleDateString('pt-BR')}`, data: hoje });
+    });
+
     const base = {
       estagioId,
       motivoPerda:     mudouParaNaoAprovado ? motivoPerda : undefined,
@@ -260,8 +280,9 @@ export default function ModalOrcamento() {
       followUpNota:     followUpNota || null,
       contrato:         isAprovado ? { ...contrato } : lead.contrato,
       orcamentoAnexos:  anexos,
-      orcamentoAnexo:   undefined, // limpa campo legado
-      visitas:          visitas.filter((v) => v.data), // só salva visitas com data definida
+      orcamentoAnexo:   undefined,
+      visitas:          visitas.filter((v) => v.data),
+      ...(novasEntradas.length > 0 && { historico: [...(lead.historico ?? []), ...novasEntradas] }),
     };
 
     if (editando) {
@@ -617,9 +638,11 @@ export default function ModalOrcamento() {
                   <div className="modal__campo-editavel">
                     <label className="modal__label">Frequência de Visita</label>
                     <select className="modal__select" value={editForm.frequenciaVisita} onChange={(e) => setEdit('frequenciaVisita', e.target.value)}>
-                      {(FREQUENCIAS_VISITA ?? ['Mensal', 'Quinzenal', 'Semanal']).map((f) => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
+                      {(FREQUENCIAS_VISITA ?? ['Mensal', 'Quinzenal', 'Semanal'])
+                        .filter((f) => f !== 'Pontual' || editForm.tipoServico === 'manutencao')
+                        .map((f) => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
                     </select>
                   </div>
                 )}
@@ -640,7 +663,7 @@ export default function ModalOrcamento() {
                   <span className="modal__label">Valor Estimado</span>
                   <span className="modal__valor">
                     {valorFormatado}
-                    {isRecorrente && <span className="modal__recorrencia">/mês</span>}
+                    {isRecorrenteEfetivo && <span className="modal__recorrencia">/mês</span>}
                   </span>
                 </div>
                 {isRecorrente && lead.frequenciaVisita && (
@@ -1214,6 +1237,26 @@ export default function ModalOrcamento() {
               </div>
             )}
           </section>
+
+          {/* ── Histórico de Atividades ── */}
+          {(lead.historico?.length > 0) && (
+            <section className="modal__secao modal__secao--historico">
+              <h3 className="modal__secao-titulo">📋 Histórico de Atividades</h3>
+              <div className="modal__historico-lista">
+                {[...(lead.historico)].reverse().map((entry) => {
+                  const ICONE = { estagio: '🔄', followup: '📅', orcamento: '📎', visita: '🗺️' };
+                  const dataFmt = new Date(entry.data + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
+                  return (
+                    <div key={entry.id} className={`modal__historico-item modal__historico-item--${entry.tipo}`}>
+                      <span className="modal__historico-icone">{ICONE[entry.tipo] ?? '📌'}</span>
+                      <span className="modal__historico-desc">{entry.descricao}</span>
+                      <span className="modal__historico-data">{dataFmt}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
         </div>
 

@@ -72,7 +72,11 @@ export default function AddLeadModal({ aberto, onFechar }) {
     if (e.target === e.currentTarget) { setAviso(null); onFechar(); }
   }
 
-  const isRecorrente = TIPOS_SERVICO[form.tipoServico]?.faturamento === 'recorrente';
+  const isRecorrente        = TIPOS_SERVICO[form.tipoServico]?.faturamento === 'recorrente';
+  const isRecorrenteEfetivo = isRecorrente && form.frequenciaVisita !== 'Pontual';
+  const freqsDisponiveis    = FREQUENCIAS_VISITA.filter(
+    (f) => f !== 'Pontual' || form.tipoServico === 'manutencao'
+  );
 
   return (
     <div className="add-modal-overlay" onClick={handleOverlay}>
@@ -197,7 +201,17 @@ export default function AddLeadModal({ aberto, onFechar }) {
                   className={`add-modal__servico-opcao ${form.tipoServico === key ? 'add-modal__servico-opcao--ativo' : ''}`}
                   style={{ '--svc-cor': svc.cor }}
                 >
-                  <input type="radio" name="tipoServico" value={key} checked={form.tipoServico === key} onChange={() => set('tipoServico', key)} />
+                  <input
+                    type="radio" name="tipoServico" value={key} checked={form.tipoServico === key}
+                    onChange={() => {
+                      setForm((f) => ({
+                        ...f,
+                        tipoServico: key,
+                        frequenciaVisita: f.frequenciaVisita === 'Pontual' && key !== 'manutencao' ? 'Mensal' : f.frequenciaVisita,
+                      }));
+                      setErros((e) => ({ ...e, tipoServico: undefined }));
+                    }}
+                  />
                   {svc.label}
                 </label>
               ))}
@@ -219,7 +233,7 @@ export default function AddLeadModal({ aberto, onFechar }) {
           <div className="add-modal__grupo">
             <label className="add-modal__label">
               Valor Estimado (R$)
-              {isRecorrente && <span className="add-modal__label-hint"> /mês</span>}
+              {isRecorrenteEfetivo && <span className="add-modal__label-hint"> /mês</span>}
             </label>
             <input
               className="add-modal__input"
@@ -235,7 +249,7 @@ export default function AddLeadModal({ aberto, onFechar }) {
             <div className="add-modal__grupo add-modal__grupo--wide">
               <label className="add-modal__label">Frequência de Visita</label>
               <div className="add-modal__freq-opcoes">
-                {FREQUENCIAS_VISITA.map((f) => (
+                {freqsDisponiveis.map((f) => (
                   <label
                     key={f}
                     className={`add-modal__freq-opcao ${form.frequenciaVisita === f ? 'add-modal__freq-opcao--ativo' : ''}`}

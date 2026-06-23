@@ -25,7 +25,7 @@ export const TIPOS_SERVICO = {
 export const CANAIS_ORIGEM = ['WhatsApp', 'E-mail', 'Telefone'];
 
 // ─── Frequências de Visita (para serviços recorrentes) ───────────────────────
-export const FREQUENCIAS_VISITA = ['Semanal', 'Quinzenal', 'Mensal'];
+export const FREQUENCIAS_VISITA = ['Semanal', 'Quinzenal', 'Mensal', 'Pontual'];
 
 // ─── Motivos de Perda (Tarefa 2.2) ───────────────────────────────────────────
 export const MOTIVOS_PERDA = [
@@ -560,12 +560,25 @@ export function CRMProvider({ children }) {
 
   // Move um lead para um novo estágio do funil
   const moverLead = useCallback((leadId, novoEstagioId) => {
+    const hoje = new Date().toISOString().split('T')[0];
     setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === leadId ? { ...lead, estagioId: novoEstagioId } : lead
-      )
+      prev.map((lead) => {
+        if (lead.id !== leadId) return lead;
+        const novoEstagio = ESTAGIOS.find((e) => e.id === novoEstagioId);
+        const entrada = {
+          id: `h-${Date.now()}`,
+          tipo: 'estagio',
+          descricao: `Movido para ${novoEstagio?.label ?? novoEstagioId}`,
+          data: hoje,
+        };
+        return {
+          ...lead,
+          estagioId: novoEstagioId,
+          historico: [...(lead.historico ?? []), entrada],
+        };
+      })
     );
-    setDragLeadId(null); // garante limpeza após qualquer drop
+    setDragLeadId(null);
   }, []);
 
   // Atualiza qualquer campo(s) de um lead existente
@@ -614,11 +627,12 @@ export function CRMProvider({ children }) {
     [leads]
   );
 
-  // Clientes ativos para o RoutePlanner (Fase 3.2): aprovados com serviço recorrente
+  // Clientes ativos para o RoutePlanner: aprovados com serviço recorrente (exclui manutenção pontual)
   const clientesAtivos = leads.filter(
     (l) =>
       l.estagioId === 'orcamento_aprovado' &&
-      TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente'
+      TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente' &&
+      l.frequenciaVisita !== 'Pontual'
   );
 
   // Modal de orçamento
@@ -682,7 +696,8 @@ export function CRMProvider({ children }) {
       .filter(
         (l) =>
           l.estagioId === 'orcamento_aprovado' &&
-          TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente'
+          TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente' &&
+          l.frequenciaVisita !== 'Pontual'
       )
       .reduce((s, l) => s + (l.valorEstimado ?? 0), 0),
     taxaConversao: (() => {

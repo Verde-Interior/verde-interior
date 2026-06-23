@@ -1436,3 +1436,65 @@
   .dashboard__topbar { padding: 12px 14px; }
   .dashboard__corpo { padding: 10px 10px; gap: 10px; }
 }
+
+/* ── Meta mensal ── */
+.dashboard__meta-wrap {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, #E5E7EB);
+}
+.dashboard__meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.dashboard__meta-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #6B7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dashboard__meta-valores {
+  font-size: 13px;
+  color: var(--text-secondary, #374151);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.dashboard__meta-sep { color: var(--text-muted, #9CA3AF); }
+.dashboard__meta-pct {
+  font-weight: 700;
+  margin-left: 6px;
+}
+.dashboard__meta-track {
+  height: 8px;
+  background: var(--bg-tertiary, #E5E7EB);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dashboard__meta-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+/* ── Metas do mês (5 categorias) ── */
+.dashboard__metas-wrap {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, #E5E7EB);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dashboard__metas-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #6B7280);
+  margin: 0 0 4px;
+}
+.dashboard__meta-item { display: flex; flex-direction: column; gap: 5px; }
