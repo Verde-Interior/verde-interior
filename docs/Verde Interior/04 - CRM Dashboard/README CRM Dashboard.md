@@ -1,49 +1,54 @@
 # CRM / Dashboard — Status Atual
 
-**Status:** 🔴 Em desenvolvimento — estrutura criada, sem componentes implementados
+**Status:** 🟡 Construído localmente — funcional, aguardando deploy
 **Stack:** React 18 + JSX (Vite)
 **Pasta local:** `apps/crm/`
-**Deploy:** ainda não
+**Deploy:** pendente (ver [[PROXIMOS-PASSOS]])
 
 ---
 
-## O que foi definido
+## O que está construído
 
-**Funil Kanban (5 estágios):**
+### Navegação e estrutura
+- [x] `CRMContext.jsx` — estado global com 12 leads simulados, métricas, CRUD completo
+- [x] `App.jsx` — roteamento entre todas as views com React Router
+- [x] `GlobalSearch` — busca global com Cmd+K
+- [x] `SidebarCalendario` — painel lateral com agenda
+
+### Views implementadas
+- [x] **Dashboard** — KPIs: total de leads, valor do pipeline, recorrência mensal, taxa de conversão
+- [x] **Kanban** — funil com 5 estágios, cards com badge de serviço
+- [x] **Funil de Execução** — contratos ativos com 5 estágios de execução
+- [x] **Agenda** — calendário de visitas e follow-ups
+- [x] **Tarefas** — gestão de tarefas com CRUD e toggle de conclusão
+- [x] **RoutePlanner** — roteirizador por bairro e frequência de visita
+- [x] **Configurações** — configurações do sistema
+- [x] **ModalOrcamento** — detalhe do lead com mudança de status
+
+### Persistência
+- [x] localStorage (`crm-verde-leads`) — funciona, mas dados se perdem ao trocar dispositivo
+
+### Funil Kanban (5 estágios definidos)
 1. Contato Recebido
 2. Orçamento Pendente
 3. Orçamento Enviado
 4. Aprovado
-5. Não Aprovado (com motivo obrigatório)
-
-**Motivos de perda (obrigatórios ao marcar "Não Aprovado"):**
-- Preço Alto
-- Concorrente Cobriu Oferta
-- Opção por Plantas Artificiais
-- Projeto Suspenso
-
-**Campos do lead:** empresa, serviço (com badge por tipo), bairro, valor, canal de origem
+5. Não Aprovado
 
 ---
 
-## Backlog de componentes
+## O que falta
 
-### Fase 1 — Funil visível
-- [ ] `CRMContext.jsx` — estado global com dados simulados e função `moverLead()`
-- [ ] `LeadCard` — nome, serviço (badge), bairro, valor, canal
-- [ ] `KanbanColumn` — filtra por status, mostra contador
-- [ ] `KanbanBoard` — organiza 5 colunas na horizontal
+### Prioridade alta
+- [ ] **Deploy no Vercel** (Fernando) — ninguém acessa online ainda
+- [ ] **Supabase** — substituir localStorage por banco real (leads, tarefas)
+- [ ] **Autenticação** — login para acessar o CRM
 
-### Fase 2 — Gestão comercial
-- [ ] `ModalOrcamento` — detalhe do lead + mudança de status
-- [ ] Trava de motivo obrigatório ao marcar "não aprovado"
-- [ ] Integração com Supabase (persistência real)
-
-### Fase 3 — Pós-venda e logística
-- [ ] Campos de contrato: início, vigência, reajuste, dia de faturamento
-- [ ] `RoutePlanner` — roteirizador por bairro e frequência de visita
-- [ ] Botão de solicitação de reposição de planta
-- [ ] `Agenda` — calendário de visitas e follow-ups
+### Funcionalidades pendentes
+- [ ] Motivo obrigatório ao mover para "Não Aprovado"
+- [ ] Formulário de cadastro de novo lead (UI)
+- [ ] Filtros no Kanban (responsável, serviço, bairro)
+- [ ] Exportação do pipeline em CSV
 
 ---
 

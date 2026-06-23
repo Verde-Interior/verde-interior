@@ -1,4 +1,4 @@
-import './style.css';
+import './styles/main.css';
 
 import { load } from './store.js';
 import { F, WDS, MESES, toast } from './utils.js';
