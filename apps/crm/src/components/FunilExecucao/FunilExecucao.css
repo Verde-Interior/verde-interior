@@ -1,0 +1,250 @@
+/* src/components/FunilExecucao/FunilExecucao.css */
+
+.funil-exec {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.funil-exec__header {
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.funil-exec__titulo {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  letter-spacing: -0.02em;
+}
+
+.funil-exec__subtitulo {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Kanban ── */
+.funil-exec__kanban {
+  display: flex;
+  gap: 0;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 20px 24px 24px;
+  gap: 14px;
+}
+
+/* ── Coluna ── */
+.funil-exec__coluna {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  flex: 1;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.funil-exec__col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--etapa-cor) 8%, var(--cream-25));
+  border-bottom: 2px solid color-mix(in srgb, var(--etapa-cor) 30%, transparent);
+}
+
+.funil-exec__col-titulo {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.funil-exec__col-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--etapa-cor) 15%, transparent);
+  color: color-mix(in srgb, var(--etapa-cor) 80%, #000);
+  border-radius: 999px;
+  padding: 2px 9px;
+  min-width: 22px;
+  text-align: center;
+}
+
+/* ── Cards area ── */
+.funil-exec__cards {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 80px;
+}
+
+.funil-exec__vazio {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 8px;
+  font-style: italic;
+}
+
+/* ── Card ── */
+.funil-exec__card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 13px 10px;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
+  box-shadow: var(--shadow-xs);
+}
+
+.funil-exec__card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--cream-300);
+}
+
+.funil-exec__card--dragging {
+  opacity: 0.35;
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+.funil-exec__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.funil-exec__card-empresa {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.funil-exec__card-icone { font-size: 14px; flex-shrink: 0; }
+
+.funil-exec__card-contato {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.funil-exec__card-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.funil-exec__card-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--badge-cor) 13%, transparent);
+  color: var(--badge-cor);
+  white-space: nowrap;
+}
+
+.funil-exec__card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--cream-100);
+}
+
+.funil-exec__card-bairro {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funil-exec__card-valor {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-success);
+  white-space: nowrap;
+}
+
+.funil-exec__card-visitas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.funil-exec__card-visita-data {
+  font-size: 10px;
+  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 8%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  width: fit-content;
+}
+
+.funil-exec__card-inicio {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Ações rápidas ── */
+.funil-exec__card-acoes { padding-top: 4px; }
+
+.funil-exec__card-btn-avancar {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vinho-700);
+  background: color-mix(in srgb, var(--vinho-700) 7%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--vinho-700) 25%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+
+.funil-exec__card-btn-avancar:hover {
+  background: color-mix(in srgb, var(--vinho-700) 12%, transparent);
+  border-color: color-mix(in srgb, var(--vinho-700) 40%, transparent);
+}
+
+.funil-exec__card-final {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-success);
+  display: block;
+  text-align: center;
+  padding: 4px 0;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 1024px) {
+  .funil-exec__header { padding: 18px 20px 12px; }
+  .funil-exec__kanban { padding: 14px 14px 16px; gap: 10px; }
+  .funil-exec__coluna { min-width: 180px; }
+}
+@media (max-width: 640px) {
+  .funil-exec__coluna { min-width: 160px; }
+  .funil-exec__kanban { padding: 10px; }
+}

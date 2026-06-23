@@ -28,7 +28,7 @@ Precisam ser tomadas antes de avançar nas integrações entre módulos.
 - [ ] `src/components/KanbanBoard/` — organizar 5 colunas na horizontal
 
 **Para rodar:** `cd apps/crm && npm run dev`
-**Referência:** [[04 - CRM Dashboard/README]]
+**Referência:** [[README CRM Dashboard]]
 
 ---
 
@@ -80,7 +80,7 @@ Antes de conectar os módulos num hub central:
 - [ ] Gatilho orçamento aprovado → cria OS (implementado)
 - [ ] Design system visual aplicado em todos os módulos
 
-Ver: [[05 - Plataforma Unificada/README]]
+Ver: [[README Plataforma Unificada]]
 
 ---
 

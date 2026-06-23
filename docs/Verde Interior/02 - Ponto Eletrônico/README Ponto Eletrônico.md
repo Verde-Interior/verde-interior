@@ -11,17 +11,17 @@
 
 ## Equipe cadastrada
 
-| Nome | Cargo | Contrato | Jornada | Usuário |
-|---|---|---|---|---|
-| Beto | Vendas | CLT | 8h | `beto` |
-| Brenno | Consultor | PJ | 6h | `brenno` |
-| Bruno | Designer | CLT | 8h | `bruno` |
-| Carlos | TI | CLT | 8h | `carlos` |
-| Greg | Estagiário | CLT | 8h | `greg` |
-| Miriam | RH | CLT | 8h | `miriam` |
-| Pedro Silva | Financeiro | CLT | 8h | `pedro` |
-| Peterson | Arquiteto | CLT | 8h | `peterson` |
-| Fernando | Gestor | — | — | `fernando` |
+| Nome        | Cargo      | Contrato | Jornada | Usuário    |
+| ----------- | ---------- | -------- | ------- | ---------- |
+| Beto        | Vendas     | CLT      | 8h      | `beto`     |
+| Brenno      | Consultor  | PJ       | 6h      | `brenno`   |
+| Bruno       | Designer   | CLT      | 8h      | `bruno`    |
+| Carlos      | TI         | CLT      | 8h      | `carlos`   |
+| Greg        | Estagiário | CLT      | 8h      | `greg`     |
+| Miriam      | RH         | CLT      | 8h      | `miriam`   |
+| Pedro Silva | Financeiro | CLT      | 8h      | `pedro`    |
+| Peterson    | Arquiteto  | CLT      | 8h      | `peterson` |
+| Fernando    | Gestor     | —        | —       | `fernando` |
 
 ---
 

@@ -26,3 +26,7 @@ Thumbs.db
 # Cache Python
 __pycache__/
 *.pyc
+
+# Obsidian — configurações locais de cada usuário (workspace, grafo, UI)
+# Os arquivos .md continuam sendo versionados normalmente
+.obsidian/

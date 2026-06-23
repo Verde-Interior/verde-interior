@@ -1,0 +1,335 @@
+/* src/components/SidebarCalendario/SidebarCalendario.css */
+
+.sidebar-cal {
+  padding: 10px 10px 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ── Cabeçalho do mês ── */
+.sidebar-cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sidebar-cal__mes-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sidebar-cal__nav-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.sidebar-cal__nav-btn:hover { color: rgba(255,255,255,0.80); }
+
+/* ── Grade ── */
+.sidebar-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.sidebar-cal__wd {
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  color: rgba(255,255,255,0.22);
+  padding: 2px 0 4px;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-cal__celula {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 10px;
+  color: rgba(255,255,255,0.38);
+  padding: 3px 0 2px;
+  border-radius: 4px;
+  line-height: 1;
+  min-height: 22px;
+}
+
+.sidebar-cal__celula--vazia { pointer-events: none; }
+
+.sidebar-cal__celula--btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-cal__celula--btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.80);
+}
+
+.sidebar-cal__celula--hoje {
+  background: rgba(184,48,48,0.18);
+  color: #B83030;
+  border: 1px solid rgba(184,48,48,0.45);
+  font-weight: 700;
+}
+
+.sidebar-cal__celula--ativo {
+  background: rgba(123,26,26,0.65) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.sidebar-cal__celula--evento { color: rgba(255,255,255,0.75); }
+
+/* ── Dots ── */
+.sidebar-cal__dots {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.sidebar-cal__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Popover do dia ── */
+.sidebar-cal__popover {
+  margin-top: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-cal__pop-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.70);
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+
+.sidebar-cal__pop-vazio {
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  font-style: italic;
+  margin: 0;
+}
+
+.sidebar-cal__pop-ev {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 7px 8px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+
+.sidebar-cal__pop-ev:hover {
+  background: rgba(255,255,255,0.10);
+}
+
+.sidebar-cal__pop-ev-icone { font-size: 12px; flex-shrink: 0; }
+
+.sidebar-cal__pop-ev-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-cal__pop-ev-nome {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.80);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-cal__pop-ev-label {
+  font-size: 9px;
+  color: rgba(255,255,255,0.40);
+}
+
+.sidebar-cal__pop-ev-seta {
+  font-size: 11px;
+  color: rgba(255,255,255,0.30);
+  flex-shrink: 0;
+}
+
+/* Form rápido */
+.sidebar-cal__pop-form { display: flex; flex-direction: column; gap: 6px; }
+
+.sidebar-cal__pop-input {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+
+.sidebar-cal__pop-input::placeholder { color: rgba(255,255,255,0.30); }
+.sidebar-cal__pop-input:focus { border-color: rgba(123,26,26,0.60); }
+
+.sidebar-cal__pop-form-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar-cal__pop-salvar {
+  flex: 1;
+  background: rgba(123,26,26,0.55);
+  border: none;
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.sidebar-cal__pop-salvar:hover { background: rgba(123,26,26,0.75); }
+
+.sidebar-cal__pop-cancelar {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.50);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Ações rápidas */
+.sidebar-cal__pop-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 2px;
+}
+
+.sidebar-cal__pop-acao {
+  background: none;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-cal__pop-acao:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.80);
+}
+
+/* ── Próximos eventos ── */
+.sidebar-cal__proximos {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-cal__proximos-titulo {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.22);
+  margin-bottom: 2px;
+  display: block;
+}
+
+.sidebar-cal__evento {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.sidebar-cal__evento:hover { background: rgba(255,255,255,0.05); }
+
+.sidebar-cal__evento-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.sidebar-cal__evento-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-cal__evento-data {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-cal__evento-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.sidebar-cal__vazio {
+  font-size: 10px;
+  color: rgba(255,255,255,0.20);
+  text-align: center;
+  margin: 8px 0 0;
+  font-style: italic;
+}

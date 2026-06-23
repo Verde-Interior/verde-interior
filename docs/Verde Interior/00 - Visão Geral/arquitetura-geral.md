@@ -49,7 +49,7 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 - Solicitação de reposição de plantas
 - Controle de agenda
 
-**Backlog mapeado:** ver [[04 - CRM Dashboard/README]]
+**Backlog mapeado:** ver [[README CRM Dashboard]]
 
 ---
 

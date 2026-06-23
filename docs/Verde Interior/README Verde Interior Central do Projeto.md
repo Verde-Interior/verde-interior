@@ -10,11 +10,11 @@ Atualizado ao final de cada sessão de desenvolvimento com Claude.
 
 | Módulo | Status | Pasta local | Documentação |
 |---|---|---|---|
-| Ponto Eletrônico | ✅ Produção | `apps/ponto/` | [[02 - Ponto Eletrônico/README]] |
-| Gerador de Orçamentos | 🟡 Melhorias pendentes | `tools/orcamentos/` | [[01 - Orçamentos/README]] |
-| Ordem de Serviço | 🟡 Adaptação mobile | `tools/ordem-de-servico/` | [[03 - Ordem de Serviço/README]] |
-| CRM / Dashboard | 🔴 Em desenvolvimento | `apps/crm/` | [[04 - CRM Dashboard/README]] |
-| Plataforma Unificada | ⬜ Planejado | — | [[05 - Plataforma Unificada/README]] |
+| Ponto Eletrônico | ✅ Produção | `apps/ponto/` | [[README Ponto Eletrônico]] |
+| Gerador de Orçamentos | 🟡 Melhorias pendentes | `tools/orcamentos/` | [[README Gerador de Orçamentos]] |
+| Ordem de Serviço | 🟡 Adaptação mobile | `tools/ordem-de-servico/` | [[README Ordem de Serviço]] |
+| CRM / Dashboard | 🔴 Em desenvolvimento | `apps/crm/` | [[README CRM Dashboard]] |
+| Plataforma Unificada | ⬜ Planejado | — | [[README Plataforma Unificada]] |
 
 ---
 
