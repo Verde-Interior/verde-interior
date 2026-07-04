@@ -12,6 +12,7 @@ import Configuracoes from './components/Configuracoes/Configuracoes';
 import FunilExecucao from './components/FunilExecucao/FunilExecucao';
 import SidebarCalendario from './components/SidebarCalendario/SidebarCalendario';
 import Agenda from './components/Agenda/Agenda';
+import Clientes from './components/Clientes/Clientes';
 import './App.css';
 
 const IconDashboard = () => (
@@ -75,10 +76,23 @@ const IconExecucao = () => (
   </svg>
 );
 
+const IconClientes = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <rect x="1" y="5" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <rect x="3" y="7.5" width="2" height="2" rx="0.5" fill="currentColor"/>
+    <rect x="7" y="7.5" width="2" height="2" rx="0.5" fill="currentColor"/>
+    <rect x="3" y="10.5" width="2" height="2" rx="0.5" fill="currentColor"/>
+    <rect x="7" y="10.5" width="2" height="2" rx="0.5" fill="currentColor"/>
+    <path d="M11 7h3V14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+    <path d="M1 14h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+  </svg>
+);
+
 const NAV_ITEMS_TOP = [
   { id: 'dashboard',  Icon: IconDashboard, label: 'Dashboard' },
   { id: 'kanban',     Icon: IconPipeline,  label: 'Pipeline'  },
   { id: 'execucao',   Icon: IconExecucao,  label: 'Execução'  },
+  { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
   { id: 'agenda',     Icon: IconAgenda,    label: 'Agenda'    },
   { id: 'tarefas',    Icon: IconTarefas,   label: 'Tarefas'   },
   { id: 'rotas',      Icon: IconRoteiro,   label: 'Roteiro'   },
@@ -167,6 +181,7 @@ function AppLayout() {
         {tela === 'dashboard'     && <Dashboard onNavegar={setTela} />}
         {tela === 'kanban'        && <KanbanBoard />}
         {tela === 'execucao'      && <FunilExecucao />}
+        {tela === 'clientes'      && <Clientes />}
         {tela === 'agenda'        && <Agenda />}
         {tela === 'rotas'         && <RoutePlanner />}
         {tela === 'tarefas'       && <Tarefas />}
