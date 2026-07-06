@@ -37,10 +37,12 @@ const GRUPO_OPTIONS = [
 ];
 
 const FREQ_VISITA_OPTIONS = [
-  { value: '',          label: '— Selecionar —' },
-  { value: 'semanal',   label: 'Semanal'        },
-  { value: 'quinzenal', label: 'Quinzenal'      },
-  { value: 'mensal',    label: 'Mensal'         },
+  { value: '',          label: '— Selecionar —'   },
+  { value: '3x_semana', label: '3× por semana'    },
+  { value: '2x_semana', label: '2× por semana'    },
+  { value: '1x_semana', label: '1× por semana'    },
+  { value: 'quinzenal', label: 'Quinzenal'        },
+  { value: 'mensal',    label: 'Mensal'           },
 ];
 
 function calcCompletude(c) {
