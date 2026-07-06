@@ -28,6 +28,28 @@ const FREQ_LABEL = {
   pontual:    'Pontual',
 };
 
+const TIPO_SERVICO_OPTIONS = [
+  { value: '',                label: '— Selecionar —'     },
+  { value: 'manutencao',      label: 'Manutenção'         },
+  { value: 'troca',           label: 'Troca'              },
+  { value: 'manutencao_troca',label: 'Manutenção + Troca' },
+  { value: 'flores',          label: 'Flores'             },
+];
+
+const TIPO_SERVICO_LABEL = {
+  manutencao:       'Manutenção',
+  troca:            'Troca',
+  manutencao_troca: 'Manutenção + Troca',
+  flores:           'Flores',
+};
+
+const FREQ_VISITA_OPTIONS = [
+  { value: '',          label: '— Selecionar —' },
+  { value: 'semanal',   label: 'Semanal'        },
+  { value: 'quinzenal', label: 'Quinzenal'      },
+  { value: 'mensal',    label: 'Mensal'         },
+];
+
 function calcCompletude(c) {
   const checks = [
     (c.dias_disponiveis?.length ?? 0) > 0,
@@ -65,6 +87,7 @@ const FORM_VAZIO = {
   janela_entrada_fim: '',
   duracao_estimada_min: '',
   grupo_servico: '',
+  frequencia_visita: '',
   observacoes: '',
   observacoes_internas: '',
   ativo: true,
@@ -109,11 +132,6 @@ export default function Clientes() {
 
   useEffect(() => { carregar(); }, []);
 
-  const grupos = useMemo(() => {
-    const gs = new Set(clientes.map(c => c.grupo_servico).filter(Boolean));
-    return [...Array.from(gs).sort()];
-  }, [clientes]);
-
   const clientesFiltrados = useMemo(() => {
     const q = busca.toLowerCase();
     return clientes.filter(c => {
@@ -152,6 +170,7 @@ export default function Clientes() {
       janela_entrada_fim:    c.janela_entrada_fim    ?? '',
       duracao_estimada_min:  c.duracao_estimada_min  ?? '',
       grupo_servico:         c.grupo_servico         ?? '',
+      frequencia_visita:     c.frequencia_visita     ?? '',
       observacoes:           c.observacoes           ?? '',
       observacoes_internas:  c.observacoes_internas  ?? '',
       ativo:                 c.ativo,
@@ -202,6 +221,7 @@ export default function Clientes() {
         data_inicio_contrato:  dados.data_inicio_contrato   || null,
         cnpj:                  dados.cnpj                   || null,
         grupo_servico:         dados.grupo_servico          || null,
+        frequencia_visita:     dados.frequencia_visita      || null,
       };
 
       if (modal.modo === 'editar') {
@@ -314,16 +334,16 @@ export default function Clientes() {
           ))}
         </div>
 
-        {grupos.length > 0 && (
-          <select
-            className="clientes__select"
-            value={filtroGrupo}
-            onChange={e => setFiltroGrupo(e.target.value)}
-          >
-            <option value="todos">Todos os grupos</option>
-            {grupos.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        )}
+        <select
+          className="clientes__select"
+          value={filtroGrupo}
+          onChange={e => setFiltroGrupo(e.target.value)}
+        >
+          <option value="todos">Todos os tipos</option>
+          {TIPO_SERVICO_OPTIONS.filter(o => o.value).map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
 
         <span className="clientes__count">
           {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
@@ -360,7 +380,7 @@ export default function Clientes() {
             <thead>
               <tr>
                 <th>Nome / Bairro</th>
-                <th>Grupo</th>
+                <th>Tipo de Serviço</th>
                 <th>Dias disponíveis</th>
                 <th>Duração</th>
                 <th>Última visita</th>
@@ -389,7 +409,9 @@ export default function Clientes() {
                     </td>
                     <td>
                       {c.grupo_servico
-                        ? <span className="clientes__badge clientes__badge--grupo">{c.grupo_servico}</span>
+                        ? <span className="clientes__badge clientes__badge--grupo">
+                            {TIPO_SERVICO_LABEL[c.grupo_servico] ?? c.grupo_servico}
+                          </span>
                         : <span className="clientes__dash">—</span>}
                     </td>
                     <td>
@@ -473,12 +495,15 @@ export default function Clientes() {
                     <input value={form.razao_social} onChange={e => setF('razao_social', e.target.value)} />
                   </div>
                   <div className="cl-campo">
-                    <label>Grupo de Serviço</label>
-                    <input
+                    <label>Tipo de Serviço</label>
+                    <select
                       value={form.grupo_servico}
                       onChange={e => setF('grupo_servico', e.target.value)}
-                      placeholder="Ex: Grupo 1"
-                    />
+                    >
+                      {TIPO_SERVICO_OPTIONS.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="cl-campo">
                     <label>Status</label>
@@ -612,6 +637,17 @@ export default function Clientes() {
                       onChange={e => setF('duracao_estimada_min', e.target.value)}
                       placeholder="Ex: 90"
                     />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Frequência de visita</label>
+                    <select
+                      value={form.frequencia_visita}
+                      onChange={e => setF('frequencia_visita', e.target.value)}
+                    >
+                      {FREQ_VISITA_OPTIONS.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="cl-campo">
                     <label>Início do contrato</label>
