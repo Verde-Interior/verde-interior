@@ -9,6 +9,7 @@ import { renderAttachList } from './upload.js';
 import { renderJusts } from './justs.js';
 import { renderAdmin, buildEditDates, renderEdit } from './admin.js';
 import { renderConfig } from './config.js';
+import { renderAgenda } from './agenda.js';
 
 export function buildBars() {
   const ses = AUTH.getSession();
@@ -64,6 +65,7 @@ export function setSv(sv, btn) {
   document.getElementById('sv-' + sv).classList.add('on');
   btn.classList.add('on');
   if (sv === 'ponto')   renderPunch();
+  if (sv === 'agenda')  renderAgenda();
   if (sv === 'espelho') { buildMirrorMonths(); renderMirror(); }
   if (sv === 'banco')   renderBank();
   if (sv === 'perfil')  renderProfile();

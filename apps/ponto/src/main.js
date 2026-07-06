@@ -12,6 +12,13 @@ import { addEmp, removeEmp, resetAll, editEmp, closeEditEmp, saveEditEmp } from 
 import { buildBars, selU, selEU, setV, setSv, setAs } from './nav.js';
 import { installPWA, dismissInstall, applyUpdate } from './pwa.js';
 import { requestNotifyPermission, startNotifyChecker } from './notify.js';
+import {
+  renderAgenda, openDetail as agOpenDetail, back as agBack, backToList as agBackToList,
+  goTo as agGoTo, changeDate as agChangeDate, goToday as agGoToday,
+  checkIn as agCheckIn, addPhoto as agAddPhoto, removePhoto as agRemovePhoto,
+  saveFotoObs as agSaveFotoObs, saveReport as agSaveReport,
+  sigClear as agSigClear, submit as agSubmit,
+} from './agenda.js';
 
 function tick() {
   const n = new Date();
@@ -57,6 +64,22 @@ window.installPWA              = installPWA;
 window.dismissInstall = dismissInstall;
 window.applyUpdate    = applyUpdate;
 window.toast          = toast;
+
+// Sistema de Campo — Minha Agenda
+window.renderAgenda        = renderAgenda;
+window.agendaOpenDetail    = agOpenDetail;
+window.agendaBack          = agBack;
+window.agendaBackToList    = agBackToList;
+window.agendaGoTo          = agGoTo;
+window.agendaChangeDate    = agChangeDate;
+window.agendaGoToday       = agGoToday;
+window.agendaCheckIn       = agCheckIn;
+window.agendaAddPhoto      = agAddPhoto;
+window.agendaRemoveFoto    = agRemovePhoto;
+window.agendaSaveFotoObs   = agSaveFotoObs;
+window.agendaSaveReport    = agSaveReport;
+window.agendaSigClear      = agSigClear;
+window.agendaSubmit        = agSubmit;
 
 tick();
 setInterval(tick, 1000);
