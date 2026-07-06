@@ -21,7 +21,7 @@ const TIPO_COR = {
 function getSemana(refDate) {
   const d = new Date(refDate);
   const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // volta para segunda-feira
+  const diff = day === 0 ? -6 : 1 - day;
   const seg = new Date(d);
   seg.setDate(d.getDate() + diff);
   return Array.from({ length: 6 }, (_, i) => {
@@ -69,23 +69,47 @@ function verificarHorario(cliente, hora) {
 
 // ── Cartão de visita ──────────────────────────────────────────────────────────
 
-function CartaoVisita({ visita, isFirst, isLast, onCima, onBaixo, onDeletar }) {
+function CartaoVisita({
+  visita, isFirst, isLast,
+  onCima, onBaixo, onDeletar,
+  // drag
+  onDragStart, onDragEnd, isDragging,
+  // seleção
+  modoSelecao, selecionada, onToggleSel,
+}) {
   const tipo   = visita.cliente_servicos?.tipo_servico;
   const status = visita.status;
+  const editavel = status === 'rascunho';
 
   return (
-    <div className={`ec-cartao ec-cartao--${status}`}>
-      <div className="ec-cartao__ordens">
-        <button className="ec-cartao__ord" onClick={onCima}  disabled={isFirst} title="Subir">▲</button>
-        <button className="ec-cartao__ord" onClick={onBaixo} disabled={isLast}  title="Descer">▼</button>
-      </div>
+    <div
+      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''}`}
+      draggable={editavel && !modoSelecao}
+      onDragStart={editavel && !modoSelecao ? onDragStart : undefined}
+      onDragEnd={onDragEnd}
+      onClick={modoSelecao && editavel ? onToggleSel : undefined}
+    >
+      {/* Checkbox de seleção */}
+      {modoSelecao && editavel && (
+        <button
+          className={`ec-cartao__check ${selecionada ? 'ec-cartao__check--on' : ''}`}
+          onClick={e => { e.stopPropagation(); onToggleSel(); }}
+          title={selecionada ? 'Desmarcar' : 'Selecionar'}
+        >
+          {selecionada ? '✓' : ''}
+        </button>
+      )}
+
+      {/* Botões de reordenar (ocultos no modo seleção) */}
+      {!modoSelecao && (
+        <div className="ec-cartao__ordens">
+          <button className="ec-cartao__ord" onClick={onCima}  disabled={isFirst || !editavel} title="Subir">▲</button>
+          <button className="ec-cartao__ord" onClick={onBaixo} disabled={isLast  || !editavel} title="Descer">▼</button>
+        </div>
+      )}
 
       {tipo && (
-        <span
-          className="ec-cartao__tipo-bar"
-          style={{ background: TIPO_COR[tipo] ?? '#888' }}
-          title={TIPO_LABEL[tipo]}
-        />
+        <span className="ec-cartao__tipo-bar" style={{ background: TIPO_COR[tipo] ?? '#888' }} title={TIPO_LABEL[tipo]} />
       )}
 
       <div className="ec-cartao__info">
@@ -111,10 +135,10 @@ function CartaoVisita({ visita, isFirst, isLast, onCima, onBaixo, onDeletar }) {
         )}
       </div>
 
-      {status === 'rascunho' && (
-        <button className="ec-cartao__del" onClick={onDeletar} title="Remover">✕</button>
+      {editavel && !modoSelecao && (
+        <button className="ec-cartao__del" onClick={e => { e.stopPropagation(); onDeletar(); }} title="Remover">✕</button>
       )}
-      {(status === 'publicado' || status === 'em_execucao' || status === 'concluido') && (
+      {!editavel && (
         <span
           className={`ec-cartao__pub ec-cartao__pub--${status}`}
           title={{ publicado: 'Publicado', em_execucao: 'Em execução', concluido: 'Concluído' }[status]}
@@ -138,32 +162,21 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
     servicoId:     '',
     obs:           '',
   });
-  const [busca,    setBusca]    = useState('');
+  const [busca,      setBusca]      = useState('');
   const [listAberta, setListAberta] = useState(false);
 
-  const clienteSel = useMemo(
-    () => clientes.find(c => c.id === form.clienteId) ?? null,
-    [clientes, form.clienteId]
-  );
-
+  const clienteSel   = useMemo(() => clientes.find(c => c.id === form.clienteId) ?? null, [clientes, form.clienteId]);
   const clientesFilt = useMemo(() => {
     const q = busca.toLowerCase();
     return q
       ? clientes.filter(c => c.nome_empresa.toLowerCase().includes(q) || c.bairro?.toLowerCase().includes(q))
       : clientes.slice(0, 10);
   }, [clientes, busca]);
-
-  const servicos = useMemo(
-    () => (clienteSel?.cliente_servicos ?? []).filter(s => s.ativo),
-    [clienteSel]
-  );
+  const servicos = useMemo(() => (clienteSel?.cliente_servicos ?? []).filter(s => s.ativo), [clienteSel]);
 
   const { erros, avisos } = useMemo(() => {
     if (!clienteSel) return { erros: [], avisos: [] };
-    return {
-      erros:  verificarConflitos(clienteSel, form.data),
-      avisos: verificarHorario(clienteSel, form.hora),
-    };
+    return { erros: verificarConflitos(clienteSel, form.data), avisos: verificarHorario(clienteSel, form.hora) };
   }, [clienteSel, form.data, form.hora]);
 
   function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -175,8 +188,7 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
     if (c.duracao_estimada_min)  setF('duracao', String(c.duracao_estimada_min));
     if (c.janela_entrada_inicio) setF('hora', c.janela_entrada_inicio.slice(0, 5));
     const servAtivos = (c.cliente_servicos ?? []).filter(s => s.ativo);
-    if (servAtivos.length === 1) setF('servicoId', servAtivos[0].id);
-    else setF('servicoId', '');
+    setF('servicoId', servAtivos.length === 1 ? servAtivos[0].id : '');
   }
 
   const podeSubmit = form.clienteId && form.funcionarioId && form.data && erros.length === 0;
@@ -184,22 +196,17 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
   return (
     <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
       <div className="ec-modal">
-
         <header className="ec-modal__header">
           <h3 className="ec-modal__titulo">Adicionar Visita</h3>
           <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
         </header>
 
         <div className="ec-modal__corpo">
-
-          {/* Funcionário + Data */}
           <div className="ec-grid2">
             <div className="ec-campo">
               <label>Funcionário <span className="ec-req">*</span></label>
               <select value={form.funcionarioId} onChange={e => setF('funcionarioId', e.target.value)}>
-                {funcionarios.map(emp => (
-                  <option key={emp.id} value={String(emp.id)}>{emp.name}</option>
-                ))}
+                {funcionarios.map(emp => <option key={emp.id} value={String(emp.id)}>{emp.name}</option>)}
               </select>
             </div>
             <div className="ec-campo">
@@ -208,7 +215,6 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
             </div>
           </div>
 
-          {/* Busca de cliente */}
           <div className="ec-campo">
             <label>Cliente <span className="ec-req">*</span></label>
             <div className="ec-busca">
@@ -216,108 +222,75 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
                 className={`ec-busca__input ${form.clienteId ? 'ec-busca__input--sel' : ''}`}
                 placeholder="Digite o nome ou bairro..."
                 value={busca}
-                onChange={e => {
-                  setBusca(e.target.value);
-                  setListAberta(true);
-                  if (form.clienteId) setF('clienteId', '');
-                }}
+                onChange={e => { setBusca(e.target.value); setListAberta(true); if (form.clienteId) setF('clienteId', ''); }}
                 onFocus={() => setListAberta(true)}
                 autoComplete="off"
               />
               {form.clienteId && (
-                <button className="ec-busca__clear" onClick={() => { setBusca(''); setF('clienteId', ''); setListAberta(false); }}>✕</button>
+                <button className="ec-busca__clear" onClick={() => { setBusca(''); setF('clienteId', ''); }}>✕</button>
               )}
               {listAberta && !form.clienteId && (
                 <div className="ec-busca__lista">
-                  {clientesFilt.length === 0 ? (
-                    <p className="ec-busca__vazio">Nenhum cliente encontrado</p>
-                  ) : (
-                    clientesFilt.slice(0, 8).map(c => (
+                  {clientesFilt.length === 0
+                    ? <p className="ec-busca__vazio">Nenhum cliente encontrado</p>
+                    : clientesFilt.slice(0, 8).map(c => (
                       <button key={c.id} className="ec-busca__item" onMouseDown={() => selecionarCliente(c)}>
                         <span className="ec-busca__item-nome">{c.nome_empresa}</span>
                         {c.bairro && <span className="ec-busca__item-bairro">{c.bairro}</span>}
                       </button>
                     ))
-                  )}
+                  }
                 </div>
               )}
             </div>
           </div>
 
-          {/* Conflitos e avisos */}
           {clienteSel && (erros.length > 0 || avisos.length > 0) && (
             <div className="ec-alertas">
-              {erros.map((e, i) => (
-                <div key={i} className="ec-alerta ec-alerta--erro">✗ {e}</div>
-              ))}
-              {avisos.map((a, i) => (
-                <div key={i} className="ec-alerta ec-alerta--aviso">⚠ {a}</div>
-              ))}
+              {erros.map((e, i)  => <div key={i} className="ec-alerta ec-alerta--erro">✗ {e}</div>)}
+              {avisos.map((a, i) => <div key={i} className="ec-alerta ec-alerta--aviso">⚠ {a}</div>)}
             </div>
           )}
-
-          {/* Confirmação de cliente selecionado */}
           {clienteSel && erros.length === 0 && avisos.length === 0 && (
             <div className="ec-alerta ec-alerta--ok">✓ Dia disponível para este cliente</div>
           )}
 
-          {/* Hora + Duração */}
           <div className="ec-grid2">
             <div className="ec-campo">
               <label>Hora estimada de chegada</label>
-              <input
-                type="time"
-                value={form.hora}
-                onChange={e => setF('hora', e.target.value)}
-              />
+              <input type="time" value={form.hora} onChange={e => setF('hora', e.target.value)} />
             </div>
             <div className="ec-campo">
               <label>Duração (min)</label>
               <input
-                type="number"
-                min="15"
-                step="15"
-                value={form.duracao}
+                type="number" min="15" step="15" value={form.duracao}
                 onChange={e => setF('duracao', e.target.value)}
                 placeholder={clienteSel?.duracao_estimada_min ? `${clienteSel.duracao_estimada_min}` : 'Ex: 90'}
               />
             </div>
           </div>
 
-          {/* Serviço */}
           {servicos.length > 0 && (
             <div className="ec-campo">
               <label>Tipo de serviço</label>
               <select value={form.servicoId} onChange={e => setF('servicoId', e.target.value)}>
                 <option value="">Não especificar</option>
                 {servicos.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {TIPO_LABEL[s.tipo_servico] ?? s.tipo_servico} · {s.frequencia}
-                  </option>
+                  <option key={s.id} value={s.id}>{TIPO_LABEL[s.tipo_servico] ?? s.tipo_servico} · {s.frequencia}</option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Observação */}
           <div className="ec-campo">
             <label>Observação do gestor <span className="ec-hint">(aparece no celular do funcionário)</span></label>
-            <textarea
-              rows={2}
-              value={form.obs}
-              onChange={e => setF('obs', e.target.value)}
-              placeholder="Instrução específica para esta visita..."
-            />
+            <textarea rows={2} value={form.obs} onChange={e => setF('obs', e.target.value)} placeholder="Instrução específica para esta visita..." />
           </div>
         </div>
 
         <footer className="ec-modal__footer">
           <button className="ec-btn ec-btn--sec" onClick={onFechar}>Cancelar</button>
-          <button
-            className="ec-btn ec-btn--pri"
-            onClick={() => onSalvar(form)}
-            disabled={!podeSubmit || salvando}
-          >
+          <button className="ec-btn ec-btn--pri" onClick={() => onSalvar(form)} disabled={!podeSubmit || salvando}>
             {salvando ? 'Salvando...' : 'Adicionar Visita'}
           </button>
         </footer>
@@ -329,14 +302,23 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function EscalaCampo() {
-  const [semana,    setSemana]    = useState(() => getSemana(new Date()));
-  const [diaSel,   setDiaSel]    = useState(getHoje);
-  const [employees, setEmployees] = useState([]);
-  const [clientes,  setClientes]  = useState([]);
-  const [agenda,    setAgenda]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [modal,     setModal]     = useState(null); // null | { funcionarioId }
-  const [salvando,  setSalvando]  = useState(false);
+  const [semana,      setSemana]      = useState(() => getSemana(new Date()));
+  const [diaSel,      setDiaSel]      = useState(getHoje);
+  const [employees,   setEmployees]   = useState([]);
+  const [clientes,    setClientes]    = useState([]);
+  const [agenda,      setAgenda]      = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [modal,       setModal]       = useState(null);
+  const [salvando,    setSalvando]    = useState(false);
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────────
+  const [dragId,      setDragId]      = useState(null); // id da visita sendo arrastada
+  const [dragOverEmp, setDragOverEmp] = useState(null); // empId da coluna com hover
+
+  // ── Seleção múltipla ─────────────────────────────────────────────────────────
+  const [modoSelecao,  setModoSelecao]  = useState(false);
+  const [selecionadas, setSelecionadas] = useState(new Set());
+  const [movParaEmp,   setMovParaEmp]   = useState('');
 
   const hoje = getHoje();
 
@@ -345,16 +327,10 @@ export default function EscalaCampo() {
   useEffect(() => {
     async function init() {
       const [empRes, cliRes] = await Promise.all([
-        supabase
-          .from('employees')
-          .select('id, name, cargo')
-          .in('cargo', ['Campo', 'Facilities'])
-          .order('name'),
-        supabase
-          .from('clientes')
+        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities']).order('name'),
+        supabase.from('clientes')
           .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, cliente_servicos(id, tipo_servico, frequencia, ativo)')
-          .eq('ativo', true)
-          .order('nome_empresa'),
+          .eq('ativo', true).order('nome_empresa'),
       ]);
       if (!empRes.error) setEmployees(empRes.data  ?? []);
       if (!cliRes.error) setClientes(cliRes.data   ?? []);
@@ -380,24 +356,17 @@ export default function EscalaCampo() {
 
   // ── Derivações ─────────────────────────────────────────────────────────────
 
-  // { [date]: { [empId]: [visitas ordenadas por ordem_rota] } }
   const agendaOrg = useMemo(() => {
     const org = {};
-    semana.forEach(d => {
-      org[d] = {};
-      employees.forEach(e => { org[d][e.id] = []; });
-    });
+    semana.forEach(d => { org[d] = {}; employees.forEach(e => { org[d][e.id] = []; }); });
     agenda.forEach(v => {
-      const d   = v.data_agendada;
-      const eid = v.funcionario_id;
+      const d = v.data_agendada, eid = v.funcionario_id;
       if (!org[d])     org[d]     = {};
       if (!org[d][eid]) org[d][eid] = [];
       org[d][eid].push(v);
     });
     Object.values(org).forEach(empMap =>
-      Object.values(empMap).forEach(lista =>
-        lista.sort((a, b) => a.ordem_rota - b.ordem_rota)
-      )
+      Object.values(empMap).forEach(lista => lista.sort((a, b) => a.ordem_rota - b.ordem_rota))
     );
     return org;
   }, [agenda, semana, employees]);
@@ -412,9 +381,9 @@ export default function EscalaCampo() {
     const s = {};
     semana.forEach(d => {
       const vs = agenda.filter(v => v.data_agendada === d);
-      if (vs.length === 0)                           s[d] = 'vazio';
+      if (!vs.length)                             s[d] = 'vazio';
       else if (vs.some(v => v.status === 'rascunho')) s[d] = 'rascunho';
-      else                                            s[d] = 'publicado';
+      else                                         s[d] = 'publicado';
     });
     return s;
   }, [agenda, semana]);
@@ -427,14 +396,91 @@ export default function EscalaCampo() {
       ref.setDate(ref.getDate() + dir * 7);
       return getSemana(ref);
     });
+    cancelarSelecao();
   }
 
   function irHoje() {
     setSemana(getSemana(new Date()));
     setDiaSel(hoje);
+    cancelarSelecao();
   }
 
-  // ── Ações ──────────────────────────────────────────────────────────────────
+  // ── Seleção ────────────────────────────────────────────────────────────────
+
+  function toggleSel(id) {
+    setSelecionadas(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function cancelarSelecao() {
+    setModoSelecao(false);
+    setSelecionadas(new Set());
+    setMovParaEmp('');
+  }
+
+  function ativarModoSelecao() {
+    setModoSelecao(true);
+    setSelecionadas(new Set());
+    setMovParaEmp(employees[0]?.id?.toString() ?? '');
+  }
+
+  async function moverSelecionadasPara(novoEmpId) {
+    if (!novoEmpId || !selecionadas.size) return;
+    setSalvando(true);
+    try {
+      const ids = [...selecionadas];
+      const visitasDestino = agendaOrg[diaSel]?.[novoEmpId] ?? [];
+      const baseOrdem = visitasDestino.length > 0
+        ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
+        : 0;
+
+      await Promise.all(
+        ids.map((id, i) =>
+          supabase.from('agenda').update({ funcionario_id: String(novoEmpId), ordem_rota: baseOrdem + i }).eq('id', id)
+        )
+      );
+      cancelarSelecao();
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao mover: ' + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // ── Drag & Drop ────────────────────────────────────────────────────────────
+
+  function handleDragStart(visitaId) {
+    setDragId(visitaId);
+  }
+
+  function handleDragEnd() {
+    setDragId(null);
+    setDragOverEmp(null);
+  }
+
+  async function handleDrop(toEmpId) {
+    setDragOverEmp(null);
+    if (!dragId) return;
+
+    const visita = agenda.find(v => v.id === dragId);
+    if (!visita || visita.status !== 'rascunho') return;
+    if (String(visita.funcionario_id) === String(toEmpId)) return; // mesma coluna — sem ação
+
+    const visitasDestino = agendaOrg[diaSel]?.[toEmpId] ?? [];
+    const novaOrdem = visitasDestino.length > 0
+      ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
+      : 0;
+
+    await supabase.from('agenda').update({ funcionario_id: String(toEmpId), ordem_rota: novaOrdem }).eq('id', dragId);
+    setDragId(null);
+    await carregarAgenda();
+  }
+
+  // ── Ações na agenda ───────────────────────────────────────────────────────
 
   async function adicionarVisita(form) {
     setSalvando(true);
@@ -443,7 +489,6 @@ export default function EscalaCampo() {
       const proximaOrdem = visitasEmpDia.length > 0
         ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
         : 0;
-
       const { error } = await supabase.from('agenda').insert({
         cliente_id:            form.clienteId,
         funcionario_id:        String(form.funcionarioId),
@@ -483,14 +528,9 @@ export default function EscalaCampo() {
   }
 
   async function publicarDia(data) {
-    const ids = agenda
-      .filter(v => v.data_agendada === data && v.status === 'rascunho')
-      .map(v => v.id);
+    const ids = agenda.filter(v => v.data_agendada === data && v.status === 'rascunho').map(v => v.id);
     if (!ids.length) return;
-    await supabase
-      .from('agenda')
-      .update({ status: 'publicado', publicado_em: new Date().toISOString() })
-      .in('id', ids);
+    await supabase.from('agenda').update({ status: 'publicado', publicado_em: new Date().toISOString() }).in('id', ids);
     await carregarAgenda();
   }
 
@@ -499,6 +539,7 @@ export default function EscalaCampo() {
   const visitasDiaSel = agendaOrg[diaSel] ?? {};
   const statusAtual   = statusDia[diaSel] ?? 'vazio';
   const temRascunho   = agenda.some(v => v.data_agendada === diaSel && v.status === 'rascunho');
+  const qtdSel        = selecionadas.size;
 
   return (
     <div className="ec">
@@ -512,9 +553,7 @@ export default function EscalaCampo() {
         <div className="ec__header-dir">
           <div className="ec__nav-semana">
             <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
-            <span className="ec__semana-label">
-              {formatarDia(semana[0])} – {formatarDia(semana[5])}
-            </span>
+            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[5])}</span>
             <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
           </div>
           <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
@@ -531,45 +570,44 @@ export default function EscalaCampo() {
             <button
               key={d}
               className={`ec__tab ${d === diaSel ? 'ec__tab--ativo' : ''} ${d === hoje ? 'ec__tab--hoje' : ''}`}
-              onClick={() => setDiaSel(d)}
+              onClick={() => { setDiaSel(d); cancelarSelecao(); }}
             >
               <span className="ec__tab-dia">{DIAS_LABEL[diaId] ?? diaId}</span>
               <span className="ec__tab-data">{formatarDia(d)}</span>
               {count > 0 && <span className="ec__tab-count">{count}</span>}
               {status !== 'vazio' && (
-                <span
-                  className={`ec__tab-dot ec__tab-dot--${status}`}
-                  title={status === 'publicado' ? 'Publicado' : 'Rascunho'}
-                />
+                <span className={`ec__tab-dot ec__tab-dot--${status}`} title={status === 'publicado' ? 'Publicado' : 'Rascunho'} />
               )}
             </button>
           );
         })}
       </div>
 
-      {/* ── Barra do dia selecionado ── */}
+      {/* ── Barra do dia ── */}
       <div className="ec__dia-bar">
         <div className="ec__dia-info">
-          <span className="ec__dia-nome">
-            {DIAS_NOME[getDiaId(diaSel)] ?? ''}, {formatarDia(diaSel)}
-          </span>
+          <span className="ec__dia-nome">{DIAS_NOME[getDiaId(diaSel)] ?? ''}, {formatarDia(diaSel)}</span>
           {diaSel === hoje && <span className="ec__hoje-tag">Hoje</span>}
           <span className={`ec__status-badge ec__status-badge--${statusAtual}`}>
             {statusAtual === 'publicado' ? '● Publicado' : statusAtual === 'rascunho' ? '○ Rascunho' : '○ Sem visitas'}
           </span>
         </div>
         <div className="ec__dia-acoes">
-          {temRascunho && (
-            <button className="ec__btn-publicar" onClick={() => publicarDia(diaSel)}>
-              Publicar dia →
-            </button>
+          {temRascunho && !modoSelecao && (
+            <button className="ec__btn-publicar" onClick={() => publicarDia(diaSel)}>Publicar dia →</button>
           )}
-          <button
-            className="ec__btn-add"
-            onClick={() => setModal({ funcionarioId: employees[0]?.id?.toString() ?? '' })}
-          >
-            + Adicionar Visita
-          </button>
+          {!modoSelecao ? (
+            <>
+              {temRascunho && (
+                <button className="ec__btn-sel" onClick={ativarModoSelecao}>☑ Selecionar</button>
+              )}
+              <button className="ec__btn-add" onClick={() => setModal({ funcionarioId: employees[0]?.id?.toString() ?? '' })}>
+                + Adicionar Visita
+              </button>
+            </>
+          ) : (
+            <button className="ec__btn-sel ec__btn-sel--cancelar" onClick={cancelarSelecao}>✕ Cancelar seleção</button>
+          )}
         </div>
       </div>
 
@@ -580,15 +618,21 @@ export default function EscalaCampo() {
           <p>Carregando agenda...</p>
         </div>
       ) : employees.length === 0 ? (
-        <div className="ec__estado">
-          <p>Nenhum funcionário de campo cadastrado.</p>
-        </div>
+        <div className="ec__estado"><p>Nenhum funcionário de campo cadastrado.</p></div>
       ) : (
         <div className="ec__colunas">
           {employees.map(emp => {
-            const visitas = visitasDiaSel[emp.id] ?? [];
+            const visitas   = visitasDiaSel[emp.id] ?? [];
+            const isDragAlvo = dragOverEmp === String(emp.id);
+
             return (
-              <div key={emp.id} className="ec__coluna">
+              <div
+                key={emp.id}
+                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''}`}
+                onDragOver={e => { e.preventDefault(); setDragOverEmp(String(emp.id)); }}
+                onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverEmp(null); }}
+                onDrop={() => handleDrop(emp.id)}
+              >
                 <div className="ec__coluna-header">
                   <div>
                     <span className="ec__coluna-nome">{emp.name}</span>
@@ -601,7 +645,9 @@ export default function EscalaCampo() {
 
                 <div className="ec__coluna-visitas">
                   {visitas.length === 0 ? (
-                    <p className="ec__coluna-vazio">Nenhuma visita agendada</p>
+                    <p className="ec__coluna-vazio">
+                      {isDragAlvo ? 'Solte aqui ↓' : 'Nenhuma visita agendada'}
+                    </p>
                   ) : (
                     visitas.map((v, idx) => (
                       <CartaoVisita
@@ -612,20 +658,59 @@ export default function EscalaCampo() {
                         onCima={() => moverVisita(v, -1)}
                         onBaixo={() => moverVisita(v, +1)}
                         onDeletar={() => deletarVisita(v.id)}
+                        onDragStart={() => handleDragStart(v.id)}
+                        onDragEnd={handleDragEnd}
+                        isDragging={dragId === v.id}
+                        modoSelecao={modoSelecao}
+                        selecionada={selecionadas.has(v.id)}
+                        onToggleSel={() => toggleSel(v.id)}
                       />
                     ))
                   )}
                 </div>
 
-                <button
-                  className="ec__add-inline"
-                  onClick={() => setModal({ funcionarioId: emp.id.toString() })}
-                >
-                  + Adicionar visita
-                </button>
+                {!modoSelecao && (
+                  <button
+                    className="ec__add-inline"
+                    onClick={() => setModal({ funcionarioId: emp.id.toString() })}
+                  >
+                    + Adicionar visita
+                  </button>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Barra de ação: mover selecionadas ── */}
+      {modoSelecao && (
+        <div className="ec__bulk-bar">
+          <span className="ec__bulk-info">
+            {qtdSel === 0
+              ? 'Clique nas visitas para selecioná-las'
+              : `${qtdSel} visita${qtdSel !== 1 ? 's' : ''} selecionada${qtdSel !== 1 ? 's' : ''}`}
+          </span>
+          <div className="ec__bulk-acoes">
+            <span className="ec__bulk-label">Mover para:</span>
+            <select
+              className="ec__bulk-select"
+              value={movParaEmp}
+              onChange={e => setMovParaEmp(e.target.value)}
+            >
+              {employees.map(emp => (
+                <option key={emp.id} value={String(emp.id)}>{emp.name}</option>
+              ))}
+            </select>
+            <button
+              className="ec__bulk-btn"
+              disabled={qtdSel === 0 || !movParaEmp || salvando}
+              onClick={() => moverSelecionadasPara(movParaEmp)}
+            >
+              {salvando ? 'Movendo...' : 'Mover'}
+            </button>
+            <button className="ec__bulk-btn ec__bulk-btn--sec" onClick={cancelarSelecao}>Cancelar</button>
+          </div>
         </div>
       )}
 

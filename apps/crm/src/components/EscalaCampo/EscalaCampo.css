@@ -689,3 +689,148 @@
 }
 .ec-btn--pri:hover    { background: var(--color-primary-dark); }
 .ec-btn--pri:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Drag & drop ── */
+.ec-cartao[draggable="true"] { cursor: grab; }
+.ec-cartao[draggable="true"]:active { cursor: grabbing; }
+
+.ec-cartao--dragging {
+  opacity: 0.35;
+  box-shadow: var(--shadow-md);
+  transform: rotate(1deg);
+}
+
+.ec__coluna--drag-over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lt);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+/* ── Multi-seleção ── */
+.ec-cartao--sel {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lt);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.ec-cartao__check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--surface-border);
+  border-radius: 4px;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: transparent;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  padding: 0;
+}
+.ec-cartao__check--on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+/* ── Botão seleção na dia-bar ── */
+.ec__btn-sel {
+  background: none;
+  border: 1px solid var(--surface-border);
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+.ec__btn-sel:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.ec__btn-sel--cancelar {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.ec__btn-sel--cancelar:hover { background: #FEE2E2; }
+
+/* ── Barra de ação em massa ── */
+.ec__bulk-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  z-index: 40;
+  min-width: 420px;
+  animation: ec-bulk-in 0.18s ease;
+}
+@keyframes ec-bulk-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ec__bulk-info {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ec__bulk-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.ec__bulk-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
+
+.ec__bulk-select {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-size: 13px;
+  font-family: var(--font-body);
+}
+.ec__bulk-select option { background: var(--text-primary); color: white; }
+
+.ec__bulk-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+.ec__bulk-btn:hover:not(:disabled) { background: var(--color-primary-dark); }
+.ec__bulk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ec__bulk-btn--sec {
+  background: rgba(255,255,255,0.12);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+.ec__bulk-btn--sec:hover { background: rgba(255,255,255,0.22); }
