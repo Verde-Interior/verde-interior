@@ -13,6 +13,7 @@ import FunilExecucao from './components/FunilExecucao/FunilExecucao';
 import SidebarCalendario from './components/SidebarCalendario/SidebarCalendario';
 import Agenda from './components/Agenda/Agenda';
 import Clientes from './components/Clientes/Clientes';
+import EscalaCampo from './components/EscalaCampo/EscalaCampo';
 import './App.css';
 
 const IconDashboard = () => (
@@ -88,11 +89,23 @@ const IconClientes = () => (
   </svg>
 );
 
+const IconEscala = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <rect x="1" y="3" width="14" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M1 7h14" stroke="currentColor" strokeWidth="1.3"/>
+    <rect x="3" y="9.5" width="3" height="2" rx="0.5" fill="currentColor" opacity="0.8"/>
+    <rect x="6.5" y="9.5" width="3" height="2" rx="0.5" fill="currentColor" opacity="0.5"/>
+    <rect x="10" y="9.5" width="3" height="2" rx="0.5" fill="currentColor" opacity="0.3"/>
+    <path d="M5 1v4M11 1v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+  </svg>
+);
+
 const NAV_ITEMS_TOP = [
   { id: 'dashboard',  Icon: IconDashboard, label: 'Dashboard' },
   { id: 'kanban',     Icon: IconPipeline,  label: 'Pipeline'  },
   { id: 'execucao',   Icon: IconExecucao,  label: 'Execução'  },
   { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
+  { id: 'escala',     Icon: IconEscala,    label: 'Escala'    },
   { id: 'agenda',     Icon: IconAgenda,    label: 'Agenda'    },
   { id: 'tarefas',    Icon: IconTarefas,   label: 'Tarefas'   },
   { id: 'rotas',      Icon: IconRoteiro,   label: 'Roteiro'   },
@@ -182,6 +195,7 @@ function AppLayout() {
         {tela === 'kanban'        && <KanbanBoard />}
         {tela === 'execucao'      && <FunilExecucao />}
         {tela === 'clientes'      && <Clientes />}
+        {tela === 'escala'        && <EscalaCampo />}
         {tela === 'agenda'        && <Agenda />}
         {tela === 'rotas'         && <RoutePlanner />}
         {tela === 'tarefas'       && <Tarefas />}
