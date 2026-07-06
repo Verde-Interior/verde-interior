@@ -28,20 +28,13 @@ const FREQ_LABEL = {
   pontual:    'Pontual',
 };
 
-const TIPO_SERVICO_OPTIONS = [
-  { value: '',                label: '— Selecionar —'     },
-  { value: 'manutencao',      label: 'Manutenção'         },
-  { value: 'troca',           label: 'Troca'              },
-  { value: 'manutencao_troca',label: 'Manutenção + Troca' },
-  { value: 'flores',          label: 'Flores'             },
+const GRUPO_OPTIONS = [
+  { value: '',                          label: '— Selecionar —'              },
+  { value: 'Grupo 1 - troca + orquidea', label: 'Grupo 1 - troca + orquídea' },
+  { value: 'Grupo 2 - troca',            label: 'Grupo 2 - troca'             },
+  { value: 'Grupo 3 - sem troca',        label: 'Grupo 3 - sem troca'         },
+  { value: 'Grupo 4 - Flores',           label: 'Grupo 4 - Flores'            },
 ];
-
-const TIPO_SERVICO_LABEL = {
-  manutencao:       'Manutenção',
-  troca:            'Troca',
-  manutencao_troca: 'Manutenção + Troca',
-  flores:           'Flores',
-};
 
 const FREQ_VISITA_OPTIONS = [
   { value: '',          label: '— Selecionar —' },
@@ -339,8 +332,8 @@ export default function Clientes() {
           value={filtroGrupo}
           onChange={e => setFiltroGrupo(e.target.value)}
         >
-          <option value="todos">Todos os tipos</option>
-          {TIPO_SERVICO_OPTIONS.filter(o => o.value).map(o => (
+          <option value="todos">Todos os grupos</option>
+          {GRUPO_OPTIONS.filter(o => o.value).map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
@@ -380,7 +373,7 @@ export default function Clientes() {
             <thead>
               <tr>
                 <th>Nome / Bairro</th>
-                <th>Tipo de Serviço</th>
+                <th>Grupo</th>
                 <th>Dias disponíveis</th>
                 <th>Duração</th>
                 <th>Última visita</th>
@@ -409,9 +402,7 @@ export default function Clientes() {
                     </td>
                     <td>
                       {c.grupo_servico
-                        ? <span className="clientes__badge clientes__badge--grupo">
-                            {TIPO_SERVICO_LABEL[c.grupo_servico] ?? c.grupo_servico}
-                          </span>
+                        ? <span className="clientes__badge clientes__badge--grupo">{c.grupo_servico}</span>
                         : <span className="clientes__dash">—</span>}
                     </td>
                     <td>
@@ -495,12 +486,12 @@ export default function Clientes() {
                     <input value={form.razao_social} onChange={e => setF('razao_social', e.target.value)} />
                   </div>
                   <div className="cl-campo">
-                    <label>Tipo de Serviço</label>
+                    <label>Grupo de Serviço</label>
                     <select
                       value={form.grupo_servico}
                       onChange={e => setF('grupo_servico', e.target.value)}
                     >
-                      {TIPO_SERVICO_OPTIONS.map(o => (
+                      {GRUPO_OPTIONS.map(o => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
