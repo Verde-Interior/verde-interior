@@ -355,6 +355,12 @@
 }
 .ec-cartao:hover { box-shadow: var(--shadow-sm); }
 
+.ec-cartao--clicavel { cursor: pointer; }
+.ec-cartao--clicavel:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
 .ec-cartao--publicado  { border-left: 3px solid var(--color-success); }
 .ec-cartao--em_execucao { border-left: 3px solid var(--color-warning); }
 .ec-cartao--concluido  { border-left: 3px solid var(--color-accent); opacity: 0.8; }
