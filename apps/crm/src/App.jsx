@@ -14,6 +14,7 @@ import SidebarCalendario from './components/SidebarCalendario/SidebarCalendario'
 import Agenda from './components/Agenda/Agenda';
 import Clientes from './components/Clientes/Clientes';
 import EscalaCampo from './components/EscalaCampo/EscalaCampo';
+import Relatorios from './components/Relatorios/Relatorios';
 import './App.css';
 
 const IconDashboard = () => (
@@ -100,12 +101,21 @@ const IconEscala = () => (
   </svg>
 );
 
+const IconRelatorios = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M3 1.5h7l3 3V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M10 1.5V4.5H13" stroke="currentColor" strokeWidth="1.4" fill="none"/>
+    <path d="M4.5 8h7M4.5 10.5h7M4.5 13h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+
 const NAV_ITEMS_TOP = [
   { id: 'dashboard',  Icon: IconDashboard, label: 'Dashboard' },
   { id: 'kanban',     Icon: IconPipeline,  label: 'Pipeline'  },
   { id: 'execucao',   Icon: IconExecucao,  label: 'Execução'  },
   { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
   { id: 'escala',     Icon: IconEscala,    label: 'Escala'    },
+  { id: 'relatorios', Icon: IconRelatorios,label: 'Relatórios'},
   { id: 'agenda',     Icon: IconAgenda,    label: 'Agenda'    },
   { id: 'tarefas',    Icon: IconTarefas,   label: 'Tarefas'   },
   { id: 'rotas',      Icon: IconRoteiro,   label: 'Roteiro'   },
@@ -196,6 +206,7 @@ function AppLayout() {
         {tela === 'execucao'      && <FunilExecucao />}
         {tela === 'clientes'      && <Clientes />}
         {tela === 'escala'        && <EscalaCampo />}
+        {tela === 'relatorios'    && <Relatorios />}
         {tela === 'agenda'        && <Agenda />}
         {tela === 'rotas'         && <RoutePlanner />}
         {tela === 'tarefas'       && <Tarefas />}
