@@ -45,6 +45,141 @@ function getHoje() {
 
 // ── Detecção de conflitos ─────────────────────────────────────────────────────
 
+// Intervalo (em dias) entre visitas por frequência
+const FREQ_INTERVALO = {
+  '3x_semana': 2,
+  '2x_semana': 3,
+  '1x_semana': 7,
+  'quinzenal': 14,
+  'mensal':    30,
+};
+
+const FREQ_LABEL_LOCAL = {
+  '3x_semana': '3× semana',
+  '2x_semana': '2× semana',
+  '1x_semana': '1× semana',
+  'quinzenal': 'quinzenal',
+  'mensal':    'mensal',
+};
+
+const HORA_FIM_DIA_MIN = 15 * 60; // 15:00 → 900 min
+
+// Dias entre duas datas ISO (yyyy-mm-dd)
+function diasEntre(iso1, iso2) {
+  const d1 = new Date(iso1 + 'T00:00');
+  const d2 = new Date(iso2 + 'T00:00');
+  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Adiciona dias a uma data ISO
+function addDias(iso, n) {
+  const d = new Date(iso + 'T12:00');
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Distância Haversine em km
+function distanciaKm(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return Infinity;
+  const R = 6371;
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function horaEmMinutos(h) {
+  if (!h) return null;
+  const [hh, mm] = h.slice(0, 5).split(':').map(Number);
+  return hh * 60 + mm;
+}
+function minutosParaHora(m) {
+  const h = Math.floor(m / 60);
+  const mn = m % 60;
+  return `${String(h).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
+}
+
+// Calcula clientes atrasados / próximos do vencimento
+// Retorna: { atrasado: [], vencendo: [] }
+function calcClientesAtrasados(clientes, hoje) {
+  const atrasado = [];
+  const vencendo = [];
+  clientes.forEach(c => {
+    if (!c.frequencia_visita) return;
+    const intervalo = FREQ_INTERVALO[c.frequencia_visita];
+    if (!intervalo) return;
+    // Se nunca teve visita, marca como atrasado (base)
+    if (!c.ultima_visita) {
+      atrasado.push({ ...c, diasAtraso: null, esperado: null, motivo: 'sem última visita registrada' });
+      return;
+    }
+    const dias = diasEntre(c.ultima_visita, hoje);
+    const atraso = dias - intervalo;
+    if (atraso > 0) {
+      atrasado.push({ ...c, diasAtraso: atraso, esperado: c.ultima_visita });
+    } else if (atraso >= -3) {
+      vencendo.push({ ...c, diasParaVencer: -atraso, esperado: addDias(c.ultima_visita, intervalo) });
+    }
+  });
+  atrasado.sort((a, b) => (b.diasAtraso ?? 999) - (a.diasAtraso ?? 999));
+  vencendo.sort((a, b) => a.diasParaVencer - b.diasParaVencer);
+  return { atrasado, vencendo };
+}
+
+// Detecta conflitos de tempo em uma lista de visitas do dia
+// Retorna: { sobreposicoes: [...], estouraDia: bool, fimMin: number }
+function calcConflitosDia(visitas) {
+  const sobreposicoes = [];
+  const ordenadas = [...visitas].filter(v => v.hora_estimada_chegada).sort((a, b) => (a.hora_estimada_chegada ?? '').localeCompare(b.hora_estimada_chegada ?? ''));
+  let fimMin = 0;
+  for (let i = 0; i < ordenadas.length; i++) {
+    const v = ordenadas[i];
+    const inicio = horaEmMinutos(v.hora_estimada_chegada);
+    const dur    = v.duracao_estimada_min ?? 60;
+    const fim    = inicio + dur;
+    fimMin = Math.max(fimMin, fim);
+    if (i > 0) {
+      const prev = ordenadas[i - 1];
+      const inicioPrev = horaEmMinutos(prev.hora_estimada_chegada);
+      const durPrev    = prev.duracao_estimada_min ?? 60;
+      const fimPrev    = inicioPrev + durPrev;
+      if (fimPrev > inicio) sobreposicoes.push({ a: prev.id, b: v.id, atraso: fimPrev - inicio });
+    }
+  }
+  return { sobreposicoes, estouraDia: fimMin > HORA_FIM_DIA_MIN, fimMin };
+}
+
+// Nearest-neighbor a partir da primeira visita (ou primeira com hora)
+function otimizarRotaNN(visitas) {
+  if (visitas.length < 2) return [];
+  // Se alguma tem hora fixa, começa por essa
+  const comHora = visitas.filter(v => v.hora_estimada_chegada);
+  const start = comHora.length
+    ? comHora.sort((a, b) => a.hora_estimada_chegada.localeCompare(b.hora_estimada_chegada))[0]
+    : visitas[0];
+
+  const restantes = new Set(visitas.map(v => v.id));
+  const ordem = [];
+  let atual = start;
+  restantes.delete(atual.id);
+  ordem.push(atual);
+  while (restantes.size) {
+    let melhor = null;
+    let melhorDist = Infinity;
+    for (const id of restantes) {
+      const v = visitas.find(x => x.id === id);
+      const d = distanciaKm(atual.clientes?.lat, atual.clientes?.lng, v.clientes?.lat, v.clientes?.lng);
+      if (d < melhorDist) { melhorDist = d; melhor = v; }
+    }
+    if (!melhor) break;
+    ordem.push(melhor);
+    restantes.delete(melhor.id);
+    atual = melhor;
+  }
+  return ordem;
+}
+
 function verificarConflitos(cliente, isoDate) {
   const erros = [];
   const diaId = getDiaId(isoDate);
@@ -152,9 +287,9 @@ function CartaoVisita({
 
 // ── Modal de adicionar visita ─────────────────────────────────────────────────
 
-function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInicial, onSalvar, onFechar, salvando }) {
+function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInicial, clienteIdPre, onSalvar, onFechar, salvando }) {
   const [form, setForm] = useState({
-    clienteId:     '',
+    clienteId:     clienteIdPre ?? '',
     funcionarioId: funcionarioIdInicial ?? (funcionarios[0]?.id?.toString() ?? ''),
     data:          dataInicial,
     hora:          '07:00',
@@ -162,6 +297,20 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
     servicoId:     '',
     obs:           '',
   });
+
+  // Se veio com cliente pré-selecionado, preenche dados iniciais
+  useEffect(() => {
+    if (!clienteIdPre) return;
+    const c = clientes.find(x => x.id === clienteIdPre);
+    if (!c) return;
+    setForm(f => ({
+      ...f,
+      clienteId: c.id,
+      hora: c.janela_entrada_inicio?.slice(0, 5) || f.hora,
+      duracao: c.duracao_estimada_min ? String(c.duracao_estimada_min) : f.duracao,
+      servicoId: (c.cliente_servicos ?? []).find(s => s.ativo)?.id ?? '',
+    }));
+  }, [clienteIdPre, clientes]);
   const [busca,      setBusca]      = useState('');
   const [listAberta, setListAberta] = useState(false);
 
@@ -320,6 +469,11 @@ export default function EscalaCampo() {
   const [selecionadas, setSelecionadas] = useState(new Set());
   const [movParaEmp,   setMovParaEmp]   = useState('');
 
+  // ── Painéis / ações avançadas ────────────────────────────────────────────────
+  const [showAtrasados, setShowAtrasados] = useState(false);
+  const [otimizando,    setOtimizando]    = useState(null); // empId em otimização
+  const [copiando,      setCopiando]      = useState(false);
+
   const hoje = getHoje();
 
   // ── Dados estáticos ────────────────────────────────────────────────────────
@@ -329,7 +483,7 @@ export default function EscalaCampo() {
       const [empRes, cliRes] = await Promise.all([
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
         supabase.from('clientes')
-          .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, cliente_servicos(id, tipo_servico, frequencia, ativo)')
+          .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),
       ]);
       if (!empRes.error) setEmployees(empRes.data  ?? []);
@@ -344,7 +498,7 @@ export default function EscalaCampo() {
     setLoading(true);
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim), cliente_servicos(tipo_servico, frequencia)')
+      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng), cliente_servicos(tipo_servico, frequencia)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
       .order('ordem_rota');
@@ -387,6 +541,17 @@ export default function EscalaCampo() {
     });
     return s;
   }, [agenda, semana]);
+
+  const atrasados = useMemo(() => calcClientesAtrasados(clientes, hoje), [clientes, hoje]);
+
+  const conflitosPorEmp = useMemo(() => {
+    const c = {};
+    employees.forEach(emp => {
+      const visitas = agendaOrg[diaSel]?.[emp.id] ?? [];
+      c[emp.id] = calcConflitosDia(visitas);
+    });
+    return c;
+  }, [agendaOrg, employees, diaSel]);
 
   // ── Navegação de semana ────────────────────────────────────────────────────
 
@@ -534,6 +699,85 @@ export default function EscalaCampo() {
     await carregarAgenda();
   }
 
+  // ── Copiar semana anterior ─────────────────────────────────────────────────
+
+  async function copiarSemanaAnterior() {
+    if (agenda.length > 0) {
+      if (!confirm('Essa semana já tem visitas. Copiar da semana anterior vai adicionar em cima delas. Continuar?')) return;
+    } else {
+      if (!confirm('Copiar todas as visitas da semana anterior como rascunho para esta semana?')) return;
+    }
+    setCopiando(true);
+    try {
+      const anterior = getSemana(new Date(new Date(semana[0] + 'T12:00').getTime() - 7 * 86400000));
+      const { data: visitasAnt, error } = await supabase
+        .from('agenda')
+        .select('cliente_id, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, data_agendada')
+        .gte('data_agendada', anterior[0])
+        .lte('data_agendada', anterior[5]);
+      if (error) throw error;
+      if (!visitasAnt?.length) { alert('Nenhuma visita na semana anterior para copiar.'); return; }
+
+      const novas = visitasAnt.map(v => {
+        const idxDia = anterior.indexOf(v.data_agendada);
+        return {
+          cliente_id:            v.cliente_id,
+          funcionario_id:        v.funcionario_id,
+          cliente_servico_id:    v.cliente_servico_id,
+          data_agendada:         semana[idxDia] ?? semana[0],
+          hora_estimada_chegada: v.hora_estimada_chegada,
+          duracao_estimada_min:  v.duracao_estimada_min,
+          ordem_rota:            v.ordem_rota,
+          observacoes_gestor:    v.observacoes_gestor,
+          status:                'rascunho',
+        };
+      });
+      const { error: insErr } = await supabase.from('agenda').insert(novas);
+      if (insErr) throw insErr;
+      await carregarAgenda();
+      alert(`✓ ${novas.length} visita${novas.length !== 1 ? 's' : ''} copiada${novas.length !== 1 ? 's' : ''} como rascunho.`);
+    } catch (e) {
+      alert('Erro ao copiar: ' + e.message);
+    } finally {
+      setCopiando(false);
+    }
+  }
+
+  // ── Otimizar rota do funcionário no dia ────────────────────────────────────
+
+  async function otimizarRotaEmp(empId) {
+    const lista = agendaOrg[diaSel]?.[empId] ?? [];
+    const rascunhos = lista.filter(v => v.status === 'rascunho');
+    if (rascunhos.length < 2) return;
+    if (rascunhos.some(v => !v.clientes?.lat || !v.clientes?.lng)) {
+      alert('Alguns clientes não têm coordenadas GPS. Preencha lat/lng no cadastro para otimizar a rota.');
+      return;
+    }
+    const ordem = otimizarRotaNN(rascunhos);
+    if (!ordem.length) return;
+
+    setOtimizando(String(empId));
+    try {
+      await Promise.all(
+        ordem.map((v, i) => supabase.from('agenda').update({ ordem_rota: i }).eq('id', v.id))
+      );
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao otimizar: ' + e.message);
+    } finally {
+      setOtimizando(null);
+    }
+  }
+
+  // ── Adicionar visita a partir do painel "atrasados" ────────────────────────
+  function abrirModalCliente(cliente) {
+    setModal({
+      funcionarioId: employees[0]?.id?.toString() ?? '',
+      clienteIdPre:  cliente.id,
+    });
+    setShowAtrasados(false);
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const visitasDiaSel = agendaOrg[diaSel] ?? {};
@@ -551,6 +795,24 @@ export default function EscalaCampo() {
           <p className="ec__sub">Agenda semanal de visitas · {employees.length} funcionários</p>
         </div>
         <div className="ec__header-dir">
+          <button
+            className={`ec__btn-atras ${atrasados.atrasado.length > 0 ? 'ec__btn-atras--alerta' : ''}`}
+            onClick={() => setShowAtrasados(true)}
+            title="Clientes atrasados ou vencendo"
+          >
+            ⚠ Atrasados
+            {atrasados.atrasado.length > 0 && (
+              <span className="ec__btn-atras-badge">{atrasados.atrasado.length}</span>
+            )}
+          </button>
+          <button
+            className="ec__btn-copiar"
+            onClick={copiarSemanaAnterior}
+            disabled={copiando}
+            title="Copiar todas as visitas da semana anterior como rascunho"
+          >
+            {copiando ? '⏳ Copiando...' : '↺ Copiar semana anterior'}
+          </button>
           <div className="ec__nav-semana">
             <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
             <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[5])}</span>
@@ -622,8 +884,11 @@ export default function EscalaCampo() {
       ) : (
         <div className="ec__colunas">
           {employees.map(emp => {
-            const visitas   = visitasDiaSel[emp.id] ?? [];
+            const visitas    = visitasDiaSel[emp.id] ?? [];
             const isDragAlvo = dragOverEmp === String(emp.id);
+            const conflitos  = conflitosPorEmp[emp.id] ?? { sobreposicoes: [], estouraDia: false, fimMin: 0 };
+            const rascunhos  = visitas.filter(v => v.status === 'rascunho').length;
+            const podeOtimizar = rascunhos >= 2 && !modoSelecao;
 
             return (
               <div
@@ -638,10 +903,37 @@ export default function EscalaCampo() {
                     <span className="ec__coluna-nome">{emp.name}</span>
                     <span className="ec__coluna-cargo">{emp.cargo}</span>
                   </div>
-                  {visitas.length > 0 && (
-                    <span className="ec__coluna-count">{visitas.length}</span>
-                  )}
+                  <div className="ec__coluna-header-dir">
+                    {podeOtimizar && (
+                      <button
+                        className="ec__coluna-otim"
+                        onClick={() => otimizarRotaEmp(emp.id)}
+                        disabled={otimizando === String(emp.id)}
+                        title="Reordena as visitas em rascunho por proximidade GPS (nearest-neighbor)"
+                      >
+                        {otimizando === String(emp.id) ? '⏳' : '🧭'}
+                      </button>
+                    )}
+                    {visitas.length > 0 && (
+                      <span className="ec__coluna-count">{visitas.length}</span>
+                    )}
+                  </div>
                 </div>
+
+                {(conflitos.sobreposicoes.length > 0 || conflitos.estouraDia) && (
+                  <div className="ec__coluna-warns">
+                    {conflitos.sobreposicoes.length > 0 && (
+                      <span className="ec__warn ec__warn--sob" title="Duas visitas com horários que se sobrepõem">
+                        ⚠ {conflitos.sobreposicoes.length} sobrepos{conflitos.sobreposicoes.length > 1 ? 'ições' : 'ição'}
+                      </span>
+                    )}
+                    {conflitos.estouraDia && (
+                      <span className="ec__warn ec__warn--fim" title={`Última visita termina ${minutosParaHora(conflitos.fimMin)}`}>
+                        ⚠ passa das 15:00 ({minutosParaHora(conflitos.fimMin)})
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="ec__coluna-visitas">
                   {visitas.length === 0 ? (
@@ -721,11 +1013,92 @@ export default function EscalaCampo() {
           funcionarios={employees}
           dataInicial={diaSel}
           funcionarioIdInicial={modal.funcionarioId}
+          clienteIdPre={modal.clienteIdPre}
           onSalvar={adicionarVisita}
           onFechar={() => setModal(null)}
           salvando={salvando}
         />
       )}
+
+      {/* ── Painel de clientes atrasados ── */}
+      {showAtrasados && (
+        <PainelAtrasados
+          atrasados={atrasados}
+          onFechar={() => setShowAtrasados(false)}
+          onAgendar={abrirModalCliente}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Painel de clientes atrasados ────────────────────────────────────────────
+function PainelAtrasados({ atrasados, onFechar, onAgendar }) {
+  const [aba, setAba] = useState('atrasado');
+  const lista = aba === 'atrasado' ? atrasados.atrasado : atrasados.vencendo;
+
+  return (
+    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div className="ec-modal ec-modal--atras">
+        <header className="ec-modal__header">
+          <div>
+            <h3 className="ec-modal__titulo">Clientes por prioridade</h3>
+            <p className="ec-modal__sub">Baseado em <em>última visita</em> + <em>frequência</em></p>
+          </div>
+          <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
+        </header>
+
+        <div className="ec-atras__tabs">
+          <button
+            className={`ec-atras__tab ${aba === 'atrasado' ? 'ec-atras__tab--ativa' : ''}`}
+            onClick={() => setAba('atrasado')}
+          >
+            🔴 Atrasados ({atrasados.atrasado.length})
+          </button>
+          <button
+            className={`ec-atras__tab ${aba === 'vencendo' ? 'ec-atras__tab--ativa' : ''}`}
+            onClick={() => setAba('vencendo')}
+          >
+            🟡 Vencendo em breve ({atrasados.vencendo.length})
+          </button>
+        </div>
+
+        <div className="ec-modal__corpo">
+          {lista.length === 0 ? (
+            <div className="ec-atras__vazio">
+              {aba === 'atrasado' ? '✓ Nenhum cliente atrasado.' : 'Nenhum cliente vencendo nos próximos 3 dias.'}
+            </div>
+          ) : (
+            <div className="ec-atras__lista">
+              {lista.map(c => (
+                <div key={c.id} className={`ec-atras__item ec-atras__item--${aba}`}>
+                  <div className="ec-atras__info">
+                    <div className="ec-atras__nome">{c.nome_empresa}</div>
+                    <div className="ec-atras__meta">
+                      {c.bairro && <span>📍 {c.bairro}</span>}
+                      {c.frequencia_visita && <span>· {FREQ_LABEL_LOCAL[c.frequencia_visita]}</span>}
+                    </div>
+                    <div className="ec-atras__hint">
+                      {aba === 'atrasado' && c.diasAtraso != null && (
+                        <>Última visita: {c.esperado ? new Date(c.esperado + 'T12:00').toLocaleDateString('pt-BR') : '—'} · <strong>{c.diasAtraso} dia{c.diasAtraso !== 1 ? 's' : ''} de atraso</strong></>
+                      )}
+                      {aba === 'atrasado' && c.diasAtraso == null && (
+                        <>⚠ {c.motivo}</>
+                      )}
+                      {aba === 'vencendo' && (
+                        <>Vence em <strong>{c.diasParaVencer} dia{c.diasParaVencer !== 1 ? 's' : ''}</strong> ({new Date(c.esperado + 'T12:00').toLocaleDateString('pt-BR')})</>
+                      )}
+                    </div>
+                  </div>
+                  <button className="ec-atras__btn" onClick={() => onAgendar(c)}>
+                    + Agendar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
