@@ -359,6 +359,26 @@
 .ec-cartao--em_execucao { border-left: 3px solid var(--color-warning); }
 .ec-cartao--concluido  { border-left: 3px solid var(--color-accent); opacity: 0.8; }
 
+/* Cartões em conflito de horário */
+.ec-cartao--conflito-sob {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+  box-shadow: 0 0 0 1px #FCA5A5;
+}
+.ec-cartao--conflito-sob:hover { box-shadow: 0 0 0 1px #F87171, var(--shadow-sm); }
+
+.ec-cartao--conflito-fim {
+  background: #FEF9C3;
+  border-color: #FDE68A;
+}
+.ec-cartao--conflito-fim:hover { border-color: #FBBF24; }
+
+/* Se tiver os dois, sobreposição prevalece na cor de fundo */
+.ec-cartao--conflito-sob.ec-cartao--conflito-fim {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+}
+
 .ec-cartao__ordens {
   display: flex;
   flex-direction: column;

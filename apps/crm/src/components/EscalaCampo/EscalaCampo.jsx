@@ -128,9 +128,11 @@ function calcClientesAtrasados(clientes, hoje) {
 }
 
 // Detecta conflitos de tempo em uma lista de visitas do dia
-// Retorna: { sobreposicoes: [...], estouraDia: bool, fimMin: number }
+// Retorna: { sobreposicoes, estouraDia, fimMin, idsSobrepostos, idsEstouram }
 function calcConflitosDia(visitas) {
   const sobreposicoes = [];
+  const idsSobrepostos = new Set();
+  const idsEstouram    = new Set();
   const ordenadas = [...visitas].filter(v => v.hora_estimada_chegada).sort((a, b) => (a.hora_estimada_chegada ?? '').localeCompare(b.hora_estimada_chegada ?? ''));
   let fimMin = 0;
   for (let i = 0; i < ordenadas.length; i++) {
@@ -139,15 +141,20 @@ function calcConflitosDia(visitas) {
     const dur    = v.duracao_estimada_min ?? 60;
     const fim    = inicio + dur;
     fimMin = Math.max(fimMin, fim);
+    if (fim > HORA_FIM_DIA_MIN) idsEstouram.add(v.id);
     if (i > 0) {
       const prev = ordenadas[i - 1];
       const inicioPrev = horaEmMinutos(prev.hora_estimada_chegada);
       const durPrev    = prev.duracao_estimada_min ?? 60;
       const fimPrev    = inicioPrev + durPrev;
-      if (fimPrev > inicio) sobreposicoes.push({ a: prev.id, b: v.id, atraso: fimPrev - inicio });
+      if (fimPrev > inicio) {
+        sobreposicoes.push({ a: prev.id, b: v.id, atraso: fimPrev - inicio });
+        idsSobrepostos.add(prev.id);
+        idsSobrepostos.add(v.id);
+      }
     }
   }
-  return { sobreposicoes, estouraDia: fimMin > HORA_FIM_DIA_MIN, fimMin };
+  return { sobreposicoes, estouraDia: fimMin > HORA_FIM_DIA_MIN, fimMin, idsSobrepostos, idsEstouram };
 }
 
 // Nearest-neighbor a partir da primeira visita (ou primeira com hora)
@@ -211,14 +218,27 @@ function CartaoVisita({
   onDragStart, onDragEnd, isDragging,
   // seleção
   modoSelecao, selecionada, onToggleSel,
+  // conflitos
+  emSobreposicao, estouraDia,
 }) {
   const tipo   = visita.cliente_servicos?.tipo_servico;
   const status = visita.status;
   const editavel = status === 'rascunho';
 
+  const classesConf = [
+    emSobreposicao ? 'ec-cartao--conflito-sob' : '',
+    estouraDia ? 'ec-cartao--conflito-fim' : '',
+  ].filter(Boolean).join(' ');
+
+  const tooltipConf = [
+    emSobreposicao ? 'Horário sobreposto com outra visita' : null,
+    estouraDia ? 'Esta visita passa das 15:00' : null,
+  ].filter(Boolean).join(' · ');
+
   return (
     <div
-      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''}`}
+      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''} ${classesConf}`}
+      title={tooltipConf || undefined}
       draggable={editavel && !modoSelecao}
       onDragStart={editavel && !modoSelecao ? onDragStart : undefined}
       onDragEnd={onDragEnd}
@@ -956,6 +976,8 @@ export default function EscalaCampo() {
                         modoSelecao={modoSelecao}
                         selecionada={selecionadas.has(v.id)}
                         onToggleSel={() => toggleSel(v.id)}
+                        emSobreposicao={conflitos.idsSobrepostos?.has(v.id)}
+                        estouraDia={conflitos.idsEstouram?.has(v.id)}
                       />
                     ))
                   )}
