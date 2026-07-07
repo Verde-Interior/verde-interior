@@ -128,7 +128,8 @@ function calcClientesAtrasados(clientes, hoje) {
 }
 
 // Detecta conflitos de tempo em uma lista de visitas do dia
-// Retorna: { sobreposicoes, estouraDia, fimMin, idsSobrepostos, idsEstouram }
+// Retorna: { sobreposicoes, estouraDia, fimMin, idsSobrepostos, idsEstouram, sugestoes }
+// sugestoes = [{ visitaId, nome, horaAtual, horaSugerida, mudou }]
 function calcConflitosDia(visitas) {
   const sobreposicoes = [];
   const idsSobrepostos = new Set();
@@ -154,7 +155,29 @@ function calcConflitosDia(visitas) {
       }
     }
   }
-  return { sobreposicoes, estouraDia: fimMin > HORA_FIM_DIA_MIN, fimMin, idsSobrepostos, idsEstouram };
+
+  // Sugestão: cascata mantendo a primeira visita, empurrando as seguintes
+  // para começarem no fim da anterior. Só gera se houver sobreposição.
+  const sugestoes = [];
+  if (sobreposicoes.length > 0) {
+    let fimAnterior = null;
+    for (const v of ordenadas) {
+      const inicio = horaEmMinutos(v.hora_estimada_chegada);
+      const dur    = v.duracao_estimada_min ?? 60;
+      const inicioSug = fimAnterior != null ? Math.max(inicio, fimAnterior) : inicio;
+      sugestoes.push({
+        visitaId:     v.id,
+        nome:         v.clientes?.nome_empresa ?? '—',
+        horaAtual:    minutosParaHora(inicio),
+        horaSugerida: minutosParaHora(inicioSug),
+        duracao:      dur,
+        mudou:        inicioSug !== inicio,
+      });
+      fimAnterior = inicioSug + dur;
+    }
+  }
+
+  return { sobreposicoes, estouraDia: fimMin > HORA_FIM_DIA_MIN, fimMin, idsSobrepostos, idsEstouram, sugestoes };
 }
 
 // Nearest-neighbor a partir da primeira visita (ou primeira com hora)
@@ -976,9 +999,39 @@ export default function EscalaCampo() {
                 {(conflitos.sobreposicoes.length > 0 || conflitos.estouraDia) && (
                   <div className="ec__coluna-warns">
                     {conflitos.sobreposicoes.length > 0 && (
-                      <span className="ec__warn ec__warn--sob" title="Duas visitas com horários que se sobrepõem">
-                        ⚠ {conflitos.sobreposicoes.length} sobrepos{conflitos.sobreposicoes.length > 1 ? 'ições' : 'ição'}
-                      </span>
+                      <div className="ec__warn-wrap">
+                        <span className="ec__warn ec__warn--sob">
+                          ⚠ {conflitos.sobreposicoes.length} sobrepos{conflitos.sobreposicoes.length > 1 ? 'ições' : 'ição'}
+                          <span className="ec__warn-help">?</span>
+                        </span>
+                        <div className="ec__warn-tooltip">
+                          <div className="ec__warn-tooltip__title">Horários sugeridos para eliminar sobreposições:</div>
+                          <table className="ec__warn-tooltip__table">
+                            <thead>
+                              <tr>
+                                <th>Cliente</th>
+                                <th>Atual</th>
+                                <th>Sugerido</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(conflitos.sugestoes ?? []).map(s => (
+                                <tr key={s.visitaId} className={s.mudou ? 'ec__warn-tooltip__mudou' : ''}>
+                                  <td>{s.nome}</td>
+                                  <td>{s.horaAtual}</td>
+                                  <td>
+                                    <strong>{s.horaSugerida}</strong>
+                                    {s.mudou && <span className="ec__warn-tooltip__seta"> ←</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div className="ec__warn-tooltip__hint">
+                            Clique numa visita para ajustar a hora manualmente.
+                          </div>
+                        </div>
+                      </div>
                     )}
                     {conflitos.estouraDia && (
                       <span className="ec__warn ec__warn--fim" title={`Última visita termina ${minutosParaHora(conflitos.fimMin)}`}>

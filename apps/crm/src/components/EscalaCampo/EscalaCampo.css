@@ -950,9 +950,120 @@
   font-weight: 600;
   color: #92600A;
   line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .ec__warn--sob { color: #991B1B; }
 .ec__warn--fim { color: #92600A; }
+
+/* Ícone de ajuda no warning de sobreposição */
+.ec__warn-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #991B1B;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: help;
+}
+
+/* Wrapper para posicionar o tooltip */
+.ec__warn-wrap {
+  position: relative;
+  display: inline-block;
+  cursor: default;
+}
+
+/* Tooltip customizado */
+.ec__warn-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  background: #1a0505;
+  color: white;
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  min-width: 260px;
+  max-width: 320px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  pointer-events: none;
+}
+.ec__warn-wrap:hover .ec__warn-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Seta apontando pro warning */
+.ec__warn-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 12px;
+  width: 10px;
+  height: 10px;
+  background: #1a0505;
+  transform: rotate(45deg);
+}
+
+.ec__warn-tooltip__title {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #FCA5A5;
+}
+
+.ec__warn-tooltip__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: white;
+}
+
+.ec__warn-tooltip__table th {
+  text-align: left;
+  padding: 3px 6px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ec__warn-tooltip__table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-variant-numeric: tabular-nums;
+}
+.ec__warn-tooltip__table tr:last-child td { border-bottom: none; }
+
+.ec__warn-tooltip__mudou td:last-child { color: #86EFAC; }
+.ec__warn-tooltip__mudou td:first-child { color: #FCA5A5; }
+.ec__warn-tooltip__seta {
+  color: #86EFAC;
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.ec__warn-tooltip__hint {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  font-style: italic;
+}
 
 /* ── Modal / painel de atrasados ── */
 .ec-modal--atras {
