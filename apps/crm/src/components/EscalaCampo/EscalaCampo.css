@@ -972,40 +972,30 @@
   cursor: help;
 }
 
-/* Wrapper para posicionar o tooltip */
-.ec__warn-wrap {
-  position: relative;
-  display: inline-block;
-  cursor: default;
-}
+/* Warning clicável (sobreposição) */
+.ec__warn--clicavel { cursor: help; }
 
-/* Tooltip customizado */
-.ec__warn-tooltip {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 30;
+/* Tooltip via portal (position: fixed) */
+.ec__warn-tooltip--portal {
+  position: fixed;
+  z-index: 9999;
   background: #1a0505;
   color: white;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  min-width: 260px;
-  max-width: 320px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-4px);
-  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  min-width: 280px;
+  max-width: 380px;
   pointer-events: none;
+  animation: ec-tooltip-in 0.15s ease;
 }
-.ec__warn-wrap:hover .ec__warn-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+@keyframes ec-tooltip-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Seta apontando pro warning */
-.ec__warn-tooltip::before {
+.ec__warn-tooltip--portal::before {
   content: '';
   position: absolute;
   top: -5px;
@@ -1026,26 +1016,40 @@
 .ec__warn-tooltip__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 12px;
   color: white;
+  table-layout: auto;
 }
 
 .ec__warn-tooltip__table th {
   text-align: left;
-  padding: 3px 6px;
+  padding: 4px 8px;
   font-weight: 600;
-  color: rgba(255,255,255,0.6);
-  border-bottom: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.55);
+  border-bottom: 1px solid rgba(255,255,255,0.18);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
+.ec__warn-tooltip__table th:nth-child(2),
+.ec__warn-tooltip__table th:nth-child(3) { text-align: right; }
 
 .ec__warn-tooltip__table td {
-  padding: 4px 6px;
+  padding: 5px 8px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
+.ec__warn-tooltip__table td:nth-child(2),
+.ec__warn-tooltip__table td:nth-child(3) { text-align: right; }
+
+.ec__warn-tooltip__table td:first-child {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ec__warn-tooltip__table tr:last-child td { border-bottom: none; }
 
 .ec__warn-tooltip__mudou td:last-child { color: #86EFAC; }

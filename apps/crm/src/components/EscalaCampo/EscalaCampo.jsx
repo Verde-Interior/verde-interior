@@ -1,5 +1,6 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import './EscalaCampo.css';
 
@@ -527,6 +528,9 @@ export default function EscalaCampo() {
   const [modalEdit,     setModalEdit]     = useState(null); // visita sendo editada
   const [salvandoEdit,  setSalvandoEdit]  = useState(false);
 
+  // ── Tooltip global (para escapar overflow das colunas) ─────────────────────
+  const [tooltip, setTooltip] = useState(null); // { x, y, sugestoes }
+
   const hoje = getHoje();
 
   // ── Dados estáticos ────────────────────────────────────────────────────────
@@ -999,39 +1003,21 @@ export default function EscalaCampo() {
                 {(conflitos.sobreposicoes.length > 0 || conflitos.estouraDia) && (
                   <div className="ec__coluna-warns">
                     {conflitos.sobreposicoes.length > 0 && (
-                      <div className="ec__warn-wrap">
-                        <span className="ec__warn ec__warn--sob">
-                          ⚠ {conflitos.sobreposicoes.length} sobrepos{conflitos.sobreposicoes.length > 1 ? 'ições' : 'ição'}
-                          <span className="ec__warn-help">?</span>
-                        </span>
-                        <div className="ec__warn-tooltip">
-                          <div className="ec__warn-tooltip__title">Horários sugeridos para eliminar sobreposições:</div>
-                          <table className="ec__warn-tooltip__table">
-                            <thead>
-                              <tr>
-                                <th>Cliente</th>
-                                <th>Atual</th>
-                                <th>Sugerido</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(conflitos.sugestoes ?? []).map(s => (
-                                <tr key={s.visitaId} className={s.mudou ? 'ec__warn-tooltip__mudou' : ''}>
-                                  <td>{s.nome}</td>
-                                  <td>{s.horaAtual}</td>
-                                  <td>
-                                    <strong>{s.horaSugerida}</strong>
-                                    {s.mudou && <span className="ec__warn-tooltip__seta"> ←</span>}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <div className="ec__warn-tooltip__hint">
-                            Clique numa visita para ajustar a hora manualmente.
-                          </div>
-                        </div>
-                      </div>
+                      <span
+                        className="ec__warn ec__warn--sob ec__warn--clicavel"
+                        onMouseEnter={e => {
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setTooltip({
+                            x: r.left,
+                            y: r.bottom + 6,
+                            sugestoes: conflitos.sugestoes ?? [],
+                          });
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                      >
+                        ⚠ {conflitos.sobreposicoes.length} sobrepos{conflitos.sobreposicoes.length > 1 ? 'ições' : 'ição'}
+                        <span className="ec__warn-help">?</span>
+                      </span>
                     )}
                     {conflitos.estouraDia && (
                       <span className="ec__warn ec__warn--fim" title={`Última visita termina ${minutosParaHora(conflitos.fimMin)}`}>
@@ -1148,6 +1134,41 @@ export default function EscalaCampo() {
           onFechar={() => setModalEdit(null)}
           salvando={salvandoEdit}
         />
+      )}
+
+      {/* ── Tooltip global de sugestões (portal) ── */}
+      {tooltip && createPortal(
+        <div
+          className="ec__warn-tooltip ec__warn-tooltip--portal"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          <div className="ec__warn-tooltip__title">Horários sugeridos para eliminar sobreposições:</div>
+          <table className="ec__warn-tooltip__table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Atual</th>
+                <th>Sugerido</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tooltip.sugestoes.map(s => (
+                <tr key={s.visitaId} className={s.mudou ? 'ec__warn-tooltip__mudou' : ''}>
+                  <td>{s.nome}</td>
+                  <td>{s.horaAtual}</td>
+                  <td>
+                    <strong>{s.horaSugerida}</strong>
+                    {s.mudou && <span className="ec__warn-tooltip__seta"> ←</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="ec__warn-tooltip__hint">
+            Clique numa visita para ajustar a hora manualmente.
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
