@@ -243,6 +243,11 @@ function CartaoVisita({
   const tipo   = visita.cliente_servicos?.tipo_servico;
   const status = visita.status;
   const editavel = status === 'rascunho';
+  // Visita já publicada mas ainda não iniciada pelo funcionário —
+  // pode ser editada/cancelada com aviso, mas não arrastada em modo seleção
+  const editavelComAviso = status === 'publicado';
+  // Visitas em execução ou concluídas ficam travadas
+  const abrirModal = editavel || editavelComAviso;
 
   const classesConf = [
     emSobreposicao ? 'ec-cartao--conflito-sob' : '',
@@ -256,17 +261,22 @@ function CartaoVisita({
     mostrarPrioridade && prioridade ? `Prioridade: ${PRIORIDADE_LABEL[prioridade] ?? prioridade}` : null,
   ].filter(Boolean).join(' · ');
 
+  const tooltipPadrao =
+    editavel ? 'Clique para editar · arraste para mover' :
+    editavelComAviso ? 'Publicada — clique para alterar ou cancelar' :
+    undefined;
+
   return (
     <div
-      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''} ${classesConf} ${editavel && !modoSelecao ? 'ec-cartao--clicavel' : ''}`}
-      title={tooltipConf || (editavel && !modoSelecao ? 'Clique para editar · arraste para mover' : undefined)}
+      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''} ${classesConf} ${abrirModal && !modoSelecao ? 'ec-cartao--clicavel' : ''}`}
+      title={tooltipConf || tooltipPadrao}
       draggable={editavel && !modoSelecao}
       onDragStart={editavel && !modoSelecao ? onDragStart : undefined}
       onDragEnd={onDragEnd}
       onClick={
         modoSelecao && editavel
           ? onToggleSel
-          : (editavel && onEditar ? onEditar : undefined)
+          : (abrirModal && onEditar ? onEditar : undefined)
       }
     >
       {/* Checkbox de seleção */}
@@ -564,6 +574,7 @@ export default function EscalaCampo() {
       .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
+      .neq('status', 'cancelado')
       .order('ordem_rota');
     setLoading(false);
     if (!error) setAgenda(data ?? []);
@@ -838,6 +849,42 @@ export default function EscalaCampo() {
       alert('Erro ao otimizar: ' + e.message);
     } finally {
       setOtimizando(null);
+    }
+  }
+
+  // ── Cancelar visita publicada (soft-delete) ─────────────────────────────────
+  async function cancelarVisitaPublicada() {
+    if (!modalEdit) return;
+    const v = modalEdit;
+    if (!confirm(`Cancelar a visita em "${v.clientes?.nome_empresa ?? '—'}"?\n\nO funcionário não verá mais essa visita no App Ponto.`)) return;
+    setSalvandoEdit(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'cancelado' }).eq('id', v.id);
+      if (error) throw error;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao cancelar: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
+  // ── Voltar visita publicada para rascunho ───────────────────────────────────
+  async function despublicarVisita() {
+    if (!modalEdit) return;
+    const v = modalEdit;
+    if (!confirm(`Voltar a visita em "${v.clientes?.nome_empresa ?? '—'}" para rascunho?\n\nO funcionário não vê mais essa visita até você republicar o dia.`)) return;
+    setSalvandoEdit(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'rascunho', publicado_em: null }).eq('id', v.id);
+      if (error) throw error;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao despublicar: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
     }
   }
 
@@ -1183,6 +1230,8 @@ export default function EscalaCampo() {
           clientes={clientes}
           onSalvar={salvarEdicao}
           onFechar={() => setModalEdit(null)}
+          onCancelar={cancelarVisitaPublicada}
+          onDespublicar={despublicarVisita}
           salvando={salvandoEdit}
         />
       )}
@@ -1250,7 +1299,7 @@ export default function EscalaCampo() {
 }
 
 // ── Modal de editar visita ────────────────────────────────────────────────
-function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando }) {
+function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar }) {
   const clienteCompleto = useMemo(
     () => clientes.find(c => c.id === visita.cliente_id),
     [clientes, visita.cliente_id]
@@ -1277,19 +1326,25 @@ function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, s
 
   const nomeCliente = visita.clientes?.nome_empresa ?? clienteCompleto?.nome_empresa ?? '—';
   const dataFmt = new Date(visita.data_agendada + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', weekday: 'short' });
+  const publicada = visita.status === 'publicado';
 
   return (
     <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
       <div className="ec-modal">
         <header className="ec-modal__header">
           <div>
-            <h3 className="ec-modal__titulo">Editar visita</h3>
+            <h3 className="ec-modal__titulo">Editar visita{publicada ? ' publicada' : ''}</h3>
             <p className="ec-modal__sub">{nomeCliente} · {dataFmt}</p>
           </div>
           <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
         </header>
 
         <div className="ec-modal__corpo">
+          {publicada && (
+            <div className="ec-alerta ec-alerta--aviso" style={{ marginBottom: 4 }}>
+              ⚠ Esta visita já foi <strong>publicada</strong> e pode ter sido vista pelo funcionário. Mudanças agora são refletidas no App Ponto na próxima vez que ele abrir a agenda.
+            </div>
+          )}
           <div className="ec-grid2">
             <div className="ec-campo">
               <label>Funcionário</label>
@@ -1345,7 +1400,28 @@ function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, s
         </div>
 
         <footer className="ec-modal__footer">
-          <button className="ec-btn ec-btn--sec" onClick={onFechar}>Cancelar</button>
+          {publicada && (
+            <>
+              <button
+                className="ec-btn ec-btn--perigo"
+                onClick={onCancelar}
+                disabled={salvando}
+                title="Marca a visita como cancelada. Ela desaparece do App Ponto do funcionário."
+              >
+                ✕ Cancelar visita
+              </button>
+              <button
+                className="ec-btn ec-btn--sec"
+                onClick={onDespublicar}
+                disabled={salvando}
+                title="Volta para rascunho. O funcionário não vê mais essa visita até você republicar o dia."
+              >
+                ↩ Voltar para rascunho
+              </button>
+              <span style={{ flex: 1 }} />
+            </>
+          )}
+          <button className="ec-btn ec-btn--sec" onClick={onFechar}>Fechar</button>
           <button
             className="ec-btn ec-btn--pri"
             onClick={() => onSalvar(form)}

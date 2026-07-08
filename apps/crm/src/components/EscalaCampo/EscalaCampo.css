@@ -934,6 +934,17 @@
 .ec-btn--pri:hover    { background: var(--color-primary-dark); }
 .ec-btn--pri:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.ec-btn--perigo {
+  background: white;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+}
+.ec-btn--perigo:hover:not(:disabled) {
+  background: #FEE2E2;
+  border-color: #DC2626;
+}
+.ec-btn--perigo:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── Drag & drop ── */
 .ec-cartao[draggable="true"] { cursor: grab; }
 .ec-cartao[draggable="true"]:active { cursor: grabbing; }
