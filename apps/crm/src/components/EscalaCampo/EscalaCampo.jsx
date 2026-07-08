@@ -101,6 +101,38 @@ function minutosParaHora(m) {
   return `${String(h).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
 }
 
+// Retorna o bloqueio ativo para um funcionário em uma data, se houver
+function bloqueioNoDia(bloqueios, empId, isoDate) {
+  const eid = String(empId);
+  return (bloqueios ?? []).find(b =>
+    String(b.funcionario_id) === eid &&
+    isoDate >= b.data_inicio &&
+    isoDate <= b.data_fim
+  );
+}
+
+// Prioridade de uma visita agendada, com base no atraso do cliente
+// Retorna: 'critica' | 'alta' | 'normal' | 'baixa'
+function calcPrioridade(cliente, dataAgendada) {
+  if (!cliente?.frequencia_visita) return 'normal';
+  const intervalo = FREQ_INTERVALO[cliente.frequencia_visita];
+  if (!intervalo) return 'normal';
+  if (!cliente.ultima_visita) return 'critica';
+  const dias = diasEntre(cliente.ultima_visita, dataAgendada);
+  const ratio = dias / intervalo;
+  if (ratio >= 2)   return 'critica';
+  if (ratio >= 1.3) return 'alta';
+  if (ratio >= 0.8) return 'normal';
+  return 'baixa';
+}
+
+const PRIORIDADE_LABEL = {
+  critica: 'Crítica',
+  alta:    'Alta',
+  normal:  'Normal',
+  baixa:   'Baixa',
+};
+
 // Calcula clientes atrasados / próximos do vencimento
 // Retorna: { atrasado: [], vencendo: [] }
 function calcClientesAtrasados(clientes, hoje) {
@@ -244,6 +276,9 @@ function CartaoVisita({
   modoSelecao, selecionada, onToggleSel,
   // conflitos
   emSobreposicao, estouraDia,
+  // prioridade (Fase 5.2)
+  prioridade,
+  mostrarPrioridade,
   // edição
   onEditar,
 }) {
@@ -254,11 +289,13 @@ function CartaoVisita({
   const classesConf = [
     emSobreposicao ? 'ec-cartao--conflito-sob' : '',
     estouraDia ? 'ec-cartao--conflito-fim' : '',
+    mostrarPrioridade && prioridade ? `ec-cartao--prio-${prioridade}` : '',
   ].filter(Boolean).join(' ');
 
   const tooltipConf = [
     emSobreposicao ? 'Horário sobreposto com outra visita' : null,
     estouraDia ? 'Esta visita passa das 15:00' : null,
+    mostrarPrioridade && prioridade ? `Prioridade: ${PRIORIDADE_LABEL[prioridade] ?? prioridade}` : null,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -506,6 +543,9 @@ export default function EscalaCampo() {
   const [employees,   setEmployees]   = useState([]);
   const [clientes,    setClientes]    = useState([]);
   const [agenda,      setAgenda]      = useState([]);
+  const [bloqueios,   setBloqueios]   = useState([]);
+  const [modalBloqueio, setModalBloqueio] = useState(null); // { funcionarioId? }
+  const [modalRedistrib, setModalRedistrib] = useState(false);
   const [loading,     setLoading]     = useState(true);
   const [modal,       setModal]       = useState(null);
   const [salvando,    setSalvando]    = useState(false);
@@ -520,9 +560,10 @@ export default function EscalaCampo() {
   const [movParaEmp,   setMovParaEmp]   = useState('');
 
   // ── Painéis / ações avançadas ────────────────────────────────────────────────
-  const [showAtrasados, setShowAtrasados] = useState(false);
-  const [otimizando,    setOtimizando]    = useState(null); // empId em otimização
-  const [copiando,      setCopiando]      = useState(false);
+  const [showAtrasados,   setShowAtrasados]   = useState(false);
+  const [otimizando,      setOtimizando]      = useState(null); // empId em otimização
+  const [copiando,        setCopiando]        = useState(false);
+  const [mostrarPrioridade, setMostrarPrioridade] = useState(false);
 
   // ── Edição de visita ────────────────────────────────────────────────────────
   const [modalEdit,     setModalEdit]     = useState(null); // visita sendo editada
@@ -537,17 +578,24 @@ export default function EscalaCampo() {
 
   useEffect(() => {
     async function init() {
-      const [empRes, cliRes] = await Promise.all([
+      const [empRes, cliRes, bloqRes] = await Promise.all([
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
         supabase.from('clientes')
           .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),
+        supabase.from('employee_bloqueios').select('*').order('data_inicio'),
       ]);
       if (!empRes.error) setEmployees(empRes.data  ?? []);
       if (!cliRes.error) setClientes(cliRes.data   ?? []);
+      if (!bloqRes.error) setBloqueios(bloqRes.data ?? []);
     }
     init();
   }, []);
+
+  async function recarregarBloqueios() {
+    const { data } = await supabase.from('employee_bloqueios').select('*').order('data_inicio');
+    setBloqueios(data ?? []);
+  }
 
   // ── Agenda da semana ───────────────────────────────────────────────────────
 
@@ -555,7 +603,7 @@ export default function EscalaCampo() {
     setLoading(true);
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng), cliente_servicos(tipo_servico, frequencia)')
+      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
       .order('ordem_rota');
@@ -600,6 +648,15 @@ export default function EscalaCampo() {
   }, [agenda, semana]);
 
   const atrasados = useMemo(() => calcClientesAtrasados(clientes, hoje), [clientes, hoje]);
+
+  // Visitas em conflito com bloqueios (funcionário está bloqueado, mas tem
+  // visita agendada nesse dia)
+  const visitasConflitantesComBloq = useMemo(() => {
+    return agenda.filter(v => {
+      if (v.status === 'concluido' || v.status === 'cancelado') return false;
+      return !!bloqueioNoDia(bloqueios, v.funcionario_id, v.data_agendada);
+    });
+  }, [agenda, bloqueios]);
 
   const conflitosPorEmp = useMemo(() => {
     const c = {};
@@ -886,6 +943,23 @@ export default function EscalaCampo() {
             )}
           </button>
           <button
+            className={`ec__btn-prio ${mostrarPrioridade ? 'ec__btn-prio--on' : ''}`}
+            onClick={() => setMostrarPrioridade(v => !v)}
+            title="Colorir cartões por prioridade (última visita × frequência)"
+          >
+            🎯 Prioridade
+          </button>
+          {visitasConflitantesComBloq.length > 0 && (
+            <button
+              className="ec__btn-redistrib"
+              onClick={() => setModalRedistrib(true)}
+              title="Visitas agendadas para funcionários ausentes"
+            >
+              🚨 Redistribuir
+              <span className="ec__btn-atras-badge">{visitasConflitantesComBloq.length}</span>
+            </button>
+          )}
+          <button
             className="ec__btn-copiar"
             onClick={copiarSemanaAnterior}
             disabled={copiando}
@@ -969,14 +1043,15 @@ export default function EscalaCampo() {
             const conflitos  = conflitosPorEmp[emp.id] ?? { sobreposicoes: [], estouraDia: false, fimMin: 0 };
             const rascunhos  = visitas.filter(v => v.status === 'rascunho').length;
             const podeOtimizar = rascunhos >= 2 && !modoSelecao;
+            const bloqueio   = bloqueioNoDia(bloqueios, emp.id, diaSel);
 
             return (
               <div
                 key={emp.id}
-                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''}`}
-                onDragOver={e => { e.preventDefault(); setDragOverEmp(String(emp.id)); }}
+                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''} ${bloqueio ? 'ec__coluna--bloqueada' : ''}`}
+                onDragOver={e => { if (bloqueio) return; e.preventDefault(); setDragOverEmp(String(emp.id)); }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverEmp(null); }}
-                onDrop={() => handleDrop(emp.id)}
+                onDrop={() => { if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; } handleDrop(emp.id); }}
               >
                 <div className="ec__coluna-header">
                   <div>
@@ -984,7 +1059,14 @@ export default function EscalaCampo() {
                     <span className="ec__coluna-cargo">{emp.cargo}</span>
                   </div>
                   <div className="ec__coluna-header-dir">
-                    {podeOtimizar && (
+                    <button
+                      className="ec__coluna-bloq"
+                      onClick={() => setModalBloqueio({ funcionarioId: String(emp.id), funcionarioNome: emp.name })}
+                      title="Gerenciar bloqueios (férias, folga, feriado)"
+                    >
+                      📅
+                    </button>
+                    {podeOtimizar && !bloqueio && (
                       <button
                         className="ec__coluna-otim"
                         onClick={() => otimizarRotaEmp(emp.id)}
@@ -999,6 +1081,15 @@ export default function EscalaCampo() {
                     )}
                   </div>
                 </div>
+
+                {bloqueio && (
+                  <div className="ec__coluna-bloqueio-badge">
+                    🌴 {bloqueio.motivo || 'Ausente'}
+                    {bloqueio.data_fim !== diaSel && (
+                      <span className="ec__bloq-ate"> · até {new Date(bloqueio.data_fim + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                    )}
+                  </div>
+                )}
 
                 {(conflitos.sobreposicoes.length > 0 || conflitos.estouraDia) && (
                   <div className="ec__coluna-warns">
@@ -1050,13 +1141,15 @@ export default function EscalaCampo() {
                         onToggleSel={() => toggleSel(v.id)}
                         emSobreposicao={conflitos.idsSobrepostos?.has(v.id)}
                         estouraDia={conflitos.idsEstouram?.has(v.id)}
+                        prioridade={calcPrioridade(v.clientes, v.data_agendada)}
+                        mostrarPrioridade={mostrarPrioridade}
                         onEditar={() => setModalEdit(v)}
                       />
                     ))
                   )}
                 </div>
 
-                {!modoSelecao && (
+                {!modoSelecao && !bloqueio && (
                   <button
                     className="ec__add-inline"
                     onClick={() => setModal({ funcionarioId: emp.id.toString() })}
@@ -1133,6 +1226,30 @@ export default function EscalaCampo() {
           onSalvar={salvarEdicao}
           onFechar={() => setModalEdit(null)}
           salvando={salvandoEdit}
+        />
+      )}
+
+      {/* ── Modal de bloqueios do funcionário ── */}
+      {modalBloqueio && (
+        <ModalBloqueios
+          funcionarioId={modalBloqueio.funcionarioId}
+          funcionarioNome={modalBloqueio.funcionarioNome}
+          bloqueios={bloqueios.filter(b => String(b.funcionario_id) === modalBloqueio.funcionarioId)}
+          onFechar={() => setModalBloqueio(null)}
+          onMudou={recarregarBloqueios}
+        />
+      )}
+
+      {/* ── Modal de redistribuição ── */}
+      {modalRedistrib && (
+        <ModalRedistribuir
+          visitas={visitasConflitantesComBloq}
+          employees={employees}
+          agendaOrg={agendaOrg}
+          bloqueios={bloqueios}
+          clientes={clientes}
+          onFechar={() => setModalRedistrib(false)}
+          onMudou={carregarAgenda}
         />
       )}
 
@@ -1279,6 +1396,238 @@ function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, s
             {salvando ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </footer>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal de redistribuição de visitas de funcionários ausentes ─────────────
+function ModalRedistribuir({ visitas, employees, agendaOrg, bloqueios, clientes, onFechar, onMudou }) {
+  const [salvando, setSalvando] = useState(false);
+  const [escolhas, setEscolhas] = useState({}); // visitaId -> empIdNovo
+
+  // Para cada visita, gera lista de candidatos e sugere melhor opção
+  const cards = visitas.map(v => {
+    const empAtualId = String(v.funcionario_id);
+    // Candidatos: não bloqueados no dia + não são o próprio
+    const candidatos = employees.filter(e => {
+      if (String(e.id) === empAtualId) return false;
+      if (bloqueioNoDia(bloqueios, e.id, v.data_agendada)) return false;
+      return true;
+    }).map(e => {
+      const visitasDoDia = agendaOrg[v.data_agendada]?.[e.id] ?? [];
+      const cliente = v.clientes;
+      let distMin = Infinity;
+      for (const outra of visitasDoDia) {
+        const d = distanciaKm(cliente?.lat, cliente?.lng, outra.clientes?.lat, outra.clientes?.lng);
+        if (d < distMin) distMin = d;
+      }
+      return {
+        emp: e,
+        n: visitasDoDia.length,
+        distMin: distMin === Infinity ? null : distMin,
+      };
+    });
+    // Ordena: menor n visitas, depois menor distância
+    candidatos.sort((a, b) => {
+      if (a.n !== b.n) return a.n - b.n;
+      const dA = a.distMin ?? 9999;
+      const dB = b.distMin ?? 9999;
+      return dA - dB;
+    });
+    const sugerido = candidatos[0]?.emp;
+    return { visita: v, candidatos, sugerido };
+  });
+
+  // Inicializa escolhas com sugestões
+  useEffect(() => {
+    const init = {};
+    cards.forEach(c => { if (c.sugerido) init[c.visita.id] = String(c.sugerido.id); });
+    setEscolhas(init);
+    // eslint-disable-next-line
+  }, [visitas.length]);
+
+  async function aplicar() {
+    setSalvando(true);
+    try {
+      const updates = Object.entries(escolhas).map(([visitaId, novoEmpId]) =>
+        supabase.from('agenda').update({ funcionario_id: String(novoEmpId) }).eq('id', visitaId)
+      );
+      await Promise.all(updates);
+      await onMudou();
+      onFechar();
+    } catch (e) {
+      alert('Erro ao aplicar: ' + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div className="ec-modal ec-modal--atras">
+        <header className="ec-modal__header">
+          <div>
+            <h3 className="ec-modal__titulo">Redistribuir visitas de ausentes</h3>
+            <p className="ec-modal__sub">Sugestão automática por carga e proximidade GPS</p>
+          </div>
+          <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
+        </header>
+
+        <div className="ec-modal__corpo">
+          {cards.length === 0 ? (
+            <div className="ec-atras__vazio">Nenhuma visita para redistribuir.</div>
+          ) : (
+            cards.map(({ visita, candidatos, sugerido }) => {
+              const empAtual = employees.find(e => String(e.id) === String(visita.funcionario_id));
+              const dataFmt = new Date(visita.data_agendada + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', weekday: 'short' });
+              return (
+                <div key={visita.id} className="ec-redist__item">
+                  <div className="ec-redist__info">
+                    <div className="ec-redist__nome">{visita.clientes?.nome_empresa ?? '—'}</div>
+                    <div className="ec-redist__meta">
+                      {dataFmt} · {(visita.hora_estimada_chegada ?? '—').slice(0,5)}
+                      · era do <strong>{empAtual?.name}</strong> (ausente)
+                    </div>
+                  </div>
+                  {candidatos.length > 0 ? (
+                    <select
+                      className="ec-redist__select"
+                      value={escolhas[visita.id] ?? ''}
+                      onChange={e => setEscolhas(x => ({ ...x, [visita.id]: e.target.value }))}
+                    >
+                      {candidatos.map(({ emp, n, distMin }) => (
+                        <option key={emp.id} value={String(emp.id)}>
+                          {emp.name} · {n} visita{n !== 1 ? 's' : ''}{distMin != null ? ` · ${distMin.toFixed(1)}km` : ''}
+                          {emp.id === sugerido?.id ? ' (sugerido)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="ec-redist__semaltern">Nenhum outro disponível</span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <footer className="ec-modal__footer">
+          <button className="ec-btn ec-btn--sec" onClick={onFechar}>Cancelar</button>
+          <button className="ec-btn ec-btn--pri" onClick={aplicar} disabled={salvando || cards.length === 0}>
+            {salvando ? 'Aplicando...' : `Aplicar redistribuição (${Object.keys(escolhas).length})`}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal de bloqueios (férias/folga) ───────────────────────────────────────
+function ModalBloqueios({ funcionarioId, funcionarioNome, bloqueios, onFechar, onMudou }) {
+  const hoje = new Date().toISOString().split('T')[0];
+  const [novo, setNovo] = useState({ data_inicio: hoje, data_fim: hoje, motivo: 'Férias' });
+  const [salvando, setSalvando] = useState(false);
+  const [removendo, setRemovendo] = useState(null);
+
+  async function adicionar() {
+    if (novo.data_fim < novo.data_inicio) { alert('Data fim antes do início.'); return; }
+    setSalvando(true);
+    try {
+      const { error } = await supabase.from('employee_bloqueios').insert({
+        funcionario_id: funcionarioId,
+        data_inicio: novo.data_inicio,
+        data_fim: novo.data_fim,
+        motivo: novo.motivo || null,
+      });
+      if (error) throw error;
+      setNovo({ data_inicio: hoje, data_fim: hoje, motivo: 'Férias' });
+      await onMudou();
+    } catch (e) {
+      alert('Erro: ' + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function remover(id) {
+    if (!confirm('Remover este bloqueio?')) return;
+    setRemovendo(id);
+    try {
+      await supabase.from('employee_bloqueios').delete().eq('id', id);
+      await onMudou();
+    } finally {
+      setRemovendo(null);
+    }
+  }
+
+  const ordenados = [...bloqueios].sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
+
+  return (
+    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div className="ec-modal">
+        <header className="ec-modal__header">
+          <div>
+            <h3 className="ec-modal__titulo">Ausências de {funcionarioNome}</h3>
+            <p className="ec-modal__sub">Bloqueia agendamento nos dias marcados</p>
+          </div>
+          <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
+        </header>
+
+        <div className="ec-modal__corpo">
+          <div className="ec-bloq__add">
+            <div className="ec-grid2">
+              <div className="ec-campo">
+                <label>De</label>
+                <input type="date" value={novo.data_inicio}
+                       onChange={e => setNovo(n => ({ ...n, data_inicio: e.target.value, data_fim: e.target.value > n.data_fim ? e.target.value : n.data_fim }))} />
+              </div>
+              <div className="ec-campo">
+                <label>Até</label>
+                <input type="date" value={novo.data_fim} min={novo.data_inicio}
+                       onChange={e => setNovo(n => ({ ...n, data_fim: e.target.value }))} />
+              </div>
+            </div>
+            <div className="ec-campo">
+              <label>Motivo</label>
+              <select value={novo.motivo} onChange={e => setNovo(n => ({ ...n, motivo: e.target.value }))}>
+                <option value="Férias">Férias</option>
+                <option value="Folga">Folga</option>
+                <option value="Feriado">Feriado</option>
+                <option value="Atestado">Atestado</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <button className="ec-btn ec-btn--pri" onClick={adicionar} disabled={salvando}>
+              {salvando ? 'Adicionando...' : '+ Adicionar bloqueio'}
+            </button>
+          </div>
+
+          <div className="ec-bloq__lista">
+            <div className="ec-bloq__lista-titulo">Bloqueios existentes ({ordenados.length})</div>
+            {ordenados.length === 0 ? (
+              <p className="ec-atras__vazio">Nenhum bloqueio cadastrado.</p>
+            ) : (
+              ordenados.map(b => {
+                const fmt = iso => new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+                const mesmo = b.data_inicio === b.data_fim;
+                return (
+                  <div key={b.id} className="ec-bloq__item">
+                    <div className="ec-bloq__info">
+                      <div className="ec-bloq__periodo">
+                        {mesmo ? fmt(b.data_inicio) : `${fmt(b.data_inicio)} → ${fmt(b.data_fim)}`}
+                      </div>
+                      <div className="ec-bloq__motivo">{b.motivo || 'Sem motivo'}</div>
+                    </div>
+                    <button className="ec-bloq__del" onClick={() => remover(b.id)} disabled={removendo === b.id}>
+                      {removendo === b.id ? '...' : '✕'}
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
