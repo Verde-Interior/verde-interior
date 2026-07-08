@@ -1,5 +1,5 @@
 import { state, save, dbAddPunch, dbDeletePunch, dbUpdateEmployeeStats } from './store.js';
-import { F, HM, TM, TKEY, calcWork, getStatus, getNext, toast } from './utils.js';
+import { F, HM, TM, getHoje, calcWork, getStatus, getNext, toast } from './utils.js';
 import { AUTH } from './auth.js';
 import { renderPunchMap } from './admin.js';
 
@@ -100,8 +100,8 @@ export function doExit() {
     if (dbRec) rec._id = dbRec.id;
     state.PS[state.cu].push(rec);
     if (!state.HIST[state.cu]) state.HIST[state.cu] = [];
-    const ex = state.HIST[state.cu].findIndex(d => d.date === TKEY);
-    const en = { date: TKEY, records: [...state.PS[state.cu]] };
+    const ex = state.HIST[state.cu].findIndex(d => d.date === getHoje());
+    const en = { date: getHoje(), records: [...state.PS[state.cu]] };
     if (ex >= 0) state.HIST[state.cu][ex] = en;
     else state.HIST[state.cu].unshift(en);
 

@@ -1,7 +1,7 @@
 // src/agenda.js — Sistema de Campo: Minha Agenda (funcionário)
 import { supabase } from './supabase.js';
 import { AUTH } from './auth.js';
-import { toast, F, TKEY } from './utils.js';
+import { toast, F, getHoje } from './utils.js';
 
 const DIAS_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -9,13 +9,54 @@ const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','ag
 // ── Estado local ──────────────────────────────────────────────────
 const st = {
   view:          'list',     // list | detail | exec | report | sign | done
-  data:          TKEY,       // data que está sendo visualizada
+  data:          getHoje(),       // data que está sendo visualizada
   visitas:       [],
   visitaSel:     null,       // objeto da visita atual
   relatorioSel:  null,       // relatório em andamento
   fotos:         [],         // fotos já salvas em fotos_relatorio
+  pendingFotos:  [],         // fotos que falharam upload: [{ tempId, file, error, tentando }]
   sigPad:        null,       // { canvas, ctx, points, drawing }
 };
+
+// ── Persistência de estado de execução (resiliência a reload) ────
+const STORAGE_KEY = 'vi-agenda-exec';
+
+function persistirEstado() {
+  // Só persiste quando o funcionário está no meio de uma visita
+  const emExecucao = ['detail','exec','report','sign'].includes(st.view)
+    && st.visitaSel?.id;
+  if (!emExecucao) {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    return;
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      view:        st.view,
+      data:        st.data,
+      visitaId:    st.visitaSel.id,
+      relatorioId: st.relatorioSel?.id ?? null,
+      ts:          Date.now(),
+    }));
+  } catch { /* ignore */ }
+}
+
+function limparEstadoPersistido() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+}
+
+function lerEstadoPersistido() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    // Descarta estado com mais de 12 horas (evita restaurar visita de ontem)
+    if (data.ts && Date.now() - data.ts > 12 * 3600 * 1000) {
+      limparEstadoPersistido();
+      return null;
+    }
+    return data;
+  } catch { return null; }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────
 function fmtData(iso) {
@@ -119,6 +160,34 @@ export async function renderAgenda() {
     return;
   }
 
+  // Tenta restaurar estado de execução se houver
+  const persist = lerEstadoPersistido();
+  if (persist && !st.visitaSel) {
+    try {
+      st.data = persist.data || st.data;
+      st.visitas = await loadVisitas();
+      const v = st.visitas.find(x => x.id === persist.visitaId);
+      if (v && v.status !== 'concluido' && v.status !== 'cancelado') {
+        st.visitaSel = v;
+        if (persist.relatorioId) {
+          st.relatorioSel = await loadRelatorio(v.id);
+          st.fotos = st.relatorioSel ? await loadFotos(st.relatorioSel.id) : [];
+        }
+        st.view = persist.view;
+        toast('Retomando visita em andamento...');
+        renderCurrentView();
+        if (st.view === 'exec') startTimer();
+        return;
+      } else {
+        // Visita não encontrada ou já finalizada — descarta
+        limparEstadoPersistido();
+      }
+    } catch (e) {
+      console.warn('Não foi possível restaurar estado:', e);
+      limparEstadoPersistido();
+    }
+  }
+
   st.visitas = await loadVisitas();
   renderCurrentView();
 }
@@ -132,13 +201,14 @@ function renderCurrentView() {
   if (st.view === 'report') { root.innerHTML = viewReport(); wireReportInputs(); }
   if (st.view === 'sign')   { root.innerHTML = viewSign(); wireSignature(); }
   if (st.view === 'done')   root.innerHTML = viewDone();
+  persistirEstado();
 }
 
 // ── VIEW: Lista de visitas do dia ─────────────────────────────────
 function viewList() {
   const d = new Date(st.data + 'T12:00');
   const dataLabel = `${DIAS_LABEL[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
-  const isToday = st.data === TKEY;
+  const isToday = st.data === getHoje();
 
   if (st.visitas.length === 0) {
     return `
@@ -377,9 +447,10 @@ function viewReport() {
       </div>
 
       <div class="ag-field">
-        <label>Fotos (${st.fotos.length})</label>
+        <label>Fotos (${st.fotos.length}${st.pendingFotos.length > 0 ? ` · <span class="ag-pend-count">${st.pendingFotos.length} pendente${st.pendingFotos.length > 1 ? 's' : ''}</span>` : ''})</label>
         <div class="ag-fotos">
           ${st.fotos.map(fotoCard).join('')}
+          ${st.pendingFotos.map(pendingCard).join('')}
           <label class="ag-foto-add">
             <input type="file" accept="image/*" capture="environment"
                    onchange="agendaAddPhoto(this)" style="display:none">
@@ -408,6 +479,28 @@ function fotoCard(f) {
       <button class="ag-foto__del" onclick="agendaRemoveFoto('${f.id}')">
         <i class="fa-solid fa-xmark"></i>
       </button>
+    </div>
+  `;
+}
+
+function pendingCard(p) {
+  // Preview local via URL.createObjectURL do file
+  const previewUrl = p._previewUrl || (p._previewUrl = URL.createObjectURL(p.file));
+  return `
+    <div class="ag-foto ag-foto--pending" data-tid="${p.tempId}">
+      <img src="${previewUrl}" alt="foto pendente">
+      <div class="ag-foto__pending-msg">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        ${p.tentando ? 'Tentando...' : 'Não enviou'}
+      </div>
+      <div class="ag-foto__pending-acoes">
+        <button class="ag-foto__retry" onclick="agendaRetryFoto('${p.tempId}')" ${p.tentando ? 'disabled' : ''}>
+          <i class="fa-solid fa-rotate-right"></i> Reenviar
+        </button>
+        <button class="ag-foto__descarta" onclick="agendaDescartaPending('${p.tempId}')" title="Descartar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -542,6 +635,7 @@ export async function backToList() {
   st.visitaSel = null;
   st.relatorioSel = null;
   st.fotos = [];
+  limparEstadoPersistido();
   await renderAgenda();
 }
 
@@ -564,7 +658,7 @@ export function changeDate(delta) {
   renderAgenda();
 }
 
-export function goToday() { st.data = TKEY; renderAgenda(); }
+export function goToday() { st.data = getHoje(); renderAgenda(); }
 
 // ── Check-in ──────────────────────────────────────────────────────
 export async function checkIn() {
@@ -574,6 +668,7 @@ export async function checkIn() {
 
   toast('Capturando localização...');
   const gps = await captureGPS();
+  const gpsFalhou = gps.lat == null || gps.lng == null;
   const now = new Date().toISOString();
 
   const { data: rel, error: err1 } = await supabase
@@ -599,7 +694,9 @@ export async function checkIn() {
   v.status = 'em_execucao';
   st.relatorioSel = rel;
   st.fotos = [];
-  toast('✓ Visita iniciada');
+  toast(gpsFalhou
+    ? '✓ Visita iniciada · ⚠ GPS não capturado'
+    : '✓ Visita iniciada');
   st.view = 'exec';
   renderCurrentView();
   startTimer();
@@ -625,6 +722,42 @@ function preservarTextoRelatorio() {
   if (r) st.relatorioSel = { ...r, relato: rel ?? r.relato, observacoes: obs ?? r.observacoes };
 }
 
+// Tenta subir uma foto para o Storage + criar registro em fotos_relatorio
+// Retorna: { ok: bool, rec?: obj, error?: string }
+async function tentarUploadFoto(file, relatorioId) {
+  try {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${relatorioId}/${Date.now()}.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from('field-photos')
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (upErr) return { ok: false, error: 'Falha no upload: ' + upErr.message };
+
+    const { data: signed } = await supabase.storage
+      .from('field-photos')
+      .createSignedUrl(path, 60 * 60 * 24 * 7);
+
+    const { data: rec, error: recErr } = await supabase
+      .from('fotos_relatorio')
+      .insert({
+        relatorio_id: relatorioId,
+        url:          signed?.signedUrl ?? path,
+        storage_path: path,
+        observacao:   null,
+        tipo:         'geral',
+        ordem:        st.fotos.length + 1,
+      })
+      .select()
+      .single();
+    if (recErr) return { ok: false, error: 'Falha ao salvar registro: ' + recErr.message };
+
+    return { ok: true, rec };
+  } catch (e) {
+    return { ok: false, error: e?.message || 'Erro desconhecido' };
+  }
+}
+
 export async function addPhoto(input) {
   const file = input.files?.[0];
   if (!file) return;
@@ -632,38 +765,51 @@ export async function addPhoto(input) {
   if (!r) { toast('Erro: sem relatório ativo', false); return; }
 
   preservarTextoRelatorio();
-
-  toast('Enviando foto...');
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = `${r.id}/${Date.now()}.${ext}`;
-
-  const { error: upErr } = await supabase.storage
-    .from('field-photos')
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (upErr) { toast('Erro no upload: ' + upErr.message, false); input.value = ''; return; }
-
-  const { data: signed } = await supabase.storage
-    .from('field-photos')
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
-
-  const { data: rec, error: recErr } = await supabase
-    .from('fotos_relatorio')
-    .insert({
-      relatorio_id: r.id,
-      url:          signed?.signedUrl ?? path,
-      storage_path: path,
-      observacao:   null,
-      tipo:         'geral',
-      ordem:        st.fotos.length + 1,
-    })
-    .select()
-    .single();
-  if (recErr) { toast('Erro ao salvar foto: ' + recErr.message, false); input.value = ''; return; }
-
-  st.fotos.push(rec);
   input.value = '';
-  toast('✓ Foto adicionada');
+
+  const tempId = 'tmp_' + Date.now();
+  toast('Enviando foto...');
+  const res = await tentarUploadFoto(file, r.id);
+  if (res.ok) {
+    st.fotos.push(res.rec);
+    toast('✓ Foto adicionada');
+  } else {
+    st.pendingFotos.push({ tempId, file, error: res.error, tentando: false });
+    toast('⚠ Foto não enviada — toque em Reenviar', false);
+  }
   renderCurrentView();
+}
+
+export async function retryFoto(tempId) {
+  const idx = st.pendingFotos.findIndex(p => p.tempId === tempId);
+  if (idx < 0) return;
+  const p = st.pendingFotos[idx];
+  const r = st.relatorioSel;
+  if (!r) return;
+
+  preservarTextoRelatorio();
+  p.tentando = true;
+  renderCurrentView();
+
+  const res = await tentarUploadFoto(p.file, r.id);
+  if (res.ok) {
+    st.fotos.push(res.rec);
+    st.pendingFotos.splice(idx, 1);
+    toast('✓ Foto enviada');
+  } else {
+    p.tentando = false;
+    p.error = res.error;
+    toast('Ainda falhou. Tenta novamente daqui a pouco.', false);
+  }
+  renderCurrentView();
+}
+
+export function descartarPending(tempId) {
+  const idx = st.pendingFotos.findIndex(p => p.tempId === tempId);
+  if (idx >= 0) {
+    st.pendingFotos.splice(idx, 1);
+    renderCurrentView();
+  }
 }
 
 export async function removePhoto(fotoId) {
@@ -739,6 +885,10 @@ export async function submit() {
   const nome = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
   if (!nome) { toast('Preencha o nome do responsável', false); return; }
   if (!st.sigPad || st.sigPad.empty) { toast('Faça a assinatura antes de finalizar', false); return; }
+  if (st.pendingFotos.length > 0) {
+    const ok = confirm(`Ainda existem ${st.pendingFotos.length} foto(s) que não foram enviadas. Finalizar mesmo assim? Elas serão perdidas.`);
+    if (!ok) return;
+  }
 
   toast('Enviando assinatura...');
   let sigUrl = null;
@@ -783,7 +933,11 @@ export async function submit() {
   if (err3) console.warn('ultima_visita não atualizada:', err3.message);
 
   clearInterval(timerInterval);
-  toast('✓ Visita concluída');
+  limparEstadoPersistido();
+  const pendentes = st.pendingFotos.length;
+  toast(pendentes > 0
+    ? `✓ Concluída · ⚠ ${pendentes} foto${pendentes > 1 ? 's' : ''} não subiu`
+    : '✓ Visita concluída');
   st.view = 'done';
   renderCurrentView();
 }

@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { TKEY } from './utils.js';
+import { getHoje } from './utils.js';
 
 export const state = {
   EMP: [],
@@ -61,7 +61,7 @@ export async function load() {
       if (p.obs) rec.obs = p.obs;
       if (p.lat != null) rec.lat = p.lat;
       if (p.lng != null) rec.lng = p.lng;
-      if (p.date === TKEY) {
+      if (p.date === getHoje()) {
         if (!state.PS[idx]) state.PS[idx] = [];
         state.PS[idx].push(rec);
       } else {
@@ -88,7 +88,7 @@ export async function dbAddPunch(empIdx, rec, date) {
   if (!emp?.id) return null;
   const row = {
     employee_id: emp.id,
-    date:        date || TKEY,
+    date:        date || getHoje(),
     type:        rec.type,
     time:        rec.time,
     obs:         rec.obs || null,

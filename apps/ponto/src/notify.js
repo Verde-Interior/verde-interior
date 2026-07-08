@@ -1,6 +1,6 @@
 import { state } from './store.js';
 import { AUTH } from './auth.js';
-import { TKEY } from './utils.js';
+import { getHoje } from './utils.js';
 
 export function requestNotifyPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
@@ -30,15 +30,15 @@ export function startNotifyChecker() {
     const hasExit  = recs.some(p => p.type === 'exit');
 
     // Lembrete de entrada às 8h05 se ainda não registrou
-    if (h === 8 && m === 5 && !hasEntry && _notifiedEntry !== TKEY) {
+    if (h === 8 && m === 5 && !hasEntry && _notifiedEntry !== getHoje()) {
       notify('Lembrete — Verde Interior', 'Você ainda não registrou sua entrada hoje.');
-      _notifiedEntry = TKEY;
+      _notifiedEntry = getHoje();
     }
 
     // Lembrete de saída às 18h05 se já entrou mas não saiu
-    if (h === 18 && m === 5 && hasEntry && !hasExit && _notifiedExit !== TKEY) {
+    if (h === 18 && m === 5 && hasEntry && !hasExit && _notifiedExit !== getHoje()) {
       notify('Lembrete — Verde Interior', 'Não esqueça de registrar sua saída!');
-      _notifiedExit = TKEY;
+      _notifiedExit = getHoje();
     }
   }, 60000);
 }

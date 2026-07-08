@@ -1,5 +1,5 @@
 import { state, save, dbAddPunch, dbDeletePunch, dbUpdateJustStatus } from './store.js';
-import { HM, HMh, WDS, meta, calcWork, calcWorkClosed, TM, TKEY, toast } from './utils.js';
+import { HM, HMh, WDS, meta, calcWork, calcWorkClosed, TM, getHoje, toast } from './utils.js';
 
 export function genAlerts() {
   const a = [];
@@ -84,7 +84,7 @@ export function resolveJ(idx, approve) {
 
 export function buildEditDates() {
   const sel = document.getElementById('edate');
-  const all = [TKEY, ...(state.HIST[state.eu] || []).map(d => d.date)]
+  const all = [getHoje(), ...(state.HIST[state.eu] || []).map(d => d.date)]
     .filter((v, i, a) => a.indexOf(v) === i)
     .sort((a, b) => b.localeCompare(a))
     .slice(0, 30);
@@ -179,10 +179,10 @@ export function renderPunchMap(recs, prefix = 'punch-map') {
 
 export function renderEdit() {
   const sel = document.getElementById('edate');
-  const dv  = sel.value || TKEY;
+  const dv  = sel.value || getHoje();
   const dt  = new Date(dv + 'T12:00:00');
   document.getElementById('etit').textContent = `${state.EMP[state.eu] ? state.EMP[state.eu].name : '—'} — ${WDS[dt.getDay()]} ${dv.split('-').reverse().join('/')}`;
-  const recs = dv === TKEY
+  const recs = dv === getHoje()
     ? (state.PS[state.eu] || [])
     : ((state.HIST[state.eu] || []).find(d => d.date === dv) || { records: [] }).records;
   document.getElementById('elist').innerHTML = recs.length
@@ -199,7 +199,7 @@ export function delER(date, idx) {
   if (!confirm('Remover este registro?')) return;
   (async () => {
     let rec;
-    if (date === TKEY) {
+    if (date === getHoje()) {
       rec = state.PS[state.eu][idx];
       await dbDeletePunch(rec);
       state.PS[state.eu].splice(idx, 1);
@@ -221,13 +221,13 @@ export function saveAdd() {
   const time = document.getElementById('atime').value;
   const obs  = document.getElementById('aobs').value.trim();
   if (!time) { toast('Informe o horário', false); return; }
-  const dv  = document.getElementById('edate').value || TKEY;
+  const dv  = document.getElementById('edate').value || getHoje();
   const rec = { type, time };
   if (obs) rec.obs = obs;
   (async () => {
     const dbRec = await dbAddPunch(state.eu, rec, dv);
     if (dbRec) rec._id = dbRec.id;
-    if (dv === TKEY) {
+    if (dv === getHoje()) {
       if (!state.PS[state.eu]) state.PS[state.eu] = [];
       state.PS[state.eu].push(rec);
     } else {
@@ -280,7 +280,7 @@ export function expCSV(mode) {
   } else {
     csv = bom + 'Colaborador,Cargo,Contrato,Jornada(h),Banco(min),Banco,Extras Acum.,Devidas Acum.\n';
     csv += rows.map(e => [e.name, e.cargo, e.c, e.j, e.bank, HM(e.bank), '+' + HMh(e.extra), e.due > 0 ? HMh(e.due) : '0h00'].join(',')).join('\n');
-    fname = `vi-banco-${TKEY}.csv`;
+    fname = `vi-banco-${getHoje()}.csv`;
   }
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

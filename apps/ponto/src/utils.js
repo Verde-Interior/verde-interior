@@ -3,7 +3,14 @@ export const HM = m => { const s = m < 0 ? '-' : ''; const v = Math.abs(Math.rou
 export const HMh = h => HM(Math.round(h * 60));
 
 export const TODAY = new Date();
-export const TKEY = `${TODAY.getFullYear()}-${F(TODAY.getMonth() + 1)}-${F(TODAY.getDate())}`;
+
+// Sempre retorna a data local ATUAL no formato YYYY-MM-DD.
+// Não usar constante — se o app ficar aberto passando meia-noite,
+// uma constante "gruda" no dia anterior.
+export function getHoje() {
+  const d = new Date();
+  return `${d.getFullYear()}-${F(d.getMonth() + 1)}-${F(d.getDate())}`;
+}
 export const WDS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
