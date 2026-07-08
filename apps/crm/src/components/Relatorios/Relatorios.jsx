@@ -1,37 +1,15 @@
 // src/components/Relatorios/Relatorios.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import { formatarDataHora, formatarData } from '../../utils/dateUtils';
+import { distanciaMetros } from '../../utils/geoUtils';
+import { formatarDuracao } from '../../utils/formatUtils';
 import './Relatorios.css';
 
-function formatarDataHora(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-}
-function formatarData(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso + 'T12:00');
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-}
 function duracaoEntre(inicio, fim) {
   if (!inicio || !fim) return '—';
   const ms = new Date(fim).getTime() - new Date(inicio).getTime();
-  const min = Math.round(ms / 60000);
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return h ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`;
-}
-function distanciaMetros(lat1, lng1, lat2, lng2) {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
-  const R = 6371000;
-  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  return formatarDuracao(Math.round(ms / 60000));
 }
 
 async function signedUrl(path, ttlSec = 60 * 60) {

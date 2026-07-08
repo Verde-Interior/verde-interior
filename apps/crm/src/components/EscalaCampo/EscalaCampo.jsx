@@ -1,6 +1,8 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { addDias, diasEntre, dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
+import { distanciaKm } from '../../utils/geoUtils';
 import { supabase } from '../../lib/supabase';
 import './EscalaCampo.css';
 
@@ -19,30 +21,11 @@ const TIPO_COR = {
   flores: '#9333EA', reforma: '#C47A1A', venda: '#1A7A4A', evento: '#C23B3B',
 };
 
-function getSemana(refDate) {
-  const d = new Date(refDate);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const seg = new Date(d);
-  seg.setDate(d.getDate() + diff);
-  return Array.from({ length: 6 }, (_, i) => {
-    const curr = new Date(seg);
-    curr.setDate(seg.getDate() + i);
-    return curr.toISOString().split('T')[0];
-  });
-}
-
-function getDiaId(iso) {
-  return DIA_ID_MAP[new Date(iso + 'T12:00').getDay()];
-}
-
-function formatarDia(iso) {
-  return new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-}
-
-function getHoje() {
-  return new Date().toISOString().split('T')[0];
-}
+// Wrappers finos para os utils centralizados (mantém API interna do arquivo)
+const getSemana   = ref => getSemanaUtil(ref);
+const getDiaId    = iso => getDiaSlugUtil(iso);
+const formatarDia = iso => formatarDataCurta(iso);
+const getHoje     = () => dateParaISO(new Date());
 
 // ── Detecção de conflitos ─────────────────────────────────────────────────────
 
@@ -64,31 +47,6 @@ const FREQ_LABEL_LOCAL = {
 };
 
 const HORA_FIM_DIA_MIN = 15 * 60; // 15:00 → 900 min
-
-// Dias entre duas datas ISO (yyyy-mm-dd)
-function diasEntre(iso1, iso2) {
-  const d1 = new Date(iso1 + 'T00:00');
-  const d2 = new Date(iso2 + 'T00:00');
-  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-// Adiciona dias a uma data ISO
-function addDias(iso, n) {
-  const d = new Date(iso + 'T12:00');
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// Distância Haversine em km
-function distanciaKm(lat1, lng1, lat2, lng2) {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return Infinity;
-  const R = 6371;
-  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function horaEmMinutos(h) {
   if (!h) return null;
