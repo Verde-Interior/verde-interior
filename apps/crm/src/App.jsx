@@ -1,6 +1,8 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
 import { CRMProvider, useCRM } from './context/CRMContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './components/Login/Login';
 import LogoMarca from './components/LogoMarca/LogoMarca';
 import KanbanBoard from './components/KanbanBoard/KanbanBoard';
 import ModalOrcamento from './components/ModalOrcamento/ModalOrcamento';
@@ -117,6 +119,7 @@ function AppLayout() {
   const [tela, setTela]               = useState('dashboard');
   const [buscaAberta, setBuscaAberta] = useState(false);
   const { leads, tarefas } = useCRM();
+  const { usuario, sair } = useAuth();
 
   const hoje = new Date().toISOString().split('T')[0];
   const followUpCount = leads.filter((l) => l.proximoFollowUp && l.proximoFollowUp <= hoje).length;
@@ -185,6 +188,14 @@ function AppLayout() {
         {/* Configurações — sempre no rodapé */}
         <div className="app__sidebar-footer">
           <NavItem item={NAV_ITEM_CONFIG} />
+          {usuario && (
+            <div className="app__usuario">
+              <span className="app__usuario-nome">👤 {usuario.nome}</span>
+              <button className="app__logout" onClick={sair} title="Sair">
+                ↪ Sair
+              </button>
+            </div>
+          )}
           <p className="app__sidebar-empresa">CRM Interno · v1.0</p>
         </div>
       </aside>
@@ -210,6 +221,28 @@ function AppLayout() {
   );
 }
 
+function AppGate({ fontScale }) {
+  const { usuario, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', color: '#6B7280', fontSize: 14 }}>
+        Carregando...
+      </div>
+    );
+  }
+
+  if (!usuario) return <Login />;
+
+  return (
+    <CRMProvider>
+      <div style={{ zoom: fontScale }}>
+        <AppLayout />
+      </div>
+    </CRMProvider>
+  );
+}
+
 export default function App() {
   const [fontScale, setFontScale] = useState(() =>
     parseFloat(localStorage.getItem('crm-font-scale') || '1')
@@ -222,10 +255,8 @@ export default function App() {
   }, []);
 
   return (
-    <CRMProvider>
-      <div style={{ zoom: fontScale }}>
-        <AppLayout />
-      </div>
-    </CRMProvider>
+    <AuthProvider>
+      <AppGate fontScale={fontScale} />
+    </AuthProvider>
   );
 }
