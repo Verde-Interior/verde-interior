@@ -1,4 +1,5 @@
 // src/components/LeadCard/LeadCard.jsx
+import { useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import './LeadCard.css';
 
@@ -10,7 +11,21 @@ function telefoneLimpo(tel) {
 }
 
 export default function LeadCard({ lead }) {
-  const { abrirModal, TIPOS_SERVICO, dragLeadId, setDragLeadId, ESTAGIOS_EXECUCAO } = useCRM();
+  const { abrirModal, TIPOS_SERVICO, dragLeadId, setDragLeadId, ESTAGIOS_EXECUCAO, promoverParaCliente } = useCRM();
+  const [promovendo, setPromovendo] = useState(false);
+
+  const jaEhCliente = !!lead.clienteSupabaseId;
+  const podePromover = lead.estagioId === 'orcamento_aprovado' && !jaEhCliente;
+
+  async function handlePromover(e) {
+    e.stopPropagation();
+    if (!confirm(`Promover "${lead.empresa}" a Cliente na base de campo?\n\nIsso cria o cadastro em Clientes com o contrato do orçamento. O lead permanece no Kanban.`)) return;
+    setPromovendo(true);
+    const res = await promoverParaCliente(lead.id);
+    setPromovendo(false);
+    if (res.ok) alert(`✓ ${lead.empresa} agora está na base de Clientes. Complete os dados que faltam (dias disponíveis, duração, janela) na aba Clientes.`);
+    else alert('Erro: ' + res.error);
+  }
 
   const servico      = TIPOS_SERVICO[lead.tipoServico];
   const isRecorrente = servico?.faturamento === 'recorrente';
@@ -155,6 +170,23 @@ export default function LeadCard({ lead }) {
           >
             📞 Ligar
           </a>
+        </div>
+      )}
+
+      {/* Botão "Virar cliente" (só em orçamento aprovado, uma vez) */}
+      {podePromover && (
+        <button
+          className="lead-card__promover"
+          onClick={handlePromover}
+          disabled={promovendo}
+          title="Cria o cadastro na base de Clientes (Sistema de Campo)"
+        >
+          {promovendo ? 'Promovendo...' : '🌿 Virar cliente'}
+        </button>
+      )}
+      {jaEhCliente && (
+        <div className="lead-card__cliente-tag" title={`Já promovido a Cliente (Supabase)`}>
+          ✓ Cliente na base
         </div>
       )}
 

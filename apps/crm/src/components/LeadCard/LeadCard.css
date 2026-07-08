@@ -252,3 +252,38 @@
 .lead-card:hover .lead-card__drag-handle { opacity: 1; }
 /* Esconde o canal quando o handle aparece */
 .lead-card:hover .lead-card__canal { opacity: 0; }
+
+
+/* Botão "Virar cliente" (Fase 5.3 — Kanban ↔ Clientes) */
+.lead-card__promover {
+  margin-top: 8px;
+  width: 100%;
+  background: var(--forest-100);
+  color: var(--forest-700);
+  border: 1px solid var(--forest-300);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+.lead-card__promover:hover:not(:disabled) {
+  background: var(--forest-200);
+  border-color: var(--forest-500);
+}
+.lead-card__promover:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.lead-card__cliente-tag {
+  margin-top: 8px;
+  background: var(--forest-50);
+  color: var(--forest-700);
+  border: 1px solid var(--forest-200);
+  border-radius: var(--radius-md);
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.03em;
+}

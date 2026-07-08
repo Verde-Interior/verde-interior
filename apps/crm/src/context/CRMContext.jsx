@@ -1,7 +1,23 @@
 // src/context/CRMContext.jsx
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 const CRMContext = createContext(null);
+
+// Mapeamento das frequências (label do lead → slug do banco)
+const FREQ_LEAD_TO_DB = {
+  Semanal:   'semanal',
+  Quinzenal: 'quinzenal',
+  Mensal:    'mensal',
+  Pontual:   'pontual',
+};
+
+// Mapeamento p/ clientes.frequencia_visita (mais granular)
+const FREQ_LEAD_TO_VISITA = {
+  Semanal:   '1x_semana',
+  Quinzenal: 'quinzenal',
+  Mensal:    'mensal',
+};
 
 // ─── Funil de Vendas (conforme CLAUDE.md) ────────────────────────────────────
 export const ESTAGIOS = [
@@ -607,6 +623,63 @@ export function CRMProvider({ children }) {
     setLeads((prev) => prev.filter((l) => l.id !== leadId));
   }, []);
 
+  // Promove um lead aprovado a cliente no Supabase (clientes + cliente_servicos)
+  // Retorna { ok, clienteId?, error? }. Marca o lead com { clienteSupabaseId }
+  // para não permitir promover de novo.
+  const promoverParaCliente = useCallback(async (leadId) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return { ok: false, error: 'Lead não encontrado' };
+    if (lead.clienteSupabaseId) return { ok: false, error: 'Este lead já foi promovido' };
+
+    const hoje = new Date().toISOString().split('T')[0];
+    const cliente = {
+      nome_empresa:        lead.empresa,
+      contato_nome:        lead.contato ?? null,
+      contato_telefone:    lead.telefone ?? null,
+      contato_email:       lead.email ?? null,
+      endereco:            lead.endereco ?? '',
+      bairro:              lead.bairro ?? null,
+      lat:                 lead.lat ?? 0,
+      lng:                 lead.lng ?? 0,
+      observacoes:         lead.observacoes ?? null,
+      frequencia_visita:   FREQ_LEAD_TO_VISITA[lead.frequenciaVisita] ?? null,
+      ativo:               true,
+      data_inicio_contrato: hoje,
+    };
+
+    const { data: cli, error: e1 } = await supabase
+      .from('clientes').insert(cliente).select().single();
+    if (e1) return { ok: false, error: e1.message };
+
+    // Cria contrato apenas se recorrente ou venda pontual (ignora eventos e reforma one-shot)
+    const tipo = lead.tipoServico;
+    const criaContrato = ['locacao', 'manutencao', 'venda', 'flores'].includes(tipo);
+    if (criaContrato) {
+      const { error: e2 } = await supabase.from('cliente_servicos').insert({
+        cliente_id: cli.id,
+        tipo_servico: tipo,
+        frequencia: FREQ_LEAD_TO_DB[lead.frequenciaVisita] ?? 'pontual',
+        quantidade_vasos: lead.quantidadeVasos ?? null,
+        valor_mensal: lead.valorEstimado ?? null,
+        ativo: true,
+      });
+      if (e2) console.warn('Contrato não criado:', e2.message);
+    }
+
+    setLeads(prev => prev.map(l =>
+      l.id === leadId
+        ? { ...l, clienteSupabaseId: cli.id, historico: [...(l.historico ?? []), {
+            id: `h-${Date.now()}`,
+            tipo: 'promocao',
+            descricao: `Promovido a Cliente (id ${cli.id.slice(0, 8)}…)`,
+            data: hoje,
+          }] }
+        : l
+    ));
+
+    return { ok: true, clienteId: cli.id };
+  }, [leads]);
+
   // Move lead dentro do Funil de Execução
   const moverFunilExecucao = useCallback((leadId, novaEtapa) => {
     const hoje = new Date().toISOString().split('T')[0];
@@ -734,6 +807,7 @@ export function CRMProvider({ children }) {
         atualizarLead,
         adicionarLead,
         removerLead,
+        promoverParaCliente,
         leadsPorEstagio,
         abrirModal,
         fecharModal,
