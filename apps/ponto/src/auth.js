@@ -128,34 +128,8 @@ function changePassword() {
   });
 }
 
-function credsHTML() {
-  const colabs = [
-    { name: 'Beto',        u: 'beto',     pw: 'ponto0' },
-    { name: 'Brenno',      u: 'brenno',   pw: 'ponto1' },
-    { name: 'Bruno',       u: 'bruno',    pw: 'ponto2' },
-    { name: 'Carlos',      u: 'carlos',   pw: 'ponto3' },
-    { name: 'Greg',        u: 'greg',     pw: 'ponto4' },
-    { name: 'Miriam',      u: 'miriam',   pw: 'ponto5' },
-    { name: 'Pedro Silva', u: 'pedro',    pw: 'ponto6' },
-    { name: 'Peterson',    u: 'peterson', pw: 'ponto7' },
-  ];
-  let rows = colabs.map(c =>
-    '<div style="padding:8px 0;border-bottom:1px solid #e8e6df">' +
-    '<div style="font-size:13px;font-weight:600">' + c.name + '</div>' +
-    '<div style="font-size:12px;color:#6b6966">Usuário: <b>' + c.u + '</b>' +
-    ' &nbsp;·&nbsp; Senha: <b>' + c.pw + '</b></div></div>'
-  ).join('');
-  rows += '<div style="padding:8px 0;margin-top:4px">' +
-    '<div style="font-size:13px;font-weight:600">Fernando ' +
-    '<span class="sbadge gestor" style="font-size:10px">Gestor</span></div>' +
-    '<div style="font-size:12px;color:#6b6966">Usuário: <b>fernando</b>' +
-    ' &nbsp;·&nbsp; Senha: <b>••••••••</b></div></div>';
-  return rows;
-}
-
 export const AUTH = {
   login, logout, applySession, initSession, changePassword,
   getSession: () => _session,
-  credsHTML,
   loaded: true,
 };

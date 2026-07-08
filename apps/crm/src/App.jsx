@@ -4,7 +4,6 @@ import { CRMProvider, useCRM } from './context/CRMContext';
 import LogoMarca from './components/LogoMarca/LogoMarca';
 import KanbanBoard from './components/KanbanBoard/KanbanBoard';
 import ModalOrcamento from './components/ModalOrcamento/ModalOrcamento';
-import RoutePlanner from './components/RoutePlanner/RoutePlanner';
 import Dashboard from './components/Dashboard/Dashboard';
 import GlobalSearch from './components/GlobalSearch/GlobalSearch';
 import Tarefas from './components/Tarefas/Tarefas';
@@ -41,14 +40,6 @@ const IconTarefas = () => (
     <rect x="1" y="12" width="9" height="2" rx="1" fill="currentColor" opacity="0.7"/>
     <circle cx="13.5" cy="13" r="2" fill="currentColor"/>
     <path d="M12.5 13L13.2 13.8L14.8 12.2" stroke="white" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const IconRoteiro = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <circle cx="3.5" cy="4" r="2" fill="currentColor"/>
-    <circle cx="12.5" cy="12" r="2" fill="currentColor"/>
-    <path d="M3.5 6C3.5 6 3.5 9 8 9C12.5 9 12.5 10 12.5 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
   </svg>
 );
 
@@ -118,7 +109,6 @@ const NAV_ITEMS_TOP = [
   { id: 'relatorios', Icon: IconRelatorios,label: 'Relatórios'},
   { id: 'agenda',     Icon: IconAgenda,    label: 'Agenda'    },
   { id: 'tarefas',    Icon: IconTarefas,   label: 'Tarefas'   },
-  { id: 'rotas',      Icon: IconRoteiro,   label: 'Roteiro'   },
 ];
 
 const NAV_ITEM_CONFIG = { id: 'configuracoes', Icon: IconConfig, label: 'Configurações' };
@@ -208,7 +198,6 @@ function AppLayout() {
         {tela === 'escala'        && <EscalaCampo />}
         {tela === 'relatorios'    && <Relatorios />}
         {tela === 'agenda'        && <Agenda />}
-        {tela === 'rotas'         && <RoutePlanner />}
         {tela === 'tarefas'       && <Tarefas />}
         {tela === 'configuracoes' && <Configuracoes />}
       </main>

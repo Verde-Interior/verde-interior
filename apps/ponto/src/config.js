@@ -4,13 +4,6 @@ import { HM, toast } from './utils.js';
 import { AUTH } from './auth.js';
 
 export function renderConfig() {
-  const ses = AUTH.getSession();
-  const isG = ses && ses.role === 'gestor';
-  const cc  = document.getElementById('creds-card');
-  if (cc) cc.style.display = isG ? '' : 'none';
-  const cl = document.getElementById('creds-list');
-  if (cl && isG) cl.innerHTML = AUTH.credsHTML();
-
   document.getElementById('cfg-count').textContent = state.EMP.length;
   document.getElementById('cfg-list').innerHTML = state.EMP.map((e, i) => `
     <div class="cfg-row">
