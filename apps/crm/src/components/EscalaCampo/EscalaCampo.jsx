@@ -1086,9 +1086,14 @@ export default function EscalaCampo() {
     // Caso simples: nenhum desvio ou fallback — aplica direto
     if (resultado.iguais) {
       try {
-        await aplicarOrdemRota(resultado.ordem);
+        await aplicarOrdemRota(resultado.ordem, resultado.timeline);
         const kmFmt = resultado.distKmViavel.toFixed(1);
-        alert(`✓ Rota otimizada · ${kmFmt} km`);
+        const primeiro = resultado.timeline?.[0];
+        const ultimo = resultado.timeline?.[resultado.timeline.length - 1];
+        const janela = primeiro && ultimo
+          ? ` · ${minutosParaHora(primeiro.chegada)}–${minutosParaHora(ultimo.chegada)}`
+          : '';
+        alert(`✓ Rota otimizada · ${kmFmt} km${janela}\n\nHorários das visitas foram atualizados para os ETAs calculados.`);
       } catch (e) {
         alert('Erro ao otimizar: ' + e.message);
       } finally {
@@ -1102,9 +1107,15 @@ export default function EscalaCampo() {
     setPreviewRota({ empId: String(empId), resultado });
   }
 
-  async function aplicarOrdemRota(ordem) {
+  async function aplicarOrdemRota(ordem, timeline) {
     await Promise.all(
-      ordem.map((v, i) => supabase.from('agenda').update({ ordem_rota: i }).eq('id', v.id))
+      ordem.map((v, i) => {
+        const update = { ordem_rota: i };
+        if (timeline?.[i]?.chegada != null) {
+          update.hora_estimada_chegada = minutosParaHora(timeline[i].chegada);
+        }
+        return supabase.from('agenda').update(update).eq('id', v.id);
+      })
     );
     await carregarAgenda();
   }
@@ -1113,7 +1124,7 @@ export default function EscalaCampo() {
     if (!previewRota) return;
     setOtimizando(previewRota.empId);
     try {
-      await aplicarOrdemRota(previewRota.resultado.ordem);
+      await aplicarOrdemRota(previewRota.resultado.ordem, previewRota.resultado.timeline);
       setPreviewRota(null);
     } catch (e) {
       alert('Erro ao aplicar: ' + e.message);
@@ -1802,9 +1813,12 @@ function ModalPreviewRota({ resultado, onAplicar, onFechar, aplicando }) {
         </div>
 
         <footer className="ec-modal__footer">
+          <div className="ec-preview__foot-hint">
+            Os horários das visitas serão atualizados para os ETAs calculados.
+          </div>
           <button className="ec-btn ec-btn--sec" onClick={onFechar} disabled={aplicando}>Cancelar</button>
           <button className="ec-btn ec-btn--pri" onClick={onAplicar} disabled={aplicando}>
-            {aplicando ? 'Aplicando...' : 'Aplicar nova ordem'}
+            {aplicando ? 'Aplicando...' : 'Aplicar nova ordem e horários'}
           </button>
         </footer>
       </div>

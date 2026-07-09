@@ -780,6 +780,15 @@
   white-space: nowrap;
 }
 
+.ec-preview__foot-hint {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding-right: 12px;
+  line-height: 1.4;
+}
+
 .ec-cartao__ordens {
   display: flex;
   flex-direction: column;
