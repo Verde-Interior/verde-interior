@@ -46,7 +46,20 @@ const FREQ_LABEL_LOCAL = {
   'mensal':    'mensal',
 };
 
-const HORA_FIM_DIA_MIN = 15 * 60; // 15:00 → 900 min
+// Carga horária diária padrão (fallback quando o funcionário não tem daily_hours definido)
+const DAILY_HOURS_DEFAULT = 8;
+
+// Calcula o fim do expediente com base na hora de início efetiva do dia
+// (primeira visita com hora_estimada, ou 07:00 default) + daily_hours
+function calcularFimDoDia(visitas, dailyHours) {
+  const dh = dailyHours ?? DAILY_HOURS_DEFAULT;
+  const primeiraHora = visitas
+    .map(v => v.hora_estimada_chegada ? horaEmMinutos(v.hora_estimada_chegada) : null)
+    .filter(x => x != null)
+    .sort((a, b) => a - b)[0];
+  const inicio = primeiraHora ?? (7 * 60); // 07:00 default
+  return inicio + dh * 60;
+}
 
 function horaEmMinutos(h) {
   if (!h) return null;
@@ -149,11 +162,12 @@ function calcClientesAtrasados(clientes, hoje) {
 // Detecta conflitos de tempo em uma lista de visitas do dia
 // Retorna: { sobreposicoes, estouraDia, fimMin, idsSobrepostos, idsEstouram, sugestoes }
 // sugestoes = [{ visitaId, nome, horaAtual, horaSugerida, mudou }]
-function calcConflitosDia(visitas) {
+function calcConflitosDia(visitas, dailyHours) {
   const sobreposicoes = [];
   const idsSobrepostos = new Set();
   const idsEstouram    = new Set();
   const ordenadas = [...visitas].filter(v => v.hora_estimada_chegada).sort((a, b) => (a.hora_estimada_chegada ?? '').localeCompare(b.hora_estimada_chegada ?? ''));
+  const fimDia = calcularFimDoDia(visitas, dailyHours);
   let fimMin = 0;
   for (let i = 0; i < ordenadas.length; i++) {
     const v = ordenadas[i];
@@ -161,7 +175,7 @@ function calcConflitosDia(visitas) {
     const dur    = v.duracao_estimada_min ?? 60;
     const fim    = inicio + dur;
     fimMin = Math.max(fimMin, fim);
-    if (fim > HORA_FIM_DIA_MIN) idsEstouram.add(v.id);
+    if (fim > fimDia) idsEstouram.add(v.id);
     if (i > 0) {
       const prev = ordenadas[i - 1];
       const inicioPrev = horaEmMinutos(prev.hora_estimada_chegada);
@@ -196,7 +210,7 @@ function calcConflitosDia(visitas) {
     }
   }
 
-  return { sobreposicoes, estouraDia: fimMin > HORA_FIM_DIA_MIN, fimMin, idsSobrepostos, idsEstouram, sugestoes };
+  return { sobreposicoes, estouraDia: fimMin > fimDia, fimMin, fimDia, idsSobrepostos, idsEstouram, sugestoes };
 }
 
 // Nearest-neighbor a partir da primeira visita (ou primeira com hora)
@@ -240,16 +254,18 @@ function simularOrdem(ordem, opts = {}) {
   let penalidadeEspera = 0;
   let penalidadeViolacao = 0;
 
-  // Hora de início: mais cedo entre a janela do primeiro cliente,
-  // a hora_estimada da primeira visita e HORA_INICIO_DEFAULT
+  // Hora de início do dia:
+  //   1. Se o gestor marcou hora_estimada_chegada na primeira visita, respeita
+  //      (essa é a "intenção" — pode ser 06:30, 08:00, o que for)
+  //   2. Senão, usa HORA_INICIO_DEFAULT (07:00)
+  //   3. Depois, se a janela do primeiro cliente é MAIS TARDE, empurra pra
+  //      abertura da janela (é hard constraint)
   const primeiro = ordem[0];
   const janIni = primeiro.clientes?.janela_entrada_inicio
     ? horaEmMinutos(primeiro.clientes.janela_entrada_inicio) : null;
   const horaAg = primeiro.hora_estimada_chegada
     ? horaEmMinutos(primeiro.hora_estimada_chegada) : null;
-  let tempoAtual = Math.max(HORA_INICIO_DEFAULT, janIni ?? horaAg ?? HORA_INICIO_DEFAULT);
-  // Se o gestor marcou hora ANTES da janela padrão, respeita
-  if (horaAg != null && horaAg < tempoAtual) tempoAtual = horaAg;
+  let tempoAtual = horaAg ?? HORA_INICIO_DEFAULT;
   if (janIni != null && janIni > tempoAtual) tempoAtual = janIni;
 
   for (let i = 0; i < ordem.length; i++) {
@@ -473,7 +489,7 @@ function CartaoVisita({
 
   const tooltipConf = [
     emSobreposicao ? 'Horário sobreposto com outra visita' : null,
-    estouraDia ? 'Esta visita passa das 15:00' : null,
+    estouraDia ? 'Esta visita passa do fim do expediente' : null,
     mostrarPrioridade && prioridade ? `Prioridade: ${PRIORIDADE_LABEL[prioridade] ?? prioridade}` : null,
     ...(restricao?.motivos ?? []),
   ].filter(Boolean).join(' · ');
@@ -789,7 +805,7 @@ export default function EscalaCampo() {
   useEffect(() => {
     async function init() {
       const [empRes, cliRes, bloqRes] = await Promise.all([
-        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
+        supabase.from('employees').select('id, name, cargo, daily_hours').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
         supabase.from('clientes')
           .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),
@@ -873,7 +889,7 @@ export default function EscalaCampo() {
     const c = {};
     employees.forEach(emp => {
       const visitas = agendaOrg[diaSel]?.[emp.id] ?? [];
-      c[emp.id] = calcConflitosDia(visitas);
+      c[emp.id] = calcConflitosDia(visitas, emp.daily_hours);
     });
     return c;
   }, [agendaOrg, employees, diaSel]);
@@ -1397,8 +1413,8 @@ export default function EscalaCampo() {
                       </span>
                     )}
                     {conflitos.estouraDia && (
-                      <span className="ec__warn ec__warn--fim" title={`Última visita termina ${minutosParaHora(conflitos.fimMin)}`}>
-                        ⚠ passa das 15:00 ({minutosParaHora(conflitos.fimMin)})
+                      <span className="ec__warn ec__warn--fim" title={`Fim do expediente ${minutosParaHora(conflitos.fimDia)} · última visita termina ${minutosParaHora(conflitos.fimMin)}`}>
+                        ⚠ passa das {minutosParaHora(conflitos.fimDia)} ({minutosParaHora(conflitos.fimMin)})
                       </span>
                     )}
                   </div>
