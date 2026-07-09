@@ -227,11 +227,17 @@ function* permutacoes(arr) {
 }
 
 // Simula a linha do tempo de uma ordem específica e calcula score + timeline
+// Regras:
+//  - Distância é o objetivo principal (soma direto no score)
+//  - Espera (chegar antes da janela abrir) tem penalidade LEVE — aceitável
+//  - Violação de janela do cliente (chegar depois de janela_entrada_fim)
+//    tem penalidade DOMINANTE — só isso justifica sair da rota mais curta
+//  - hora_estimada_chegada NÃO entra no score — é só valor default sem
+//    significado operacional real
 function simularOrdem(ordem, opts = {}) {
   const km_totais = [];
   const timeline = [];
   let penalidadeEspera = 0;
-  let penalidadeAtrasoGestor = 0;
   let penalidadeViolacao = 0;
 
   // Hora de início: mais cedo entre a janela do primeiro cliente,
@@ -260,10 +266,8 @@ function simularOrdem(ordem, opts = {}) {
 
     const jIni = v.clientes?.janela_entrada_inicio ? horaEmMinutos(v.clientes.janela_entrada_inicio) : null;
     const jFim = v.clientes?.janela_entrada_fim    ? horaEmMinutos(v.clientes.janela_entrada_fim)    : null;
-    const hEst = v.hora_estimada_chegada           ? horaEmMinutos(v.hora_estimada_chegada)          : null;
 
     let esperaMin = 0;
-    let atrasoMin = 0;
     let violacaoMin = 0;
 
     // Se chega antes da janela do cliente, espera
@@ -275,13 +279,8 @@ function simularOrdem(ordem, opts = {}) {
     if (jFim != null && tempoAtual > jFim) {
       violacaoMin = tempoAtual - jFim;
     }
-    // Se chega bem depois da hora estimada pelo gestor, penalidade leve
-    if (hEst != null && tempoAtual > hEst + 15) {
-      atrasoMin = tempoAtual - hEst;
-    }
 
     penalidadeEspera += esperaMin * 0.05;
-    penalidadeAtrasoGestor += atrasoMin * 3;
     if (violacaoMin > 0) penalidadeViolacao += 500 + violacaoMin * 20;
 
     const chegada = tempoAtual;
@@ -289,11 +288,11 @@ function simularOrdem(ordem, opts = {}) {
     tempoAtual += duracao;
     const saida = tempoAtual;
 
-    timeline.push({ visitaId: v.id, chegada, saida, esperaMin, atrasoMin, violacaoMin });
+    timeline.push({ visitaId: v.id, chegada, saida, esperaMin, atrasoMin: 0, violacaoMin });
   }
 
   const distTotalKm = km_totais.reduce((s, x) => s + x, 0);
-  const score = distTotalKm + penalidadeEspera + penalidadeAtrasoGestor + penalidadeViolacao;
+  const score = distTotalKm + penalidadeEspera + penalidadeViolacao;
   return { score, distTotalKm, timeline, temViolacao: penalidadeViolacao > 0 };
 }
 
@@ -350,6 +349,24 @@ function otimizarRotaComRestricoes(visitas) {
         });
       }
     });
+  }
+
+  // Safety net: se difere da rota geográfica mas nenhum motivo justifica
+  // (nenhum cliente tem janela definida), volta pra ordem geográfica.
+  // Isso previne o algoritmo de sugerir rotas piores por causa de flutuações
+  // internas de scoring sem razão operacional visível ao gestor.
+  if (!iguais && motivos.length === 0) {
+    return {
+      ordem: ordemGeo,
+      ordemGeo,
+      distKmViavel: simGeo.distTotalKm,
+      distKmGeo:    simGeo.distTotalKm,
+      timeline:     simGeo.timeline,
+      motivos:      [],
+      usouFallback: false,
+      iguais:       true,
+      temViolacao:  simGeo.temViolacao,
+    };
   }
 
   return {
