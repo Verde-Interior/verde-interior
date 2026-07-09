@@ -173,6 +173,7 @@ export default function Relatorios() {
           relatorio={detalhe}
           funcNome={empMap.get(String(detalhe.funcionario_id)) ?? '—'}
           onFechar={() => setDetalhe(null)}
+          onRemovido={() => { setDetalhe(null); carregar(); }}
         />
       )}
     </div>
@@ -212,11 +213,41 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
 }
 
 // ── Modal de detalhe ──────────────────────────────────────────────
-function DetalheRelatorio({ relatorio: r, funcNome, onFechar }) {
+function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
   const c = r.agenda?.cliente;
   const [fotoAmp, setFotoAmp] = useState(null); // { url, observacao }
   const [urlsFotos, setUrlsFotos] = useState({}); // fotoId -> signed url
   const [assinUrl, setAssinUrl] = useState(null);
+  const [removendo, setRemovendo] = useState(false);
+
+  async function remover() {
+    const nome = c?.nome_empresa ?? 'este relatório';
+    if (!confirm(`Remover o relatório de "${nome}"?\n\nIsso apaga:\n- ${r.fotos?.length ?? 0} foto(s)\n- Assinatura (se houver)\n- O registro do relatório\n\nA visita na agenda volta para status "publicado" para permitir refazer.\n\nEsta ação não pode ser desfeita.`)) return;
+    setRemovendo(true);
+    try {
+      // Apaga arquivos do storage (fotos + assinatura)
+      const paths = [];
+      for (const f of (r.fotos ?? [])) if (f.storage_path) paths.push(f.storage_path);
+      if (r.assinatura_storage_path) paths.push(r.assinatura_storage_path);
+      if (paths.length > 0) {
+        await supabase.storage.from('field-photos').remove(paths);
+      }
+      // Apaga fotos_relatorio
+      await supabase.from('fotos_relatorio').delete().eq('relatorio_id', r.id);
+      // Apaga relatorio
+      const { error: e1 } = await supabase.from('relatorios').delete().eq('id', r.id);
+      if (e1) throw e1;
+      // Volta agenda para publicado (permite refazer)
+      if (r.agendamento_id) {
+        await supabase.from('agenda').update({ status: 'publicado' }).eq('id', r.agendamento_id);
+      }
+      onRemovido?.();
+    } catch (e) {
+      alert('Erro ao remover: ' + e.message);
+    } finally {
+      setRemovendo(false);
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -373,6 +404,15 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar }) {
         </div>
 
         <footer className="rel-modal__footer">
+          <button
+            className="rel-btn rel-btn--perigo"
+            onClick={remover}
+            disabled={removendo}
+            title="Apaga o relatório, fotos e assinatura. A visita volta para status publicado."
+          >
+            {removendo ? 'Removendo...' : '✕ Remover relatório'}
+          </button>
+          <span style={{ flex: 1 }} />
           <button className="rel-btn" onClick={onFechar}>Fechar</button>
         </footer>
       </div>

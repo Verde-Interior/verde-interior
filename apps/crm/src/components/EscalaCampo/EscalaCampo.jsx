@@ -59,6 +59,34 @@ function minutosParaHora(m) {
   return `${String(h).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
 }
 
+// Verifica restrições do cliente para uma visita (dia + janela de horário)
+// Retorna: { restricaoDia, restricaoHora, motivos: [] }
+function checarRestricoes(cliente, dataAgendada, horaChegada) {
+  const motivos = [];
+  let restricaoDia = false, restricaoHora = false;
+
+  if (cliente?.dias_disponiveis?.length > 0) {
+    const diaId = getDiaId(dataAgendada);
+    if (!cliente.dias_disponiveis.includes(diaId)) {
+      restricaoDia = true;
+      const dias = cliente.dias_disponiveis.map(d => DIAS_LABEL[d] ?? d).join(', ');
+      motivos.push(`Cliente só atende: ${dias}`);
+    }
+  }
+
+  if (horaChegada && cliente?.janela_entrada_inicio && cliente?.janela_entrada_fim) {
+    const h = horaChegada.slice(0, 5);
+    const ini = cliente.janela_entrada_inicio.slice(0, 5);
+    const fim = cliente.janela_entrada_fim.slice(0, 5);
+    if (h < ini || h > fim) {
+      restricaoHora = true;
+      motivos.push(`Janela do cliente: ${ini}–${fim} · marcado ${h}`);
+    }
+  }
+
+  return { restricaoDia, restricaoHora, motivos };
+}
+
 // Retorna o bloqueio ativo para um funcionário em uma data, se houver
 function bloqueioNoDia(bloqueios, empId, isoDate) {
   const eid = String(empId);
@@ -237,6 +265,8 @@ function CartaoVisita({
   // prioridade (Fase 5.2)
   prioridade,
   mostrarPrioridade,
+  // restrições (violação de dia/janela do cliente)
+  restricao,
   // edição
   onEditar,
 }) {
@@ -249,16 +279,21 @@ function CartaoVisita({
   // Visitas em execução ou concluídas ficam travadas
   const abrirModal = editavel || editavelComAviso;
 
+  const temRestricao = restricao?.restricaoDia || restricao?.restricaoHora;
+
   const classesConf = [
     emSobreposicao ? 'ec-cartao--conflito-sob' : '',
     estouraDia ? 'ec-cartao--conflito-fim' : '',
     mostrarPrioridade && prioridade ? `ec-cartao--prio-${prioridade}` : '',
+    restricao?.restricaoDia ? 'ec-cartao--restr-dia' : '',
+    restricao?.restricaoHora ? 'ec-cartao--restr-hora' : '',
   ].filter(Boolean).join(' ');
 
   const tooltipConf = [
     emSobreposicao ? 'Horário sobreposto com outra visita' : null,
     estouraDia ? 'Esta visita passa das 15:00' : null,
     mostrarPrioridade && prioridade ? `Prioridade: ${PRIORIDADE_LABEL[prioridade] ?? prioridade}` : null,
+    ...(restricao?.motivos ?? []),
   ].filter(Boolean).join(' · ');
 
   const tooltipPadrao =
@@ -322,6 +357,12 @@ function CartaoVisita({
         </div>
         {visita.observacoes_gestor && (
           <p className="ec-cartao__obs">{visita.observacoes_gestor}</p>
+        )}
+        {temRestricao && (
+          <div className="ec-cartao__restr" title={restricao.motivos.join('\n')}>
+            {restricao.restricaoDia && <span className="ec-cartao__restr-tag">⚠ dia</span>}
+            {restricao.restricaoHora && <span className="ec-cartao__restr-tag">⚠ hora</span>}
+          </div>
         )}
       </div>
 
@@ -395,7 +436,10 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
     setF('servicoId', servAtivos.length === 1 ? servAtivos[0].id : '');
   }
 
-  const podeSubmit = form.clienteId && form.funcionarioId && form.data && erros.length === 0;
+  const camposMinimos = form.clienteId && form.funcionarioId && form.data;
+  const semErros = erros.length === 0;
+  const podeSubmit = camposMinimos && semErros;
+  const podeForcarSubmit = camposMinimos && !semErros; // tem erros de dia, mas quer adicionar mesmo assim
 
   return (
     <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
@@ -494,6 +538,19 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
 
         <footer className="ec-modal__footer">
           <button className="ec-btn ec-btn--sec" onClick={onFechar}>Cancelar</button>
+          {podeForcarSubmit && !salvando && (
+            <button
+              className="ec-btn ec-btn--forcar"
+              onClick={() => {
+                if (confirm(`Este cliente tem restrição de dia, mas você quer forçar o agendamento.\n\n${erros.join('\n')}\n\nContinuar mesmo assim?`)) {
+                  onSalvar(form);
+                }
+              }}
+              title="Ignora a restrição de dia do cliente e adiciona a visita"
+            >
+              ⚠ Adicionar mesmo assim
+            </button>
+          )}
           <button className="ec-btn ec-btn--pri" onClick={() => onSalvar(form)} disabled={!podeSubmit || salvando}>
             {salvando ? 'Salvando...' : 'Adicionar Visita'}
           </button>
@@ -1148,6 +1205,7 @@ export default function EscalaCampo() {
                         estouraDia={conflitos.idsEstouram?.has(v.id)}
                         prioridade={calcPrioridade(v.clientes, v.data_agendada)}
                         mostrarPrioridade={mostrarPrioridade}
+                        restricao={checarRestricoes(v.clientes, v.data_agendada, v.hora_estimada_chegada)}
                         onEditar={() => setModalEdit(v)}
                       />
                     ))

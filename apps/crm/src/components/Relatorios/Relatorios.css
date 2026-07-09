@@ -448,6 +448,19 @@
 }
 .rel-btn:hover { background: var(--color-primary-dark); }
 
+.rel-btn--perigo {
+  background: white;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+}
+.rel-btn--perigo:hover:not(:disabled) {
+  background: #FEE2E2;
+  border-color: #DC2626;
+}
+.rel-btn--perigo:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.rel-modal__footer { display: flex; align-items: center; gap: 8px; }
+
 /* Lightbox */
 .rel-lightbox {
   position: fixed;

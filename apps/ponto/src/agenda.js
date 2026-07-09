@@ -661,45 +661,83 @@ export function changeDate(delta) {
 export function goToday() { st.data = getHoje(); renderAgenda(); }
 
 // ── Check-in ──────────────────────────────────────────────────────
+let checkinEmAndamento = false; // guard contra duplo-clique
+
 export async function checkIn() {
+  if (checkinEmAndamento) return;
   const v = st.visitaSel;
   if (!v) return;
   const ses = AUTH.getSession();
 
-  toast('Capturando localização...');
-  const gps = await captureGPS();
-  const gpsFalhou = gps.lat == null || gps.lng == null;
-  const now = new Date().toISOString();
+  checkinEmAndamento = true;
+  try {
+    // Se já existe um relatório em andamento para essa visita, reutiliza
+    const existente = await loadRelatorio(v.id);
+    if (existente) {
+      st.relatorioSel = existente;
+      st.fotos = await loadFotos(existente.id);
+      v.status = 'em_execucao';
+      toast('✓ Relatório já iniciado — retomando');
+      st.view = 'exec';
+      renderCurrentView();
+      startTimer();
+      return;
+    }
 
-  const { data: rel, error: err1 } = await supabase
-    .from('relatorios')
-    .insert({
-      agendamento_id: v.id,
-      funcionario_id: String(ses.employee_id),
-      checkin_at:  now,
-      checkin_lat: gps.lat,
-      checkin_lng: gps.lng,
-      status: 'em_andamento',
-    })
-    .select()
-    .single();
-  if (err1) { toast('Erro ao iniciar: ' + err1.message, false); return; }
+    toast('Capturando localização...');
+    const gps = await captureGPS();
+    const gpsFalhou = gps.lat == null || gps.lng == null;
+    const now = new Date().toISOString();
 
-  const { error: err2 } = await supabase
-    .from('agenda')
-    .update({ status: 'em_execucao' })
-    .eq('id', v.id);
-  if (err2) { toast('Erro ao atualizar visita: ' + err2.message, false); return; }
+    const { data: rel, error: err1 } = await supabase
+      .from('relatorios')
+      .insert({
+        agendamento_id: v.id,
+        funcionario_id: String(ses.employee_id),
+        checkin_at:  now,
+        checkin_lat: gps.lat,
+        checkin_lng: gps.lng,
+        status: 'em_andamento',
+      })
+      .select()
+      .single();
+    if (err1) {
+      // Se falhou por duplicata (constraint), busca o existente
+      if (err1.code === '23505' || err1.message.includes('duplicate')) {
+        const rec = await loadRelatorio(v.id);
+        if (rec) {
+          st.relatorioSel = rec;
+          st.fotos = await loadFotos(rec.id);
+          v.status = 'em_execucao';
+          toast('✓ Retomando visita já iniciada');
+          st.view = 'exec';
+          renderCurrentView();
+          startTimer();
+          return;
+        }
+      }
+      toast('Erro ao iniciar: ' + err1.message, false);
+      return;
+    }
 
-  v.status = 'em_execucao';
-  st.relatorioSel = rel;
-  st.fotos = [];
-  toast(gpsFalhou
-    ? '✓ Visita iniciada · ⚠ GPS não capturado'
-    : '✓ Visita iniciada');
-  st.view = 'exec';
-  renderCurrentView();
-  startTimer();
+    const { error: err2 } = await supabase
+      .from('agenda')
+      .update({ status: 'em_execucao' })
+      .eq('id', v.id);
+    if (err2) { toast('Erro ao atualizar visita: ' + err2.message, false); return; }
+
+    v.status = 'em_execucao';
+    st.relatorioSel = rel;
+    st.fotos = [];
+    toast(gpsFalhou
+      ? '✓ Visita iniciada · ⚠ GPS não capturado'
+      : '✓ Visita iniciada');
+    st.view = 'exec';
+    renderCurrentView();
+    startTimer();
+  } finally {
+    checkinEmAndamento = false;
+  }
 }
 
 // ── Timer da execução ─────────────────────────────────────────────
