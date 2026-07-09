@@ -200,6 +200,171 @@ function calcConflitosDia(visitas) {
 }
 
 // Nearest-neighbor a partir da primeira visita (ou primeira com hora)
+// ── Parâmetros do otimizador com restrições ────────────────────────────────
+const VEL_MEDIA_KMH          = 15;   // velocidade média em SP (a pé + público)
+const SETUP_MIN_ENTRE_VISITAS = 10;  // parar, encontrar contato, iniciar
+const LIMITE_BRUTE_FORCE     = 9;    // acima disso, fallback para nearest-neighbor
+const HORA_INICIO_DEFAULT    = 7 * 60; // 07:00 se ninguém tem hora ou janela
+
+// Gera todas as permutações de um array (Heap's algorithm iterativo)
+function* permutacoes(arr) {
+  const n = arr.length;
+  const c = new Array(n).fill(0);
+  yield arr.slice();
+  let i = 1;
+  while (i < n) {
+    if (c[i] < i) {
+      const k = i % 2 === 0 ? 0 : c[i];
+      [arr[k], arr[i]] = [arr[i], arr[k]];
+      yield arr.slice();
+      c[i] += 1;
+      i = 1;
+    } else {
+      c[i] = 0;
+      i += 1;
+    }
+  }
+}
+
+// Simula a linha do tempo de uma ordem específica e calcula score + timeline
+function simularOrdem(ordem, opts = {}) {
+  const km_totais = [];
+  const timeline = [];
+  let penalidadeEspera = 0;
+  let penalidadeAtrasoGestor = 0;
+  let penalidadeViolacao = 0;
+
+  // Hora de início: mais cedo entre a janela do primeiro cliente,
+  // a hora_estimada da primeira visita e HORA_INICIO_DEFAULT
+  const primeiro = ordem[0];
+  const janIni = primeiro.clientes?.janela_entrada_inicio
+    ? horaEmMinutos(primeiro.clientes.janela_entrada_inicio) : null;
+  const horaAg = primeiro.hora_estimada_chegada
+    ? horaEmMinutos(primeiro.hora_estimada_chegada) : null;
+  let tempoAtual = Math.max(HORA_INICIO_DEFAULT, janIni ?? horaAg ?? HORA_INICIO_DEFAULT);
+  // Se o gestor marcou hora ANTES da janela padrão, respeita
+  if (horaAg != null && horaAg < tempoAtual) tempoAtual = horaAg;
+  if (janIni != null && janIni > tempoAtual) tempoAtual = janIni;
+
+  for (let i = 0; i < ordem.length; i++) {
+    const v = ordem[i];
+    let kmParaCa = 0;
+    if (i > 0) {
+      const prev = ordem[i - 1];
+      kmParaCa = distanciaKm(prev.clientes?.lat, prev.clientes?.lng, v.clientes?.lat, v.clientes?.lng);
+      if (!isFinite(kmParaCa)) kmParaCa = 0;
+      km_totais.push(kmParaCa);
+      const minDeslocamento = Math.round((kmParaCa / VEL_MEDIA_KMH) * 60) + SETUP_MIN_ENTRE_VISITAS;
+      tempoAtual += minDeslocamento;
+    }
+
+    const jIni = v.clientes?.janela_entrada_inicio ? horaEmMinutos(v.clientes.janela_entrada_inicio) : null;
+    const jFim = v.clientes?.janela_entrada_fim    ? horaEmMinutos(v.clientes.janela_entrada_fim)    : null;
+    const hEst = v.hora_estimada_chegada           ? horaEmMinutos(v.hora_estimada_chegada)          : null;
+
+    let esperaMin = 0;
+    let atrasoMin = 0;
+    let violacaoMin = 0;
+
+    // Se chega antes da janela do cliente, espera
+    if (jIni != null && tempoAtual < jIni) {
+      esperaMin = jIni - tempoAtual;
+      tempoAtual = jIni;
+    }
+    // Se chega depois da janela do cliente, violação (dominante no score)
+    if (jFim != null && tempoAtual > jFim) {
+      violacaoMin = tempoAtual - jFim;
+    }
+    // Se chega bem depois da hora estimada pelo gestor, penalidade leve
+    if (hEst != null && tempoAtual > hEst + 15) {
+      atrasoMin = tempoAtual - hEst;
+    }
+
+    penalidadeEspera += esperaMin * 0.05;
+    penalidadeAtrasoGestor += atrasoMin * 3;
+    if (violacaoMin > 0) penalidadeViolacao += 500 + violacaoMin * 20;
+
+    const chegada = tempoAtual;
+    const duracao = v.duracao_estimada_min ?? v.clientes?.duracao_estimada_min ?? 60;
+    tempoAtual += duracao;
+    const saida = tempoAtual;
+
+    timeline.push({ visitaId: v.id, chegada, saida, esperaMin, atrasoMin, violacaoMin });
+  }
+
+  const distTotalKm = km_totais.reduce((s, x) => s + x, 0);
+  const score = distTotalKm + penalidadeEspera + penalidadeAtrasoGestor + penalidadeViolacao;
+  return { score, distTotalKm, timeline, temViolacao: penalidadeViolacao > 0 };
+}
+
+// Otimizador com restrições de janela — brute-force para N ≤ LIMITE_BRUTE_FORCE
+// Retorna { ordem, ordemGeo, distKmViavel, distKmGeo, timeline, motivos, usouFallback }
+function otimizarRotaComRestricoes(visitas) {
+  if (visitas.length < 2) return null;
+
+  const ordemGeo = otimizarRotaNN(visitas);
+  const simGeo   = simularOrdem(ordemGeo);
+
+  // Fallback: N grande, retorna só nearest-neighbor
+  if (visitas.length > LIMITE_BRUTE_FORCE) {
+    return {
+      ordem: ordemGeo, ordemGeo, distKmViavel: simGeo.distTotalKm,
+      distKmGeo: simGeo.distTotalKm, timeline: simGeo.timeline,
+      motivos: [], usouFallback: true, iguais: true,
+    };
+  }
+
+  // Brute-force: encontra a melhor ordem viável
+  let melhor = null;
+  for (const perm of permutacoes(visitas.slice())) {
+    const sim = simularOrdem(perm);
+    if (!melhor || sim.score < melhor.score) {
+      melhor = { ordem: perm.slice(), ...sim };
+    }
+  }
+
+  // Detecção de desvio: comparar posições da mesma visita nas 2 ordens
+  const posGeo = new Map(ordemGeo.map((v, i) => [v.id, i]));
+  const posMel = new Map(melhor.ordem.map((v, i) => [v.id, i]));
+  const iguais = melhor.ordem.every((v, i) => ordemGeo[i]?.id === v.id);
+
+  // Motivos: quais visitas foram deslocadas E têm janela definida (foram "responsáveis" pelo desvio)
+  const motivos = [];
+  if (!iguais) {
+    melhor.ordem.forEach((v, iMel) => {
+      const iGeo = posGeo.get(v.id);
+      if (iGeo == null || iGeo === iMel) return;
+      const c = v.clientes ?? {};
+      if (c.janela_entrada_inicio || c.janela_entrada_fim) {
+        const jI = c.janela_entrada_inicio?.slice(0, 5);
+        const jF = c.janela_entrada_fim?.slice(0, 5);
+        let janelaTxt = '';
+        if (jI && jF) janelaTxt = `só recebe entre ${jI} e ${jF}`;
+        else if (jI) janelaTxt = `só recebe a partir de ${jI}`;
+        else if (jF) janelaTxt = `só recebe até ${jF}`;
+        motivos.push({
+          visitaId: v.id,
+          nome: c.nome_empresa,
+          texto: `${c.nome_empresa} ${janelaTxt}`,
+          moveuDe: iGeo, moveuPara: iMel,
+        });
+      }
+    });
+  }
+
+  return {
+    ordem: melhor.ordem,
+    ordemGeo,
+    distKmViavel: melhor.distTotalKm,
+    distKmGeo:    simGeo.distTotalKm,
+    timeline:     melhor.timeline,
+    motivos,
+    usouFallback: false,
+    iguais,
+    temViolacao: melhor.temViolacao,
+  };
+}
+
 function otimizarRotaNN(visitas) {
   if (visitas.length < 2) return [];
   // Se alguma tem hora fixa, começa por essa
@@ -597,6 +762,9 @@ export default function EscalaCampo() {
   // ── Tooltip global (para escapar overflow das colunas) ─────────────────────
   const [tooltip, setTooltip] = useState(null); // { x, y, sugestoes }
 
+  // ── Preview da rota otimizada (quando difere da rota geográfica pura) ──────
+  const [previewRota, setPreviewRota] = useState(null); // { empId, resultado }
+
   const hoje = getHoje();
 
   // ── Dados estáticos ────────────────────────────────────────────────────────
@@ -893,17 +1061,45 @@ export default function EscalaCampo() {
       alert('Alguns clientes não têm coordenadas GPS. Preencha lat/lng no cadastro para otimizar a rota.');
       return;
     }
-    const ordem = otimizarRotaNN(rascunhos);
-    if (!ordem.length) return;
 
     setOtimizando(String(empId));
+    const resultado = otimizarRotaComRestricoes(rascunhos);
+    if (!resultado || !resultado.ordem.length) { setOtimizando(null); return; }
+
+    // Caso simples: nenhum desvio ou fallback — aplica direto
+    if (resultado.iguais) {
+      try {
+        await aplicarOrdemRota(resultado.ordem);
+        const kmFmt = resultado.distKmViavel.toFixed(1);
+        alert(`✓ Rota otimizada · ${kmFmt} km`);
+      } catch (e) {
+        alert('Erro ao otimizar: ' + e.message);
+      } finally {
+        setOtimizando(null);
+      }
+      return;
+    }
+
+    // Desvio: abre modal com preview
+    setOtimizando(null);
+    setPreviewRota({ empId: String(empId), resultado });
+  }
+
+  async function aplicarOrdemRota(ordem) {
+    await Promise.all(
+      ordem.map((v, i) => supabase.from('agenda').update({ ordem_rota: i }).eq('id', v.id))
+    );
+    await carregarAgenda();
+  }
+
+  async function confirmarPreviewRota() {
+    if (!previewRota) return;
+    setOtimizando(previewRota.empId);
     try {
-      await Promise.all(
-        ordem.map((v, i) => supabase.from('agenda').update({ ordem_rota: i }).eq('id', v.id))
-      );
-      await carregarAgenda();
+      await aplicarOrdemRota(previewRota.resultado.ordem);
+      setPreviewRota(null);
     } catch (e) {
-      alert('Erro ao otimizar: ' + e.message);
+      alert('Erro ao aplicar: ' + e.message);
     } finally {
       setOtimizando(null);
     }
@@ -1305,6 +1501,16 @@ export default function EscalaCampo() {
         />
       )}
 
+      {/* ── Modal de preview da rota otimizada ── */}
+      {previewRota && (
+        <ModalPreviewRota
+          resultado={previewRota.resultado}
+          onAplicar={confirmarPreviewRota}
+          onFechar={() => setPreviewRota(null)}
+          aplicando={otimizando === previewRota.empId}
+        />
+      )}
+
       {/* ── Modal de redistribuição ── */}
       {modalRedistrib && (
         <ModalRedistribuir
@@ -1494,6 +1700,101 @@ function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, s
 }
 
 // ── Modal de redistribuição de visitas de funcionários ausentes ─────────────
+// ── Modal de preview da rota otimizada (quando difere da ideal geográfica) ─
+function ModalPreviewRota({ resultado, onAplicar, onFechar, aplicando }) {
+  const { ordem, ordemGeo, distKmViavel, distKmGeo, timeline, motivos, temViolacao } = resultado;
+  const diffKm = distKmViavel - distKmGeo; // positivo = rota viável mais longa
+
+  const posGeo = new Map(ordemGeo.map((v, i) => [v.id, i + 1]));
+
+  return (
+    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div className="ec-modal ec-modal--atras">
+        <header className="ec-modal__header">
+          <div>
+            <h3 className="ec-modal__titulo">🧭 Rota otimizada</h3>
+            <p className="ec-modal__sub">Ajustada para respeitar janelas de horário</p>
+          </div>
+          <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
+        </header>
+
+        <div className="ec-modal__corpo">
+          {motivos.length > 0 && (
+            <div className="ec-preview__motivos">
+              <div className="ec-preview__motivos-titulo">⚠ Por que essa não é a rota mais curta:</div>
+              {motivos.map(m => (
+                <div key={m.visitaId} className="ec-preview__motivo">
+                  Priorizei <strong>{m.nome}</strong> ({m.moveuDe + 1}ª → {m.moveuPara + 1}ª posição) porque {m.texto.replace(m.nome, '').trim()}.
+                </div>
+              ))}
+            </div>
+          )}
+
+          {temViolacao && (
+            <div className="ec-alerta ec-alerta--erro">
+              ⚠ Mesmo com esta ordem, alguma visita ficou fora da janela do cliente. Verifique horários manualmente ou aceite para revisar depois.
+            </div>
+          )}
+
+          <div className="ec-preview__diff-km">
+            <div>
+              <div className="ec-preview__diff-lbl">Rota escolhida</div>
+              <div className="ec-preview__diff-val">{distKmViavel.toFixed(1)} km</div>
+            </div>
+            <div className="ec-preview__diff-vs">vs</div>
+            <div>
+              <div className="ec-preview__diff-lbl">Rota mais curta ignorando restrições</div>
+              <div className="ec-preview__diff-val ec-preview__diff-val--sec">{distKmGeo.toFixed(1)} km</div>
+            </div>
+            <div className={diffKm > 0 ? 'ec-preview__diff-tag ec-preview__diff-tag--custo' : 'ec-preview__diff-tag ec-preview__diff-tag--ganho'}>
+              {diffKm > 0 ? `+${diffKm.toFixed(1)} km` : `${diffKm.toFixed(1)} km`}
+            </div>
+          </div>
+
+          <div className="ec-preview__lista">
+            <div className="ec-preview__lista-titulo">Nova ordem sugerida</div>
+            {ordem.map((v, i) => {
+              const t = timeline[i];
+              const c = v.clientes ?? {};
+              const janela = c.janela_entrada_inicio && c.janela_entrada_fim
+                ? `${c.janela_entrada_inicio.slice(0,5)}–${c.janela_entrada_fim.slice(0,5)}`
+                : null;
+              const posAntes = posGeo.get(v.id);
+              const mudou = posAntes !== (i + 1);
+              return (
+                <div key={v.id} className={`ec-preview__linha ${t.violacaoMin > 0 ? 'ec-preview__linha--viola' : ''}`}>
+                  <div className="ec-preview__ord">{i + 1}</div>
+                  <div className="ec-preview__info">
+                    <div className="ec-preview__nome">{c.nome_empresa ?? '—'}</div>
+                    <div className="ec-preview__meta">
+                      chegada estimada <strong>{minutosParaHora(t.chegada)}</strong>
+                      {janela && <span> · janela {janela}</span>}
+                      {t.esperaMin > 0 && <span className="ec-preview__aviso"> · espera {t.esperaMin} min</span>}
+                      {t.violacaoMin > 0 && <span className="ec-preview__erro"> · atrasado {t.violacaoMin} min</span>}
+                    </div>
+                  </div>
+                  {mudou && (
+                    <div className="ec-preview__mudou" title={`Antes ${posAntes}ª`}>
+                      {posAntes > (i + 1) ? '↑' : '↓'} {posAntes}ª→{i + 1}ª
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <footer className="ec-modal__footer">
+          <button className="ec-btn ec-btn--sec" onClick={onFechar} disabled={aplicando}>Cancelar</button>
+          <button className="ec-btn ec-btn--pri" onClick={onAplicar} disabled={aplicando}>
+            {aplicando ? 'Aplicando...' : 'Aplicar nova ordem'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 function ModalRedistribuir({ visitas, employees, agendaOrg, bloqueios, clientes, onFechar, onMudou }) {
   const [salvando, setSalvando] = useState(false);
   const [escolhas, setEscolhas] = useState({}); // visitaId -> empIdNovo
