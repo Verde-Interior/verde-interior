@@ -87,13 +87,25 @@ function checarRestricoes(cliente, dataAgendada, horaChegada) {
     }
   }
 
-  if (horaChegada && cliente?.janela_entrada_inicio && cliente?.janela_entrada_fim) {
+  // Janela de horário — verifica cada limite de forma independente:
+  // - Se só tem "a partir de", exige h >= ini
+  // - Se só tem "até", exige h <= fim
+  // - Se tem os dois, exige h >= ini AND h <= fim
+  if (horaChegada && (cliente?.janela_entrada_inicio || cliente?.janela_entrada_fim)) {
     const h = horaChegada.slice(0, 5);
-    const ini = cliente.janela_entrada_inicio.slice(0, 5);
-    const fim = cliente.janela_entrada_fim.slice(0, 5);
-    if (h < ini || h > fim) {
+    const ini = cliente.janela_entrada_inicio?.slice(0, 5) ?? null;
+    const fim = cliente.janela_entrada_fim?.slice(0, 5) ?? null;
+    const antes = ini != null && h < ini;
+    const depois = fim != null && h > fim;
+    if (antes || depois) {
       restricaoHora = true;
-      motivos.push(`Janela do cliente: ${ini}–${fim} · marcado ${h}`);
+      if (ini && fim) {
+        motivos.push(`Janela do cliente: ${ini}–${fim} · marcado ${h}`);
+      } else if (ini) {
+        motivos.push(`Cliente só recebe a partir das ${ini} · marcado ${h}`);
+      } else {
+        motivos.push(`Cliente deve ter chegado até ${fim} · marcado ${h}`);
+      }
     }
   }
 
@@ -439,11 +451,19 @@ function verificarConflitos(cliente, isoDate) {
 
 function verificarHorario(cliente, hora) {
   const avisos = [];
-  if (hora && cliente.janela_entrada_inicio && cliente.janela_entrada_fim) {
-    const ini = cliente.janela_entrada_inicio.slice(0, 5);
-    const fim = cliente.janela_entrada_fim.slice(0, 5);
-    if (hora < ini || hora > fim) {
+  if (!hora) return avisos;
+  const ini = cliente.janela_entrada_inicio?.slice(0, 5) ?? null;
+  const fim = cliente.janela_entrada_fim?.slice(0, 5) ?? null;
+  if (!ini && !fim) return avisos;
+  const antes  = ini != null && hora < ini;
+  const depois = fim != null && hora > fim;
+  if (antes || depois) {
+    if (ini && fim) {
       avisos.push(`Janela de entrada: ${ini}–${fim} · você marcou ${hora}`);
+    } else if (ini) {
+      avisos.push(`Cliente só recebe a partir das ${ini} · você marcou ${hora}`);
+    } else {
+      avisos.push(`Cliente deve ter chegado até ${fim} · você marcou ${hora}`);
     }
   }
   return avisos;
