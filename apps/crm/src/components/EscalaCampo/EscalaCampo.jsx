@@ -549,9 +549,9 @@ function CartaoVisita({
 
       {/* Botões de reordenar (ocultos no modo seleção) */}
       {!modoSelecao && (
-        <div className="ec-cartao__ordens">
-          <button className="ec-cartao__ord" onClick={onCima}  disabled={isFirst || !editavel} title="Subir">▲</button>
-          <button className="ec-cartao__ord" onClick={onBaixo} disabled={isLast  || !editavel} title="Descer">▼</button>
+        <div className="ec-cartao__ordens" onClick={e => e.stopPropagation()}>
+          <button className="ec-cartao__ord" onClick={e => { e.stopPropagation(); onCima();  }} disabled={isFirst || !editavel} title="Subir">▲</button>
+          <button className="ec-cartao__ord" onClick={e => { e.stopPropagation(); onBaixo(); }} disabled={isLast  || !editavel} title="Descer">▼</button>
         </div>
       )}
 
