@@ -87,6 +87,22 @@ window.agendaDescartaPending = agDescartaPending;
 tick();
 setInterval(tick, 1000);
 
+// ── Banner de status de conexão ─────────────────────────────────
+function setupOfflineBanner() {
+  const el = document.createElement('div');
+  el.id = 'net-banner';
+  el.innerHTML = `<i class="fa-solid fa-plug-circle-xmark"></i> Sem internet — as fotos e o relatório vão salvar quando reconectar`;
+  document.body.prepend(el);
+  function refresh() {
+    if (navigator.onLine) el.classList.remove('on');
+    else el.classList.add('on');
+  }
+  window.addEventListener('online',  refresh);
+  window.addEventListener('offline', refresh);
+  refresh();
+}
+setupOfflineBanner();
+
 async function init() {
   await AUTH.initSession();
   if (AUTH.getSession()) {

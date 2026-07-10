@@ -460,11 +460,15 @@ function viewReport() {
         </div>
       </div>
 
-      <div class="ag-actions">
-        <button class="ag-btn ag-btn--pri" onclick="agendaSaveReport()">
-          <i class="fa-solid fa-check"></i> Salvar e voltar
+      <div class="ag-actions ag-actions--grid">
+        <button class="ag-btn ag-btn--sec" onclick="agendaSaveReport(false)">
+          <i class="fa-solid fa-floppy-disk"></i> Só salvar
+        </button>
+        <button class="ag-btn ag-btn--pri" onclick="agendaSaveReport(true)">
+          <i class="fa-solid fa-arrow-right"></i> Salvar e ir para assinatura
         </button>
       </div>
+      <small class="ag-hint">A visita só finaliza depois da assinatura e do check-out.</small>
     </div>
   `;
 }
@@ -870,7 +874,9 @@ export async function saveFotoObs(fotoId, texto) {
 }
 
 // ── Salvar relato + observações ───────────────────────────────────
-export async function saveReport() {
+// irParaAssinatura = true → vai direto pra tela de assinatura
+// irParaAssinatura = false → continua na tela de relatório
+export async function saveReport(irParaAssinatura = false) {
   const relato = document.getElementById('ag-relato')?.value?.trim() ?? '';
   const obs    = document.getElementById('ag-obs')?.value?.trim() ?? '';
   const r = st.relatorioSel;
@@ -884,7 +890,7 @@ export async function saveReport() {
 
   st.relatorioSel = { ...r, relato: relato || null, observacoes: obs || null };
   toast('✓ Relatório salvo');
-  st.view = 'exec';
+  st.view = irParaAssinatura ? 'sign' : 'report';
   renderCurrentView();
   startTimer();
 }
