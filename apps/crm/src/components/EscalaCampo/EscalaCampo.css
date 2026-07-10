@@ -361,46 +361,55 @@
   box-shadow: var(--shadow-md);
 }
 
-.ec-cartao--publicado  { border-left: 3px solid var(--color-success); }
-.ec-cartao--em_execucao { border-left: 3px solid var(--color-warning); }
-.ec-cartao--concluido  { border-left: 3px solid var(--color-accent); opacity: 0.8; }
+/* ═══════════════════════════════════════════════════════════════
+   HIERARQUIA VISUAL DO CARTÃO (Etapa 2 - UX audit 09/07)
+   ─────────────────────────────────────────────────────────────
+   Regra: um cartão mostra NO MÁXIMO um sinal "grande" por vez.
 
-/* Cartões em conflito de horário */
+   1. RESTRIÇÃO (bloqueio duro do cliente — mais grave) → cor de fundo
+   2. CONFLITO DE HORÁRIO (sobreposição ou estouro) → cor de fundo
+   3. PRIORIDADE (via toggle 🎯) → só borda esquerda 4px + dot indicador
+   4. STATUS de execução → ícone pequeno no canto, não cor de fundo
+
+   Ordem de precedência quando 2+ coexistem:
+   restrição-dia > conflito-sobreposição > conflito-fim > prioridade
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Status = ícone no canto (sem afetar fundo) — declarado em .ec-cartao__pub */
+.ec-cartao--publicado,
+.ec-cartao--em_execucao,
+.ec-cartao--concluido { border-left: 3px solid transparent; }
+.ec-cartao--publicado  { border-left-color: var(--color-success); }
+.ec-cartao--em_execucao { border-left-color: var(--color-warning); }
+.ec-cartao--concluido  { border-left-color: var(--color-accent); opacity: 0.75; }
+
+/* Conflitos de horário — fundo sólido, sem gradientes */
 .ec-cartao--conflito-sob {
-  background: #FEE2E2;
+  background: #FEF2F2;
   border-color: #FCA5A5;
-  box-shadow: 0 0 0 1px #FCA5A5;
 }
-.ec-cartao--conflito-sob:hover { box-shadow: 0 0 0 1px #F87171, var(--shadow-sm); }
+.ec-cartao--conflito-sob:hover { box-shadow: var(--shadow-sm); }
 
 .ec-cartao--conflito-fim {
-  background: #FEF9C3;
+  background: #FFFBEB;
   border-color: #FDE68A;
 }
-.ec-cartao--conflito-fim:hover { border-color: #FBBF24; }
 
-/* Se tiver os dois, sobreposição prevalece na cor de fundo */
+/* Sobreposição prevalece sobre estouro */
 .ec-cartao--conflito-sob.ec-cartao--conflito-fim {
-  background: #FEE2E2;
+  background: #FEF2F2;
   border-color: #FCA5A5;
 }
 
-/* ── Restrição do cliente (dia não permitido / hora fora da janela) ── */
-.ec-cartao--restr-dia {
-  background: repeating-linear-gradient(
-    45deg,
-    #FEE2E2,
-    #FEE2E2 6px,
-    white 6px,
-    white 12px
-  );
-  border-color: #FCA5A5;
+/* Restrição do cliente (dia ou hora fora da regra) — mais grave */
+.ec-cartao--restr-dia,
+.ec-cartao--restr-hora {
+  background: #FEE2E2;
+  border-color: #DC2626;
   border-left: 4px solid #DC2626;
 }
-.ec-cartao--restr-hora {
-  border-top: 2px dashed #F59E0B;
-}
 
+/* Tags de restrição — pequenas mas legíveis */
 .ec-cartao__restr {
   display: flex;
   gap: 4px;
@@ -410,7 +419,7 @@
 .ec-cartao__restr-tag {
   font-size: 9px;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 8px;
   background: #DC2626;
   color: white;
@@ -418,23 +427,28 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Prioridade (Fase 5.2) ── */
-/* Faixa vertical à esquerda + gradiente sutil no fundo */
-.ec-cartao--prio-critica {
-  border-left: 4px solid #DC2626;
-  background: linear-gradient(to right, #FEE2E2 0%, white 30%);
+/* ── Prioridade (só via toggle 🎯) ──────────────────────────────
+   Antes: gradiente + borda + cor forte. Agora: só borda esquerda
+   4px + dot pequeno no canto. Menos ruído visual. */
+.ec-cartao--prio-critica { border-left: 4px solid #DC2626; }
+.ec-cartao--prio-alta    { border-left: 4px solid #F97316; }
+.ec-cartao--prio-normal  { border-left: 4px solid #6B7280; }
+.ec-cartao--prio-baixa   { border-left: 4px solid #10B981; opacity: 0.75; }
+
+/* Dot indicador no canto superior direito quando prioridade ativa */
+.ec-cartao__prio-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px white;
 }
-.ec-cartao--prio-alta {
-  border-left: 4px solid #F97316;
-  background: linear-gradient(to right, #FFEDD5 0%, white 30%);
-}
-.ec-cartao--prio-normal {
-  border-left: 4px solid #6B7280;
-}
-.ec-cartao--prio-baixa {
-  border-left: 4px solid #10B981;
-  opacity: 0.85;
-}
+.ec-cartao--prio-critica .ec-cartao__prio-dot { background: #DC2626; }
+.ec-cartao--prio-alta    .ec-cartao__prio-dot { background: #F97316; }
+.ec-cartao--prio-normal  .ec-cartao__prio-dot { background: #6B7280; }
+.ec-cartao--prio-baixa   .ec-cartao__prio-dot { background: #10B981; }
 
 /* Botão de toggle Prioridade no header */
 .ec__btn-prio {
@@ -488,13 +502,13 @@
 }
 
 .ec__coluna-bloq {
-  background: none;
+  background: white;
   border: 1px solid var(--surface-border);
   color: var(--text-muted);
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -506,6 +520,7 @@
   border-color: #3B82F6;
   color: #1E40AF;
   background: #EFF6FF;
+  transform: scale(1.08);
 }
 
 /* Modal de bloqueios */
@@ -1302,21 +1317,19 @@
   gap: 6px;
   cursor: pointer;
 }
-.ec__btn-atras:hover { border-color: #EF9F27; color: #92600A; background: #FEF9C3; }
-.ec__btn-atras--alerta {
-  border-color: #EF9F27;
-  color: #92600A;
-  background: #FEF9C3;
-}
+.ec__btn-atras:hover { border-color: var(--text-secondary); color: var(--text-primary); background: var(--cream-50); }
+/* Quando tem atrasados: badge vermelho de destaque, mas botão mantém neutro */
+.ec__btn-atras--alerta { color: var(--text-primary); }
 .ec__btn-atras-badge {
-  background: #E24B4A;
+  background: #DC2626;
   color: white;
   font-size: 10px;
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 2px 7px;
+  border-radius: 10px;
   min-width: 18px;
   text-align: center;
+  box-shadow: 0 0 0 2px white;
 }
 
 .ec__btn-copiar {
@@ -1342,24 +1355,26 @@
 }
 
 .ec__coluna-otim {
-  background: none;
+  background: white;
   border: 1px solid var(--surface-border);
   color: var(--text-secondary);
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
   padding: 0;
+  position: relative;
 }
 .ec__coluna-otim:hover:not(:disabled) {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: var(--color-primary-lt);
+  transform: scale(1.08);
 }
 .ec__coluna-otim:disabled { opacity: 0.5; cursor: not-allowed; }
 

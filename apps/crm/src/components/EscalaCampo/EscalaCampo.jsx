@@ -547,6 +547,11 @@ function CartaoVisita({
         </button>
       )}
 
+      {/* Dot de prioridade no canto (só quando toggle ativo) */}
+      {mostrarPrioridade && prioridade && (
+        <span className="ec-cartao__prio-dot" title={`Prioridade ${PRIORIDADE_LABEL[prioridade] ?? prioridade}`} />
+      )}
+
       {/* Botões de reordenar (ocultos no modo seleção) */}
       {!modoSelecao && (
         <div className="ec-cartao__ordens" onClick={e => e.stopPropagation()}>
@@ -1388,7 +1393,8 @@ export default function EscalaCampo() {
                     <button
                       className="ec__coluna-bloq"
                       onClick={() => setModalBloqueio({ funcionarioId: String(emp.id), funcionarioNome: emp.name })}
-                      title="Gerenciar bloqueios (férias, folga, feriado)"
+                      title={`Marcar férias, folga ou feriado do ${emp.name}`}
+                      aria-label={`Ausências de ${emp.name}`}
                     >
                       📅
                     </button>
@@ -1397,7 +1403,8 @@ export default function EscalaCampo() {
                         className="ec__coluna-otim"
                         onClick={() => otimizarRotaEmp(emp.id)}
                         disabled={otimizando === String(emp.id)}
-                        title="Reordena as visitas em rascunho por proximidade GPS (nearest-neighbor)"
+                        title={`Otimizar a rota do ${emp.name} pela proximidade das visitas (GPS)`}
+                        aria-label="Otimizar rota"
                       >
                         {otimizando === String(emp.id) ? '⏳' : '🧭'}
                       </button>
