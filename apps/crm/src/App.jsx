@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { CRMProvider, useCRM } from './context/CRMContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/Toast/Toast';
 import Login from './components/Login/Login';
 import LogoMarca from './components/LogoMarca/LogoMarca';
 import KanbanBoard from './components/KanbanBoard/KanbanBoard';
@@ -255,8 +256,10 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AppGate fontScale={fontScale} />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AppGate fontScale={fontScale} />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

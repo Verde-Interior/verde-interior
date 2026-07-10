@@ -25,6 +25,7 @@ export default function Relatorios() {
   const [busca,      setBusca]      = useState('');
   const [filtroFunc, setFiltroFunc] = useState('todos');
   const [filtroDias, setFiltroDias] = useState(30);
+  const [flagsAlerta, setFlagsAlerta] = useState({ semFotos: false, semAssin: false, foraLocal: false });
   const [detalhe,    setDetalhe]    = useState(null); // relatorio expandido
 
   async function carregar() {
@@ -77,9 +78,16 @@ export default function Relatorios() {
         const bairro  = r.agenda?.cliente?.bairro?.toLowerCase() ?? '';
         if (!nomeEmp.includes(q) && !bairro.includes(q)) return false;
       }
+      if (flagsAlerta.semFotos && (r.fotos?.length ?? 0) > 0) return false;
+      if (flagsAlerta.semAssin && r.assinatura_responsavel_img) return false;
+      if (flagsAlerta.foraLocal) {
+        const c = r.agenda?.cliente;
+        const d = distanciaMetros(r.checkin_lat, r.checkin_lng, c?.lat, c?.lng);
+        if (d == null || d <= 300) return false;
+      }
       return true;
     });
-  }, [relatorios, busca, filtroFunc]);
+  }, [relatorios, busca, filtroFunc, flagsAlerta]);
 
   const metricas = useMemo(() => ({
     total:    filtrados.length,
@@ -141,6 +149,30 @@ export default function Relatorios() {
           <option value={365}>Último ano</option>
         </select>
 
+        <div className="rel__flags">
+          <button
+            className={`rel__flag ${flagsAlerta.semFotos ? 'rel__flag--on' : ''}`}
+            onClick={() => setFlagsAlerta(f => ({ ...f, semFotos: !f.semFotos }))}
+            title="Só mostrar relatórios sem fotos"
+          >
+            📷 Sem fotos
+          </button>
+          <button
+            className={`rel__flag ${flagsAlerta.semAssin ? 'rel__flag--on' : ''}`}
+            onClick={() => setFlagsAlerta(f => ({ ...f, semAssin: !f.semAssin }))}
+            title="Só mostrar relatórios sem assinatura"
+          >
+            ✍ Sem assinatura
+          </button>
+          <button
+            className={`rel__flag ${flagsAlerta.foraLocal ? 'rel__flag--on' : ''}`}
+            onClick={() => setFlagsAlerta(f => ({ ...f, foraLocal: !f.foraLocal }))}
+            title="Só mostrar relatórios com check-in > 300m do endereço"
+          >
+            📍 GPS fora
+          </button>
+        </div>
+
         <span className="rel__count">{filtrados.length} relatório{filtrados.length !== 1 ? 's' : ''}</span>
       </div>
 
@@ -189,8 +221,13 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
   const dist = distanciaMetros(r.checkin_lat, r.checkin_lng, c?.lat, c?.lng);
   const foraLocal = dist != null && dist > 300;
 
+  const nAlertas = (foraLocal ? 1 : 0) + (!nFotos ? 1 : 0) + (!temAssin ? 1 : 0);
+
   return (
-    <div className={`rel-card ${r.status === 'concluido' ? 'rel-card--ok' : 'rel-card--pend'}`} onClick={onAbrir}>
+    <div
+      className={`rel-card ${r.status === 'concluido' ? 'rel-card--ok' : 'rel-card--pend'} ${nAlertas > 0 ? 'rel-card--alerta' : ''}`}
+      onClick={onAbrir}
+    >
       <div className="rel-card__topo">
         <div className="rel-card__nome">{c?.nome_empresa ?? '—'}</div>
         <div className="rel-card__data">{formatarData(r.agenda?.data_agendada)}</div>
@@ -200,12 +237,16 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
         {c?.bairro && <span>· {c.bairro}</span>}
         {r.checkin_at && <span>· ⏱ {new Date(r.checkin_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span>· duração {dur}</span>
+        {dist != null && (
+          <span className={foraLocal ? 'rel-card__dist rel-card__dist--warn' : 'rel-card__dist'}>
+            · 📍 <strong>{dist}m</strong> do endereço
+          </span>
+        )}
       </div>
       <div className="rel-card__tags">
         {nFotos > 0 && <span className="rel-tag rel-tag--ok">📷 {nFotos} foto{nFotos > 1 ? 's' : ''}</span>}
         {temAssin  && <span className="rel-tag rel-tag--ok">✍ assinado</span>}
-        {foraLocal && <span className="rel-tag rel-tag--warn">⚠ check-in {dist}m do endereço</span>}
-        {!nFotos && <span className="rel-tag rel-tag--neu">sem fotos</span>}
+        {!nFotos && <span className="rel-tag rel-tag--warn">sem fotos</span>}
         {!temAssin && <span className="rel-tag rel-tag--warn">sem assinatura</span>}
       </div>
     </div>

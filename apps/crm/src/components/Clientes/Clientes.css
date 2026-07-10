@@ -313,6 +313,27 @@
   color: var(--text-muted);
 }
 
+/* Última visita com recência relativa + cor semântica */
+.clientes__recencia {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.clientes__recencia--recente {
+  color: var(--forest-700);
+  background: var(--forest-100);
+}
+.clientes__recencia--aviso {
+  color: #92600A;
+  background: #FEF3C7;
+}
+.clientes__recencia--antigo {
+  color: #991B1B;
+  background: #FEE2E2;
+}
+
 /* ── Badges ── */
 .clientes__badge {
   display: inline-block;

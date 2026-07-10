@@ -461,6 +461,53 @@
 
 .rel-modal__footer { display: flex; align-items: center; gap: 8px; }
 
+/* Distância GPS destacada na meta do cartão */
+.rel-card__dist {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.rel-card__dist--warn {
+  color: #B45309;
+  background: #FEF3C7;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+.rel-card__dist--warn strong { color: #92600A; }
+
+/* Cartão com alerta (sem foto/assinatura/GPS fora) fica sutilmente destacado */
+.rel-card--alerta {
+  background: linear-gradient(to right, #FFFBEB 0%, white 12%);
+}
+
+/* Toggles de alerta rápido */
+.rel__flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rel__flag {
+  background: white;
+  border: 1px solid var(--surface-border);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.rel__flag:hover { border-color: var(--text-secondary); background: var(--cream-50); }
+.rel__flag--on {
+  background: #FEF3C7;
+  border-color: #B45309;
+  color: #92600A;
+}
+.rel__flag--on:hover { background: #FDE68A; }
+
 /* Lightbox */
 .rel-lightbox {
   position: fixed;

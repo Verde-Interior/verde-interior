@@ -1,6 +1,8 @@
 // src/components/Clientes/Clientes.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../Toast/Toast';
+import { tempoRelativo } from '../../utils/formatUtils';
 import './Clientes.css';
 
 const DIAS_SEMANA = [
@@ -60,6 +62,15 @@ function formatarData(iso) {
   return new Date(iso + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
+// Retorna 'recente' | 'aviso' | 'antigo' baseado em dias desde a data
+function classeRecencia(iso) {
+  if (!iso) return 'antigo';
+  const dias = Math.floor((Date.now() - new Date(iso + 'T12:00').getTime()) / 86400000);
+  if (dias <= 7)  return 'recente';
+  if (dias <= 30) return 'aviso';
+  return 'antigo';
+}
+
 function formatarMoeda(v) {
   if (!v) return null;
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -97,6 +108,7 @@ const FORM_SERVICO_VAZIO = {
 };
 
 export default function Clientes() {
+  const toast = useToast();
   const [clientes,    setClientes]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [erro,        setErro]        = useState(null);
@@ -229,8 +241,9 @@ export default function Clientes() {
 
       await carregar();
       fecharModal();
+      toast.ok(modal.modo === 'novo' ? 'Cliente cadastrado' : 'Cliente salvo');
     } catch (e) {
-      alert('Erro ao salvar: ' + e.message);
+      toast.erro('Erro ao salvar: ' + e.message);
     } finally {
       setSalvando(false);
     }
@@ -255,8 +268,9 @@ export default function Clientes() {
       setAddServico(false);
       setFormServico(FORM_SERVICO_VAZIO);
       carregar();
+      toast.ok('Contrato adicionado');
     } catch (e) {
-      alert('Erro ao adicionar contrato: ' + e.message);
+      toast.erro('Erro ao adicionar contrato: ' + e.message);
     } finally {
       setSalvandoServ(false);
     }
@@ -417,7 +431,18 @@ export default function Clientes() {
                         ? <span>{c.duracao_estimada_min} min</span>
                         : <span className="clientes__aviso">⚠ —</span>}
                     </td>
-                    <td>{formatarData(c.ultima_visita)}</td>
+                    <td>
+                      {c.ultima_visita ? (
+                        <span
+                          className={`clientes__recencia clientes__recencia--${classeRecencia(c.ultima_visita)}`}
+                          title={formatarData(c.ultima_visita)}
+                        >
+                          {tempoRelativo(c.ultima_visita)}
+                        </span>
+                      ) : (
+                        <span className="clientes__dash">—</span>
+                      )}
+                    </td>
                     <td>
                       {servicosAtivos > 0
                         ? <span className="clientes__badge clientes__badge--servico">{servicosAtivos}</span>
@@ -511,6 +536,74 @@ export default function Clientes() {
                 </div>
               </section>
 
+              {/* ── Disponibilidade (mais crítico — sobe pra 2ª posição) ── */}
+              <section className="cl-sec cl-sec--destaque">
+                <h4 className="cl-sec__titulo">Disponibilidade para Visita</h4>
+                <div className="cl-grid">
+                  <div className="cl-campo cl-campo--wide">
+                    <label>Dias disponíveis</label>
+                    <div className="cl-dias">
+                      {DIAS_SEMANA.map(d => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className={`cl-dia ${form.dias_disponiveis.includes(d.id) ? 'cl-dia--ativo' : ''}`}
+                          onClick={() => toggleDia(d.id)}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="cl-campo">
+                    <label>Horário — chegada a partir de</label>
+                    <input
+                      type="time"
+                      value={form.janela_entrada_inicio}
+                      onChange={e => setF('janela_entrada_inicio', e.target.value)}
+                    />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Horário — deve ter chegado até</label>
+                    <input
+                      type="time"
+                      value={form.janela_entrada_fim}
+                      onChange={e => setF('janela_entrada_fim', e.target.value)}
+                    />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Duração estimada (min)</label>
+                    <input
+                      type="number"
+                      min="15"
+                      step="15"
+                      value={form.duracao_estimada_min}
+                      onChange={e => setF('duracao_estimada_min', e.target.value)}
+                      placeholder="Ex: 90"
+                    />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Frequência de visita</label>
+                    <select
+                      value={form.frequencia_visita}
+                      onChange={e => setF('frequencia_visita', e.target.value)}
+                    >
+                      {FREQ_VISITA_OPTIONS.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="cl-campo">
+                    <label>Início do contrato</label>
+                    <input
+                      type="date"
+                      value={form.data_inicio_contrato}
+                      onChange={e => setF('data_inicio_contrato', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </section>
+
               {/* ── Contato ── */}
               <section className="cl-sec">
                 <h4 className="cl-sec__titulo">Contato (responsável na empresa)</h4>
@@ -580,74 +673,6 @@ export default function Clientes() {
                       value={form.lng}
                       onChange={e => setF('lng', e.target.value)}
                       placeholder="-46.6388"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              {/* ── Disponibilidade ── */}
-              <section className="cl-sec cl-sec--destaque">
-                <h4 className="cl-sec__titulo">Disponibilidade para Visita</h4>
-                <div className="cl-grid">
-                  <div className="cl-campo cl-campo--wide">
-                    <label>Dias disponíveis</label>
-                    <div className="cl-dias">
-                      {DIAS_SEMANA.map(d => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          className={`cl-dia ${form.dias_disponiveis.includes(d.id) ? 'cl-dia--ativo' : ''}`}
-                          onClick={() => toggleDia(d.id)}
-                        >
-                          {d.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="cl-campo">
-                    <label>Horário — chegada a partir de</label>
-                    <input
-                      type="time"
-                      value={form.janela_entrada_inicio}
-                      onChange={e => setF('janela_entrada_inicio', e.target.value)}
-                    />
-                  </div>
-                  <div className="cl-campo">
-                    <label>Horário — deve ter chegado até</label>
-                    <input
-                      type="time"
-                      value={form.janela_entrada_fim}
-                      onChange={e => setF('janela_entrada_fim', e.target.value)}
-                    />
-                  </div>
-                  <div className="cl-campo">
-                    <label>Duração estimada (min)</label>
-                    <input
-                      type="number"
-                      min="15"
-                      step="15"
-                      value={form.duracao_estimada_min}
-                      onChange={e => setF('duracao_estimada_min', e.target.value)}
-                      placeholder="Ex: 90"
-                    />
-                  </div>
-                  <div className="cl-campo">
-                    <label>Frequência de visita</label>
-                    <select
-                      value={form.frequencia_visita}
-                      onChange={e => setF('frequencia_visita', e.target.value)}
-                    >
-                      {FREQ_VISITA_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="cl-campo">
-                    <label>Início do contrato</label>
-                    <input
-                      type="date"
-                      value={form.data_inicio_contrato}
-                      onChange={e => setF('data_inicio_contrato', e.target.value)}
                     />
                   </div>
                 </div>
