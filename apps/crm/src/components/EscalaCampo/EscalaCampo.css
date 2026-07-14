@@ -1608,3 +1608,94 @@
   transition: background var(--transition-fast);
 }
 .ec-atras__btn:hover { background: var(--color-primary-dark); }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE (< 720px)
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  .ec__header {
+    padding: 12px 14px 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .ec__titulo { font-size: 17px; }
+  .ec__sub { font-size: 11px; }
+  .ec__header-dir {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+  }
+  .ec__btn-atras, .ec__btn-copiar, .ec__btn-prio, .ec__btn-hoje, .ec__btn-redistrib {
+    padding: 8px 10px; font-size: 11px;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ec__nav-semana { grid-column: 1 / -1; justify-content: center; padding: 4px 10px; }
+  .ec__semana-label { font-size: 11px; }
+
+  .ec__tabs { padding: 0 8px; overflow-x: auto; }
+  .ec__tab { min-width: 62px; padding: 8px 10px 6px; }
+  .ec__tab-dia { font-size: 10px; }
+  .ec__tab-data { font-size: 11px; }
+
+  .ec__dia-bar {
+    padding: 8px 14px;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .ec__dia-info { flex-wrap: wrap; gap: 6px; }
+  .ec__dia-nome { font-size: 13px; }
+  .ec__dia-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ec__btn-publicar, .ec__btn-add, .ec__btn-sel {
+    flex: 1; padding: 8px 10px; font-size: 12px; justify-content: center;
+  }
+
+  /* Colunas mais estreitas mas ainda com scroll horizontal */
+  .ec__colunas { padding: 10px 14px 16px; gap: 8px; }
+  .ec__coluna { min-width: 180px; width: 180px; }
+  .ec__coluna-header { padding: 10px 10px 8px; }
+  .ec__coluna-nome { font-size: 12px; }
+  .ec__coluna-cargo { font-size: 9px; }
+
+  /* Cartões mais compactos */
+  .ec-cartao { padding: 6px 6px 6px 4px; }
+  .ec-cartao__nome { font-size: 11px; }
+  .ec-cartao__bairro { font-size: 9px; }
+  .ec-cartao__meta { gap: 4px; margin-top: 3px; }
+  .ec-cartao__hora, .ec-cartao__dur, .ec-cartao__tipo-tag { font-size: 9px; }
+  .ec-cartao__obs { font-size: 9px; margin-top: 3px; }
+
+  /* Bulk bar não ultrapassa a viewport */
+  .ec__bulk-bar {
+    min-width: 0;
+    left: 8px; right: 8px;
+    transform: none;
+    max-width: none;
+    padding: 10px 14px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ec__bulk-acoes { flex-direction: column; align-items: stretch; }
+
+  /* Modais fullscreen no mobile */
+  .ec-overlay { padding: 0; }
+  .ec-modal {
+    max-width: 100%;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+  .ec-modal__header { padding: 14px 16px 12px; }
+  .ec-modal__titulo { font-size: 15px; }
+  .ec-modal__corpo { padding: 14px 16px; }
+  .ec-modal__footer { padding: 12px 14px; flex-wrap: wrap; gap: 6px; }
+  .ec-grid2 { grid-template-columns: 1fr; }
+
+  /* Tooltip do warning: reposicionar próximo ao trigger */
+  .ec__warn-tooltip--portal { max-width: calc(100vw - 32px); }
+}

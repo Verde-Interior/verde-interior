@@ -455,7 +455,13 @@ function viewReport() {
             <input type="file" accept="image/*" capture="environment"
                    onchange="agendaAddPhoto(this)" style="display:none">
             <i class="fa-solid fa-camera"></i>
-            <span>Adicionar foto</span>
+            <span>Câmera</span>
+          </label>
+          <label class="ag-foto-add ag-foto-add--galeria">
+            <input type="file" accept="image/*" multiple
+                   onchange="agendaAddPhoto(this)" style="display:none">
+            <i class="fa-solid fa-images"></i>
+            <span>Galeria</span>
           </label>
         </div>
       </div>
@@ -801,24 +807,27 @@ async function tentarUploadFoto(file, relatorioId) {
 }
 
 export async function addPhoto(input) {
-  const file = input.files?.[0];
-  if (!file) return;
+  const files = Array.from(input.files ?? []);
+  if (!files.length) return;
   const r = st.relatorioSel;
   if (!r) { toast('Erro: sem relatório ativo', false); return; }
 
   preservarTextoRelatorio();
   input.value = '';
 
-  const tempId = 'tmp_' + Date.now();
-  toast('Enviando foto...');
-  const res = await tentarUploadFoto(file, r.id);
-  if (res.ok) {
-    st.fotos.push(res.rec);
-    toast('✓ Foto adicionada');
-  } else {
-    st.pendingFotos.push({ tempId, file, error: res.error, tentando: false });
-    toast('⚠ Foto não enviada — toque em Reenviar', false);
+  toast(files.length > 1 ? `Enviando ${files.length} fotos...` : 'Enviando foto...');
+  let okCount = 0, falhaCount = 0;
+  for (const file of files) {
+    const res = await tentarUploadFoto(file, r.id);
+    if (res.ok) { st.fotos.push(res.rec); okCount++; }
+    else {
+      st.pendingFotos.push({ tempId: 'tmp_' + Date.now() + '_' + Math.random(), file, error: res.error, tentando: false });
+      falhaCount++;
+    }
   }
+  if (okCount && !falhaCount) toast(`✓ ${okCount} foto${okCount>1?'s':''} adicionada${okCount>1?'s':''}`);
+  else if (okCount && falhaCount) toast(`${okCount} enviada${okCount>1?'s':''}, ${falhaCount} pendente${falhaCount>1?'s':''}`, false);
+  else toast('⚠ Nenhuma foto enviada — toque em Reenviar', false);
   renderCurrentView();
 }
 

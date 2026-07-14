@@ -13,18 +13,13 @@ import { renderAgenda } from './agenda.js';
 
 export function buildBars() {
   const ses = AUTH.getSession();
-  const isGestor = ses && ses.role === 'gestor';
 
-  if (isGestor) {
-    document.getElementById('ubar').innerHTML = state.EMP.map((e, i) =>
-      `<button class="uch${i === state.cu ? ' on' : ''}" onclick="selU(${i},this)">${e.name}</button>`
-    ).join('');
-  } else {
-    const i = state.cu;
-    const name = state.EMP[i] ? state.EMP[i].name : '';
-    document.getElementById('ubar').innerHTML =
-      `<button class="uch on">${name}</button>`;
-  }
+  // Aba Colaborador é SEMPRE pessoal — só a conta logada, mesmo pra gestor.
+  // Gestor vê equipe inteira só na aba "Gestor" (#eubar / #ru).
+  const i = state.cu;
+  const name = state.EMP[i] ? state.EMP[i].name : '';
+  document.getElementById('ubar').innerHTML =
+    `<button class="uch on">${name}</button>`;
 
   document.getElementById('eubar').innerHTML = state.EMP.map((e, i) =>
     `<button class="uch${i === state.eu ? ' on' : ''}" onclick="selEU(${i},this)">${e.name}</button>`
