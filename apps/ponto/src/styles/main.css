@@ -425,10 +425,110 @@ body:has(#net-banner.on) .nav{top:44px}
 .ag-done__title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px}
 .ag-done__sub{font-size:13px;color:var(--text2);margin-bottom:24px}
 
-/* Responsivo */
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVO — MOBILE
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width:720px){
+  /* Nav: mais compacto, esconde nome da marca, empilhado com sessao */
+  .nav{
+    padding:0 10px;
+    height:auto;
+    min-height:52px;
+    flex-wrap:wrap;
+    gap:6px;
+    row-gap:6px;
+    padding-top:6px;padding-bottom:6px;
+  }
+  .nav-brand{gap:6px;flex-shrink:0}
+  .nav-logo svg{width:28px;height:28px}
+  .nav-name{display:none}      /* esconde "Verde interior" pra dar espaço */
+  .sav-ind{display:none}       /* esconde indicador "salvo" */
+
+  .nav-tabs{gap:3px;flex-wrap:wrap;order:2;flex:1;justify-content:center}
+  .ntb{padding:5px 10px;font-size:11px}
+  .ntb i{font-size:11px}
+
+  #sessao-wrap{order:3;gap:5px;flex-shrink:0}
+  .sbadge{font-size:10px;padding:3px 7px}
+  .loutbtn{font-size:11px;padding:4px 8px}
+  .loutbtn i{font-size:10px}
+
+  /* App com padding menor pra não estourar */
+  .app{
+    padding:12px;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+
+  /* Barras de subnavegação (Bater Ponto, Minha Agenda, ...) — pills mais compactas */
+  .bar{gap:4px;margin-bottom:12px}
+  .ch{padding:6px 10px;font-size:11px}
+  .uch{padding:5px 10px;font-size:11px}
+
+  /* Cards em geral com menos padding */
+  .card{padding:14px}
+  .cg3,.cg4{grid-template-columns:repeat(2,1fr);gap:6px}
+
+  /* Punch hero (relógio) */
+  .clk{font-size:36px}
+  .cdt{font-size:12px}
+  .pb{width:100px;height:100px}
+  .pb i{font-size:24px}
+
+  /* Tabelas com scroll horizontal */
+  .tt{font-size:12px}
+  .tt th,.tt td{padding:6px 5px}
+
+  /* Login: full-width */
+  .lcard{max-width:100%;margin:12px;padding:24px 18px}
+  .ltitle{font-size:18px}
+  .lsub{font-size:12px}
+
+  /* Toast fica na largura da tela */
+  .toast{max-width:calc(100vw - 24px);left:12px;right:12px;transform:none;bottom:12px;text-align:center;white-space:normal}
+
+  /* Banner offline mais compacto */
+  #net-banner{padding:8px 12px;font-size:12px}
+  body:has(#net-banner.on) .nav{top:36px}
+}
+
 @media (max-width:520px){
   .ag-card{padding:10px}
   .ag-card__ord{width:28px;height:28px;font-size:13px}
   .ag-actions--grid{grid-template-columns:1fr}
   .ag-fotos{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+
+  /* Header da agenda em coluna */
+  .ag-header{flex-direction:column;align-items:stretch;gap:8px}
+  .ag-header--sub{flex-direction:row;align-items:center}
+  .ag-title{font-size:16px}
+  .ag-sub{font-size:11px}
+  .ag-datenav{align-self:stretch;justify-content:center}
+
+  /* Timer menor */
+  .ag-exec__hero{padding:18px 14px}
+  .ag-exec__timer{font-size:32px}
+
+  /* Botões grandes ficam full-width */
+  .ag-btn{padding:11px 16px;font-size:13px;width:100%}
+  .ag-btn--big{padding:14px 18px;font-size:14px}
+  .ag-actions--grid .ag-btn{width:auto}
+
+  /* Modal / cards de foto */
+  .ag-foto img{height:90px}
+  .ag-foto-add{height:118px;font-size:11px}
+  .ag-foto-add i{font-size:20px}
+}
+
+@media (max-width:380px){
+  /* Telas muito pequenas (iPhone SE 1st gen, Galaxy pequeno) */
+  .nav-tabs{width:100%;justify-content:space-around;order:3}
+  #sessao-wrap{order:2;margin-left:auto}
+  .ntb{padding:5px 8px;font-size:10px}
+  .ntb i{display:none}   /* esconde ícones das tabs pra caber */
+  .ch{padding:5px 8px;font-size:10px}
+  .app{padding:10px}
+  .clk{font-size:30px}
+  .pb{width:88px;height:88px}
 }
