@@ -155,8 +155,8 @@ export async function renderAgenda() {
   if (!root) return;
 
   const ses = AUTH.getSession();
-  if (!ses || ses.role === 'gestor') {
-    root.innerHTML = `<div class="ag-empty">Área do funcionário.</div>`;
+  if (!ses || !ses.employee_id) {
+    root.innerHTML = `<div class="ag-empty">Sua conta não está vinculada a um funcionário — sem agenda para exibir.</div>`;
     return;
   }
 
