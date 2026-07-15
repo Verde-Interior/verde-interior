@@ -17,7 +17,7 @@ import {
   goTo as agGoTo, changeDate as agChangeDate, goToday as agGoToday,
   checkIn as agCheckIn, addPhoto as agAddPhoto, removePhoto as agRemovePhoto,
   saveFotoObs as agSaveFotoObs, saveReport as agSaveReport,
-  sigClear as agSigClear, submit as agSubmit,
+  sigClear as agSigClear, confirmSign as agConfirmSign, submit as agSubmit,
   retryFoto as agRetryFoto, descartarPending as agDescartaPending,
 } from './agenda.js';
 
@@ -80,6 +80,7 @@ window.agendaRemoveFoto    = agRemovePhoto;
 window.agendaSaveFotoObs   = agSaveFotoObs;
 window.agendaSaveReport    = agSaveReport;
 window.agendaSigClear      = agSigClear;
+window.agendaConfirmSign   = agConfirmSign;
 window.agendaSubmit        = agSubmit;
 window.agendaRetryFoto     = agRetryFoto;
 window.agendaDescartaPending = agDescartaPending;

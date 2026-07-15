@@ -1699,3 +1699,30 @@
   /* Tooltip do warning: reposicionar próximo ao trigger */
   .ec__warn-tooltip--portal { max-width: calc(100vw - 32px); }
 }
+
+/* ── Chips de tipo de tarefa (multi-select) ── */
+.ec-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.ec-chip {
+  padding: 7px 14px;
+  border: 1px solid var(--surface-border);
+  border-radius: 20px;
+  background: white;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+}
+.ec-chip:hover { background: var(--cream-50); }
+.ec-chip--ativo {
+  background: var(--forest-700);
+  color: white;
+  border-color: var(--forest-700);
+}
+.ec-chip--ativo:hover { background: var(--forest-800); }

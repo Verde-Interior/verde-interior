@@ -21,6 +21,26 @@ const TIPO_COR = {
   flores: '#9333EA', reforma: '#C47A1A', venda: '#1A7A4A', evento: '#C23B3B',
 };
 
+// Tipos de tarefa multi-select no modal de nova visita
+const TIPOS_TAREFA = [
+  { id: 'manutencao', label: 'Manutenção', frase: 'manutenção das plantas' },
+  { id: 'troca',      label: 'Troca',      frase: 'trocas' },
+  { id: 'reforma',    label: 'Reforma',    frase: 'reforma' },
+  { id: 'evento',     label: 'Evento',     frase: 'evento' },
+  { id: 'outro',      label: 'Outro',      frase: null }, // não contribui pro texto auto
+];
+
+// Gera texto padrão de instrução a partir dos tipos selecionados
+// Ex.: ['manutencao','troca'] → "Fazer manutenção das plantas + trocas"
+function textoObsDeTipos(tipos) {
+  if (!tipos?.length) return '';
+  const frases = tipos
+    .map(id => TIPOS_TAREFA.find(t => t.id === id)?.frase)
+    .filter(Boolean);
+  if (!frases.length) return '';
+  return 'Fazer ' + frases.join(' + ');
+}
+
 // Wrappers finos para os utils centralizados (mantém API interna do arquivo)
 const getSemana   = ref => getSemanaUtil(ref);
 const getDiaId    = iso => getDiaSlugUtil(iso);
@@ -618,8 +638,35 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
     hora:          '07:00',
     duracao:       '',
     servicoId:     '',
+    tipos:         [],     // multi-select de tipos de tarefa
     obs:           '',
+    obsManual:     false,  // vira true quando o gestor edita o texto manualmente
   });
+
+  // Ao mudar os tipos, regenera o texto automaticamente (a menos que o gestor
+  // já tenha editado manualmente). Se todos os tipos forem removidos e o texto
+  // igualar ao que foi gerado, limpa também.
+  function toggleTipo(id) {
+    setForm(f => {
+      const has = f.tipos.includes(id);
+      const novos = has ? f.tipos.filter(t => t !== id) : [...f.tipos, id];
+      const textoAntigo = textoObsDeTipos(f.tipos);
+      const textoNovo   = textoObsDeTipos(novos);
+      // Se o texto atual bate com o gerado dos tipos antigos (ou está vazio),
+      // sobrescreve. Caso contrário, mantém o texto do gestor.
+      const podeSobrescrever = !f.obsManual || f.obs.trim() === textoAntigo.trim() || !f.obs.trim();
+      return {
+        ...f,
+        tipos: novos,
+        obs:   podeSobrescrever ? textoNovo : f.obs,
+        obsManual: podeSobrescrever ? false : f.obsManual,
+      };
+    });
+  }
+
+  function onObsChange(v) {
+    setForm(f => ({ ...f, obs: v, obsManual: v.trim() !== textoObsDeTipos(f.tipos).trim() }));
+  }
 
   // Se veio com cliente pré-selecionado, preenche dados iniciais
   useEffect(() => {
@@ -758,8 +805,24 @@ function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInic
           )}
 
           <div className="ec-campo">
-            <label>Observação do gestor <span className="ec-hint">(aparece no celular do funcionário)</span></label>
-            <textarea rows={2} value={form.obs} onChange={e => setF('obs', e.target.value)} placeholder="Instrução específica para esta visita..." />
+            <label>Tipo de tarefa <span className="ec-hint">(pode marcar mais de um — preenche o texto abaixo)</span></label>
+            <div className="ec-chips">
+              {TIPOS_TAREFA.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`ec-chip ${form.tipos.includes(t.id) ? 'ec-chip--ativo' : ''}`}
+                  onClick={() => toggleTipo(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ec-campo">
+            <label>Instruções para o funcionário <span className="ec-hint">(aparece no celular; edite à vontade)</span></label>
+            <textarea rows={3} value={form.obs} onChange={e => onObsChange(e.target.value)} placeholder="Instrução específica para esta visita..." />
           </div>
         </div>
 
@@ -1031,6 +1094,7 @@ export default function EscalaCampo() {
         data_agendada:         form.data,
         hora_estimada_chegada: form.hora || null,
         duracao_estimada_min:  form.duracao ? Number(form.duracao) : null,
+        tipos_tarefa:          form.tipos?.length ? form.tipos : null,
         observacoes_gestor:    form.obs || null,
         ordem_rota:            proximaOrdem,
         status:                'rascunho',

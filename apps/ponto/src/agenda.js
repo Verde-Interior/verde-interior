@@ -6,24 +6,28 @@ import { toast, F, getHoje } from './utils.js';
 const DIAS_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
+// Marcador que separa relato do usuário da parte gerada a partir de legendas
+// (tudo depois do marcador é auto-regenerado quando fotos mudam)
+const RELATO_MARKER = '\n\n— Fotos —\n';
+
 // ── Estado local ──────────────────────────────────────────────────
 const st = {
-  view:          'list',     // list | detail | exec | report | sign | done
-  data:          getHoje(),       // data que está sendo visualizada
+  view:          'list',     // list | detail | exec | photos | report | sign | review | done
+  data:          getHoje(),
   visitas:       [],
-  visitaSel:     null,       // objeto da visita atual
-  relatorioSel:  null,       // relatório em andamento
-  fotos:         [],         // fotos já salvas em fotos_relatorio
-  pendingFotos:  [],         // fotos que falharam upload: [{ tempId, file, error, tentando }]
-  sigPad:        null,       // { canvas, ctx, points, drawing }
+  visitaSel:     null,
+  relatorioSel:  null,
+  fotos:         [],
+  pendingFotos:  [],         // [{ tempId, relatorioId, file, error, tentando }]
+  sigPad:        null,
 };
 
 // ── Persistência de estado de execução (resiliência a reload) ────
 const STORAGE_KEY = 'vi-agenda-exec';
+const PENDING_KEY = 'vi-agenda-pending-fotos';
 
 function persistirEstado() {
-  // Só persiste quando o funcionário está no meio de uma visita
-  const emExecucao = ['detail','exec','report','sign'].includes(st.view)
+  const emExecucao = ['detail','exec','photos','report','sign','review'].includes(st.view)
     && st.visitaSel?.id;
   if (!emExecucao) {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
@@ -49,13 +53,100 @@ function lerEstadoPersistido() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    // Descarta estado com mais de 12 horas (evita restaurar visita de ontem)
     if (data.ts && Date.now() - data.ts > 12 * 3600 * 1000) {
       limparEstadoPersistido();
       return null;
     }
     return data;
   } catch { return null; }
+}
+
+// ── Persistência de fila de fotos pendentes (sobrevive a reload) ──
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('FileReader falhou'));
+    r.readAsDataURL(file);
+  });
+}
+
+function base64ToFile(dataUrl, name, type) {
+  try {
+    const arr = dataUrl.split(',');
+    const bstr = atob(arr[1]);
+    const u8 = new Uint8Array(bstr.length);
+    for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+    return new File([u8], name, { type: type || 'image/jpeg' });
+  } catch { return null; }
+}
+
+async function persistPending() {
+  try {
+    // Só persiste até 20 fotos (limite conservador do localStorage ~5MB)
+    const items = await Promise.all(st.pendingFotos.slice(0, 20).map(async p => ({
+      tempId: p.tempId,
+      relatorioId: p.relatorioId,
+      fileName: p.file?.name || 'foto.jpg',
+      fileType: p.file?.type || 'image/jpeg',
+      fileB64: p.fileB64 || (p.file ? await fileToBase64(p.file) : null),
+      error: p.error,
+    })));
+    localStorage.setItem(PENDING_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.warn('Falha ao persistir fila pendente:', e);
+  }
+}
+
+function loadPending() {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (!raw) return [];
+    const items = JSON.parse(raw);
+    return items.map(item => {
+      const file = item.fileB64 ? base64ToFile(item.fileB64, item.fileName, item.fileType) : null;
+      return file ? {
+        tempId: item.tempId,
+        relatorioId: item.relatorioId,
+        file,
+        fileB64: item.fileB64,
+        error: item.error,
+        tentando: false,
+      } : null;
+    }).filter(Boolean);
+  } catch { return []; }
+}
+
+function limparPending() {
+  try { localStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+}
+
+// ── Compressão de imagem (client-side, sem lib) ───────────────────
+async function comprimirImagem(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else                { width  = Math.round(width  * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error('toBlob retornou null'));
+          const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg';
+          resolve(new File([blob], nome, { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      } catch (e) { reject(e); }
+    };
+    img.onerror = () => reject(new Error('Falha ao ler imagem'));
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -90,6 +181,9 @@ function statusLabel(s) {
     concluido:   { txt: 'Concluída',    cls: 'ag-badge--done' },
     cancelado:   { txt: 'Cancelada',    cls: 'ag-badge--cancel' },
   })[s] || { txt: s, cls: '' };
+}
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
 async function captureGPS() {
@@ -160,7 +254,7 @@ export async function renderAgenda() {
     return;
   }
 
-  // Tenta restaurar estado de execução se houver
+  // Restaura estado de execução se houver
   const persist = lerEstadoPersistido();
   if (persist && !st.visitaSel) {
     try {
@@ -174,13 +268,21 @@ export async function renderAgenda() {
           st.fotos = st.relatorioSel ? await loadFotos(st.relatorioSel.id) : [];
         }
         st.view = persist.view;
+
+        // Restaura fila de fotos pendentes que sobrou de uma sessão anterior
+        const pend = loadPending();
+        if (pend.length && st.relatorioSel) {
+          st.pendingFotos = pend.filter(p => p.relatorioId === st.relatorioSel.id);
+          if (st.pendingFotos.length) setTimeout(() => processarFilaUpload(), 500);
+        }
+
         toast('Retomando visita em andamento...');
         renderCurrentView();
         if (st.view === 'exec') startTimer();
         return;
       } else {
-        // Visita não encontrada ou já finalizada — descarta
         limparEstadoPersistido();
+        limparPending();
       }
     } catch (e) {
       console.warn('Não foi possível restaurar estado:', e);
@@ -195,12 +297,14 @@ export async function renderAgenda() {
 function renderCurrentView() {
   const root = document.getElementById('sv-agenda');
   if (!root) return;
-  if (st.view === 'list')   root.innerHTML = viewList();
-  if (st.view === 'detail') root.innerHTML = viewDetail();
-  if (st.view === 'exec')   root.innerHTML = viewExec();
-  if (st.view === 'report') { root.innerHTML = viewReport(); wireReportInputs(); }
-  if (st.view === 'sign')   { root.innerHTML = viewSign(); wireSignature(); }
-  if (st.view === 'done')   root.innerHTML = viewDone();
+  if (st.view === 'list')    root.innerHTML = viewList();
+  if (st.view === 'detail')  root.innerHTML = viewDetail();
+  if (st.view === 'exec')    root.innerHTML = viewExec();
+  if (st.view === 'photos')  root.innerHTML = viewPhotos();
+  if (st.view === 'report')  { root.innerHTML = viewReport(); wireReportInputs(); }
+  if (st.view === 'sign')    { root.innerHTML = viewSign(); wireSignature(); }
+  if (st.view === 'review')  root.innerHTML = viewReview();
+  if (st.view === 'done')    root.innerHTML = viewDone();
   persistirEstado();
 }
 
@@ -266,15 +370,15 @@ function cardVisitaLista(v, idx) {
     <div class="ag-card ag-card--${v.status}" onclick="agendaOpenDetail('${v.id}')">
       <div class="ag-card__ord">${v.ordem_rota ?? (idx + 1)}</div>
       <div class="ag-card__info">
-        <div class="ag-card__nome">${c?.nome_empresa ?? '—'}</div>
+        <div class="ag-card__nome">${esc(c?.nome_empresa) || '—'}</div>
         <div class="ag-card__end">
-          ${c?.bairro ? `<i class="fa-solid fa-location-dot"></i> ${c.bairro}` : ''}
-          ${c?.endereco ? ` · ${c.endereco}` : ''}
+          ${c?.bairro ? `<i class="fa-solid fa-location-dot"></i> ${esc(c.bairro)}` : ''}
+          ${c?.endereco ? ` · ${esc(c.endereco)}` : ''}
         </div>
         <div class="ag-card__meta">
           <span><i class="fa-regular fa-clock"></i> ${fmtHora(v.hora_estimada_chegada)}</span>
           <span>· ${fmtDur(v.duracao_estimada_min)}</span>
-          ${c?.grupo_servico ? `<span>· ${c.grupo_servico}</span>` : ''}
+          ${c?.grupo_servico ? `<span>· ${esc(c.grupo_servico)}</span>` : ''}
         </div>
       </div>
       <div class="ag-card__acao">
@@ -302,7 +406,7 @@ function viewDetail() {
     <div class="ag-header ag-header--sub">
       <button class="ag-back" onclick="agendaBack()"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
-        <div class="ag-title">${c?.nome_empresa ?? '—'}</div>
+        <div class="ag-title">${esc(c?.nome_empresa) || '—'}</div>
         <div class="ag-sub">Visita ${v.ordem_rota ?? '—'} · <span class="ag-badge ${s.cls}">${s.txt}</span></div>
       </div>
     </div>
@@ -311,9 +415,9 @@ function viewDetail() {
       <section class="ag-sec">
         <div class="ag-sec__title"><i class="fa-solid fa-location-dot"></i> Endereço</div>
         <div class="ag-sec__body">
-          <div><strong>${c?.endereco ?? '—'}</strong></div>
-          ${c?.complemento ? `<div class="ag-sec__hint">${c.complemento}</div>` : ''}
-          ${c?.bairro ? `<div class="ag-sec__hint">${c.bairro}</div>` : ''}
+          <div><strong>${esc(c?.endereco) || '—'}</strong></div>
+          ${c?.complemento ? `<div class="ag-sec__hint">${esc(c.complemento)}</div>` : ''}
+          ${c?.bairro ? `<div class="ag-sec__hint">${esc(c.bairro)}</div>` : ''}
           ${mapaUrl ? `<a class="ag-linkbtn" href="${mapaUrl}" target="_blank" rel="noopener"><i class="fa-solid fa-diamond-turn-right"></i> Abrir no mapa</a>` : ''}
         </div>
       </section>
@@ -322,8 +426,8 @@ function viewDetail() {
       <section class="ag-sec">
         <div class="ag-sec__title"><i class="fa-solid fa-user"></i> Contato</div>
         <div class="ag-sec__body">
-          ${c.contato_nome ? `<div><strong>${c.contato_nome}</strong></div>` : ''}
-          ${c.contato_telefone ? `<a class="ag-linkbtn" href="tel:${c.contato_telefone}"><i class="fa-solid fa-phone"></i> ${c.contato_telefone}</a>` : ''}
+          ${c.contato_nome ? `<div><strong>${esc(c.contato_nome)}</strong></div>` : ''}
+          ${c.contato_telefone ? `<a class="ag-linkbtn" href="tel:${esc(c.contato_telefone)}"><i class="fa-solid fa-phone"></i> ${esc(c.contato_telefone)}</a>` : ''}
         </div>
       </section>` : ''}
 
@@ -331,20 +435,20 @@ function viewDetail() {
         <div class="ag-sec__title"><i class="fa-regular fa-clock"></i> Horário previsto</div>
         <div class="ag-sec__body">
           <div><strong>${fmtHora(v.hora_estimada_chegada)}</strong> · duração ${fmtDur(v.duracao_estimada_min)}</div>
-          ${c?.grupo_servico ? `<div class="ag-sec__hint">${c.grupo_servico}</div>` : ''}
+          ${c?.grupo_servico ? `<div class="ag-sec__hint">${esc(c.grupo_servico)}</div>` : ''}
         </div>
       </section>
 
       ${c?.observacoes ? `
       <section class="ag-sec ag-sec--warn">
         <div class="ag-sec__title"><i class="fa-solid fa-triangle-exclamation"></i> Instruções especiais</div>
-        <div class="ag-sec__body">${c.observacoes}</div>
+        <div class="ag-sec__body">${esc(c.observacoes)}</div>
       </section>` : ''}
 
       ${v.observacoes_gestor ? `
       <section class="ag-sec ag-sec--gestor">
         <div class="ag-sec__title"><i class="fa-solid fa-comment"></i> Observação do gestor</div>
-        <div class="ag-sec__body">${v.observacoes_gestor}</div>
+        <div class="ag-sec__body">${esc(v.observacoes_gestor)}</div>
       </section>` : ''}
 
       <div class="ag-actions">
@@ -367,60 +471,163 @@ function viewDetail() {
   `;
 }
 
-// ── VIEW: Em execução (após check-in) ─────────────────────────────
+// ── VIEW: MENU DE EXECUÇÃO (após check-in) — estilo Auvo ─────────
 function viewExec() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
   if (!v || !r) return viewList();
-  const c = v.cliente;
 
-  const nFotos = st.fotos.length;
-  const temRelato = !!(r.relato && r.relato.trim());
+  const nFotos    = st.fotos.length;
+  const nPend     = st.pendingFotos.length;
+  // Considera relato "preenchido" apenas o texto do usuário (antes do marker)
+  const relatoUser = (r.relato || '').split(RELATO_MARKER)[0].trim();
+  const temRelato = relatoUser.length > 0 || st.fotos.some(f => (f.observacao || '').trim());
+  const temAssin  = !!r.assinatura_responsavel_img;
 
   return `
     <div class="ag-header ag-header--sub">
       <button class="ag-back" onclick="agendaBackToList()"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
-        <div class="ag-title">${c?.nome_empresa ?? '—'}</div>
+        <div class="ag-title">${esc(v.cliente?.nome_empresa) || '—'}</div>
         <div class="ag-sub"><span class="ag-badge ag-badge--exec">Em execução</span> · desde ${elapsedFrom(r.checkin_at)}</div>
       </div>
     </div>
 
-    <div class="ag-exec">
-      <div class="ag-exec__hero">
+    <div class="ag-menu">
+      <div class="ag-exec__hero ag-exec__hero--compact">
         <div class="ag-exec__timer" id="ag-timer">${elapsedFrom(r.checkin_at)}</div>
-        <div class="ag-exec__hint">Tempo desde o check-in</div>
+        <div class="ag-exec__hint">Tempo de visita</div>
       </div>
 
-      <div class="ag-exec__grid">
-        <div class="ag-exec__stat">
-          <div class="ag-exec__stat-lbl">Relato</div>
-          <div class="ag-exec__stat-val ${temRelato ? 'ok' : 'wait'}">
-            ${temRelato ? '<i class="fa-solid fa-check"></i> preenchido' : 'pendente'}
-          </div>
-        </div>
-        <div class="ag-exec__stat">
-          <div class="ag-exec__stat-lbl">Fotos</div>
-          <div class="ag-exec__stat-val ${nFotos > 0 ? 'ok' : 'wait'}">
-            ${nFotos > 0 ? `<i class="fa-solid fa-check"></i> ${nFotos} foto${nFotos > 1 ? 's' : ''}` : 'nenhuma'}
-          </div>
-        </div>
-      </div>
+      ${nPend > 0 ? `<div class="ag-menu-alert"><i class="fa-solid fa-cloud-arrow-up"></i> ${nPend} foto${nPend>1?'s':''} enviando em segundo plano — não feche o app</div>` : ''}
 
-      <div class="ag-actions ag-actions--grid">
-        <button class="ag-btn ag-btn--sec" onclick="agendaGoTo('report')">
-          <i class="fa-solid fa-file-pen"></i> Preencher relatório e fotos
-        </button>
-        <button class="ag-btn ag-btn--pri ${(!temRelato || nFotos === 0) ? 'ag-btn--warn' : ''}" onclick="agendaGoTo('sign')">
-          <i class="fa-solid fa-signature"></i> Finalizar visita
-        </button>
-      </div>
-      ${(!temRelato || nFotos === 0) ? `<small class="ag-hint ag-hint--warn"><i class="fa-solid fa-circle-info"></i> Recomendado preencher relato e pelo menos 1 foto antes de finalizar.</small>` : ''}
+      <button class="ag-menu-item" onclick="agendaGoTo('photos')">
+        <div class="ag-menu-item__ico"><i class="fa-solid fa-camera"></i></div>
+        <div class="ag-menu-item__body">
+          <div class="ag-menu-item__title">Fotos</div>
+          <div class="ag-menu-item__meta">${nFotos > 0 ? `${nFotos} foto${nFotos>1?'s':''} salva${nFotos>1?'s':''}${nPend>0 ? ` · ${nPend} enviando` : ''}` : (nPend>0 ? `${nPend} enviando…` : 'Nenhuma foto ainda')}</div>
+        </div>
+        ${nFotos > 0 ? '<i class="fa-solid fa-circle-check ag-menu-item__ok"></i>' : ''}
+        <i class="fa-solid fa-chevron-right ag-menu-item__arrow"></i>
+      </button>
+
+      <button class="ag-menu-item" onclick="agendaGoTo('report')">
+        <div class="ag-menu-item__ico"><i class="fa-solid fa-file-pen"></i></div>
+        <div class="ag-menu-item__body">
+          <div class="ag-menu-item__title">Relato da tarefa</div>
+          <div class="ag-menu-item__meta">${temRelato ? 'Preenchido' : 'Ainda não escrito'}</div>
+        </div>
+        ${temRelato ? '<i class="fa-solid fa-circle-check ag-menu-item__ok"></i>' : ''}
+        <i class="fa-solid fa-chevron-right ag-menu-item__arrow"></i>
+      </button>
+
+      <button class="ag-menu-item" onclick="agendaGoTo('sign')">
+        <div class="ag-menu-item__ico"><i class="fa-solid fa-signature"></i></div>
+        <div class="ag-menu-item__body">
+          <div class="ag-menu-item__title">Assinatura</div>
+          <div class="ag-menu-item__meta">${temAssin ? `${esc(r.assinatura_responsavel_nome || 'Coletada')}` : 'Ainda não assinado'}</div>
+        </div>
+        ${temAssin ? '<i class="fa-solid fa-circle-check ag-menu-item__ok"></i>' : ''}
+        <i class="fa-solid fa-chevron-right ag-menu-item__arrow"></i>
+      </button>
+
+      <button class="ag-menu-item ag-menu-item--acao" onclick="agendaGoTo('review')">
+        <div class="ag-menu-item__ico"><i class="fa-solid fa-eye"></i></div>
+        <div class="ag-menu-item__body">
+          <div class="ag-menu-item__title">Revisar e finalizar</div>
+          <div class="ag-menu-item__meta">Confira tudo antes do check-out</div>
+        </div>
+        <i class="fa-solid fa-chevron-right ag-menu-item__arrow"></i>
+      </button>
     </div>
   `;
 }
 
-// ── VIEW: Relatório (relato + observações + fotos) ────────────────
+// ── VIEW: Fotos (dedicada) ────────────────────────────────────────
+function viewPhotos() {
+  const v = st.visitaSel;
+  if (!v) return viewList();
+
+  return `
+    <div class="ag-header ag-header--sub">
+      <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
+      <div>
+        <div class="ag-title">Fotos</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
+      </div>
+    </div>
+
+    <div class="ag-photos">
+      <div class="ag-photos__actions">
+        <label class="ag-btn ag-btn--pri">
+          <input type="file" accept="image/*" capture="environment"
+                 onchange="agendaAddPhoto(this)" style="display:none">
+          <i class="fa-solid fa-camera"></i> Câmera
+        </label>
+        <label class="ag-btn ag-btn--sec">
+          <input type="file" accept="image/*" multiple
+                 onchange="agendaAddPhoto(this)" style="display:none">
+          <i class="fa-solid fa-images"></i> Galeria
+        </label>
+      </div>
+
+      ${st.pendingFotos.length > 0 ? `<div class="ag-menu-alert"><i class="fa-solid fa-cloud-arrow-up"></i> ${st.pendingFotos.length} enviando em segundo plano</div>` : ''}
+
+      <div class="ag-photos__list">
+        ${st.fotos.map((f, i) => photoItem(f, i)).join('')}
+        ${st.pendingFotos.map(p => photoPending(p)).join('')}
+      </div>
+
+      ${st.fotos.length === 0 && st.pendingFotos.length === 0
+        ? '<div class="ag-photos__empty">Nenhuma foto ainda. Toque em <strong>Câmera</strong> ou <strong>Galeria</strong> para adicionar.</div>'
+        : ''}
+      <small class="ag-hint">Legendas escritas aqui aparecem automaticamente no relato.</small>
+    </div>
+  `;
+}
+
+function photoItem(f, i) {
+  return `
+    <div class="ag-photo-item" data-id="${f.id}">
+      <img src="${f.url}" alt="foto ${i+1}">
+      <div class="ag-photo-item__body">
+        <input class="ag-photo-item__obs" placeholder="Legenda (aparece no relato)"
+               value="${esc(f.observacao)}"
+               onblur="agendaSaveFotoObs('${f.id}', this.value)">
+        <div class="ag-photo-item__acoes">
+          <button class="ag-photo-item__acao" onclick="agendaRemoveFoto('${f.id}')">
+            <i class="fa-solid fa-trash-can"></i> Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function photoPending(p) {
+  const previewUrl = p._previewUrl || (p._previewUrl = URL.createObjectURL(p.file));
+  return `
+    <div class="ag-photo-item ag-photo-item--pending" data-tid="${p.tempId}">
+      <img src="${previewUrl}" alt="foto pendente">
+      <div class="ag-photo-item__body">
+        <div class="ag-photo-item__msg">
+          <i class="fa-solid ${p.tentando ? 'fa-cloud-arrow-up' : 'fa-triangle-exclamation'}"></i>
+          ${p.tentando ? 'Enviando...' : 'Ainda não enviou'}
+        </div>
+        <div class="ag-photo-item__acoes">
+          <button class="ag-photo-item__acao" onclick="agendaRetryFoto('${p.tempId}')" ${p.tentando ? 'disabled' : ''}>
+            <i class="fa-solid fa-rotate-right"></i> Reenviar
+          </button>
+          <button class="ag-photo-item__acao ag-photo-item__acao--danger" onclick="agendaDescartaPending('${p.tempId}')">
+            <i class="fa-solid fa-xmark"></i> Descartar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── VIEW: Relatório (só o texto — fotos migraram para viewPhotos) ─
 function viewReport() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
@@ -430,96 +637,47 @@ function viewReport() {
     <div class="ag-header ag-header--sub">
       <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
-        <div class="ag-title">Relatório</div>
-        <div class="ag-sub">${v.cliente?.nome_empresa ?? '—'}</div>
+        <div class="ag-title">Relato da tarefa</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
       </div>
     </div>
 
     <div class="ag-form">
       <div class="ag-field">
-        <label>Relato da tarefa executada</label>
-        <textarea id="ag-relato" rows="4" placeholder="Descreva o que foi feito na visita...">${r.relato ?? ''}</textarea>
+        <label>O que foi feito na visita</label>
+        <textarea id="ag-relato" rows="6" placeholder="Descreva o que foi executado...">${esc(r.relato)}</textarea>
+        <small class="ag-hint">Legendas das fotos aparecem automaticamente abaixo depois do marcador <em>— Fotos —</em>.</small>
       </div>
 
       <div class="ag-field">
         <label>Observações gerais</label>
-        <textarea id="ag-obs" rows="3" placeholder="Plantas que precisam de atenção, materiais consumidos, etc.">${r.observacoes ?? ''}</textarea>
+        <textarea id="ag-obs" rows="4" placeholder="Plantas que precisam atenção, materiais consumidos, etc.">${esc(r.observacoes)}</textarea>
       </div>
 
-      <div class="ag-field">
-        <label>Fotos (${st.fotos.length}${st.pendingFotos.length > 0 ? ` · <span class="ag-pend-count">${st.pendingFotos.length} pendente${st.pendingFotos.length > 1 ? 's' : ''}</span>` : ''})</label>
-        <div class="ag-fotos">
-          ${st.fotos.map(fotoCard).join('')}
-          ${st.pendingFotos.map(pendingCard).join('')}
-          <label class="ag-foto-add">
-            <input type="file" accept="image/*" capture="environment"
-                   onchange="agendaAddPhoto(this)" style="display:none">
-            <i class="fa-solid fa-camera"></i>
-            <span>Câmera</span>
-          </label>
-          <label class="ag-foto-add ag-foto-add--galeria">
-            <input type="file" accept="image/*" multiple
-                   onchange="agendaAddPhoto(this)" style="display:none">
-            <i class="fa-solid fa-images"></i>
-            <span>Galeria</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="ag-actions ag-actions--grid">
-        <button class="ag-btn ag-btn--sec" onclick="agendaSaveReport(false)">
-          <i class="fa-solid fa-floppy-disk"></i> Só salvar
-        </button>
-        <button class="ag-btn ag-btn--pri" onclick="agendaSaveReport(true)">
-          <i class="fa-solid fa-arrow-right"></i> Salvar e ir para assinatura
+      <div class="ag-actions">
+        <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaSaveReport()">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar e voltar
         </button>
       </div>
-      <small class="ag-hint">A visita só finaliza depois da assinatura e do check-out.</small>
-    </div>
-  `;
-}
-
-function fotoCard(f) {
-  return `
-    <div class="ag-foto" data-id="${f.id}">
-      <img src="${f.url}" alt="foto">
-      <input class="ag-foto__obs" placeholder="Legenda (opcional)"
-             value="${(f.observacao ?? '').replace(/"/g, '&quot;')}"
-             onblur="agendaSaveFotoObs('${f.id}', this.value)">
-      <button class="ag-foto__del" onclick="agendaRemoveFoto('${f.id}')">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-  `;
-}
-
-function pendingCard(p) {
-  // Preview local via URL.createObjectURL do file
-  const previewUrl = p._previewUrl || (p._previewUrl = URL.createObjectURL(p.file));
-  return `
-    <div class="ag-foto ag-foto--pending" data-tid="${p.tempId}">
-      <img src="${previewUrl}" alt="foto pendente">
-      <div class="ag-foto__pending-msg">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        ${p.tentando ? 'Tentando...' : 'Não enviou'}
-      </div>
-      <div class="ag-foto__pending-acoes">
-        <button class="ag-foto__retry" onclick="agendaRetryFoto('${p.tempId}')" ${p.tentando ? 'disabled' : ''}>
-          <i class="fa-solid fa-rotate-right"></i> Reenviar
-        </button>
-        <button class="ag-foto__descarta" onclick="agendaDescartaPending('${p.tempId}')" title="Descartar">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
+      <small class="ag-hint">O texto é salvo automaticamente enquanto você digita.</small>
     </div>
   `;
 }
 
 function wireReportInputs() {
-  // (nothing to auto-wire; salva-se explicitamente com o botão)
+  const relato = document.getElementById('ag-relato');
+  const obs = document.getElementById('ag-obs');
+  if (!relato || !obs) return;
+  let timer;
+  function agendarSave() {
+    clearTimeout(timer);
+    timer = setTimeout(() => saveRelatoObs(true), 1200);
+  }
+  relato.addEventListener('input', agendarSave);
+  obs.addEventListener('input', agendarSave);
 }
 
-// ── VIEW: Assinatura + check-out ──────────────────────────────────
+// ── VIEW: Assinatura ─────────────────────────────────────────────
 function viewSign() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
@@ -530,76 +688,136 @@ function viewSign() {
       <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
         <div class="ag-title">Assinatura</div>
-        <div class="ag-sub">${v.cliente?.nome_empresa ?? '—'}</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
       </div>
     </div>
 
     <div class="ag-sign">
-      <div class="ag-sign__msg">
-        <i class="fa-solid fa-hand-point-right"></i>
-        Peça ao responsável da empresa para assinar abaixo.
+      <div class="ag-sign__msg ag-sign__landscape-hint" id="ag-sign-hint">
+        <i class="fa-solid fa-rotate"></i>
+        Vire o celular na horizontal — a área de assinatura fica maior.
       </div>
 
       <div class="ag-field">
         <label>Nome do responsável</label>
         <input type="text" id="ag-sig-nome"
-               value="${r.assinatura_responsavel_nome ?? v.cliente?.contato_nome ?? ''}"
-               placeholder="Nome completo">
+               value="${esc(r.assinatura_responsavel_nome || v.cliente?.contato_nome || '')}"
+               placeholder="Nome completo de quem está assinando">
       </div>
 
       <div class="ag-field">
-        <label>Assinatura</label>
-        <div class="ag-sig-wrap">
-          <canvas id="ag-sig-canvas" width="600" height="220"></canvas>
-          <button class="ag-sig-clear" onclick="agendaSigClear()">
+        <div class="ag-field__row">
+          <label>Assinatura</label>
+          <button class="ag-sig-clear-inline" onclick="agendaSigClear()">
             <i class="fa-solid fa-eraser"></i> Limpar
           </button>
+        </div>
+        <div class="ag-sig-wrap">
+          <canvas id="ag-sig-canvas" style="touch-action:none;display:block;width:100%;height:100%;"></canvas>
         </div>
       </div>
 
       <div class="ag-actions">
-        <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaSubmit()">
-          <i class="fa-solid fa-flag-checkered"></i> Finalizar visita (check-out)
+        <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaConfirmSign()">
+          <i class="fa-solid fa-check"></i> Confirmar assinatura
         </button>
-        <small class="ag-hint">Ao finalizar, capturamos GPS + horário de saída e enviamos tudo ao gestor.</small>
+        <small class="ag-hint">A assinatura é salva agora. O check-out final é feito na tela de revisão.</small>
       </div>
     </div>
   `;
 }
 
+// Configura o canvas de assinatura corretamente para tocar exatamente onde o dedo está
 function wireSignature() {
   const canvas = document.getElementById('ag-sig-canvas');
   if (!canvas) return;
 
-  // Ajusta tamanho real do canvas para o CSS
+  // Espera o layout terminar antes de medir (fix crítico para o offset de toque)
+  requestAnimationFrame(() => {
+    setupCanvasEDrawing(canvas);
+    updateLandscapeHint();
+  });
+
+  function updateLandscapeHint() {
+    const hint = document.getElementById('ag-sign-hint');
+    if (!hint) return;
+    const isLandscape = window.innerWidth >= window.innerHeight;
+    hint.style.display = isLandscape ? 'none' : '';
+  }
+
+  // Re-setup + preserva desenho quando gira o dispositivo
+  function onResize() {
+    if (!document.getElementById('ag-sig-canvas')) return;
+    setupCanvasEDrawing(canvas, /*preservar=*/true);
+    updateLandscapeHint();
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+}
+
+function setupCanvasEDrawing(canvas, preservar = false) {
   const ratio = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * ratio;
-  canvas.height = rect.height * ratio;
+  if (rect.width === 0 || rect.height === 0) {
+    // ainda sem layout — tenta novamente
+    return requestAnimationFrame(() => setupCanvasEDrawing(canvas, preservar));
+  }
+
+  // Preserva desenho anterior via dataURL antes de resetar o canvas
+  let dataAnterior = null;
+  if (preservar && st.sigPad && !st.sigPad.empty) {
+    try { dataAnterior = canvas.toDataURL('image/png'); } catch { /* ignore */ }
+  }
+
+  canvas.width = Math.floor(rect.width * ratio);
+  canvas.height = Math.floor(rect.height * ratio);
   const ctx = canvas.getContext('2d');
   ctx.scale(ratio, ratio);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.4;
   ctx.strokeStyle = '#1a1a1a';
 
+  st.sigPad = st.sigPad || { canvas, ctx, empty: true };
+  st.sigPad.canvas = canvas;
+  st.sigPad.ctx = ctx;
+
+  if (dataAnterior) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    img.src = dataAnterior;
+  }
+
+  // Handlers só na primeira vez
+  if (canvas._wired) return;
+  canvas._wired = true;
+
   const pad = { drawing: false, last: null };
-  st.sigPad = { canvas, ctx, empty: true };
 
   function pos(e) {
     const r = canvas.getBoundingClientRect();
     const t = e.touches ? e.touches[0] : e;
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
+    // ctx já foi escalado por DPR, então coordenadas em CSS pixels bastam
+    return {
+      x: t.clientX - r.left,
+      y: t.clientY - r.top,
+    };
   }
-  function start(e) { e.preventDefault(); pad.drawing = true; pad.last = pos(e); st.sigPad.empty = false; }
+  function start(e) {
+    if (e.cancelable) e.preventDefault();
+    pad.drawing = true;
+    pad.last = pos(e);
+    st.sigPad.empty = false;
+  }
   function move(e) {
     if (!pad.drawing) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const p = pos(e);
-    ctx.beginPath();
-    ctx.moveTo(pad.last.x, pad.last.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
+    const c = st.sigPad.ctx;
+    c.beginPath();
+    c.moveTo(pad.last.x, pad.last.y);
+    c.lineTo(p.x, p.y);
+    c.stroke();
     pad.last = p;
   }
   function end() { pad.drawing = false; pad.last = null; }
@@ -610,6 +828,81 @@ function wireSignature() {
   canvas.addEventListener('touchstart', start, { passive: false });
   canvas.addEventListener('touchmove',  move,  { passive: false });
   canvas.addEventListener('touchend',   end);
+  canvas.addEventListener('touchcancel', end);
+}
+
+// ── VIEW: Revisar tudo antes do checkout ─────────────────────────
+function viewReview() {
+  const v = st.visitaSel;
+  const r = st.relatorioSel;
+  if (!v || !r) return viewList();
+
+  const nFotos = st.fotos.length;
+  const nPend  = st.pendingFotos.length;
+  const relatoUser = (r.relato || '').split(RELATO_MARKER)[0].trim();
+  const temRelato = relatoUser.length > 0 || st.fotos.some(f => (f.observacao || '').trim());
+  const temAssin  = !!r.assinatura_responsavel_img;
+  const podeFinalizar = temRelato && temAssin && nPend === 0;
+
+  return `
+    <div class="ag-header ag-header--sub">
+      <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
+      <div>
+        <div class="ag-title">Revisar e finalizar</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
+      </div>
+    </div>
+
+    <div class="ag-review">
+      <section class="ag-review__sec" onclick="agendaGoTo('photos')">
+        <div class="ag-review__hd">
+          <span><i class="fa-solid fa-camera"></i> Fotos <span class="ag-review__count">${nFotos}</span></span>
+          <i class="fa-solid fa-pen ag-review__edit"></i>
+        </div>
+        ${nFotos === 0
+          ? '<div class="ag-review__empty">Nenhuma foto adicionada.</div>'
+          : `<div class="ag-review__grid">${st.fotos.map(f => `
+              <div class="ag-review__thumb">
+                <img src="${f.url}" alt="foto">
+                ${f.observacao ? `<div class="ag-review__thumb-obs">${esc(f.observacao)}</div>` : ''}
+              </div>`).join('')}</div>`}
+        ${nPend > 0 ? `<div class="ag-menu-alert"><i class="fa-solid fa-cloud-arrow-up"></i> ${nPend} foto${nPend>1?'s':''} ainda enviando — aguarde antes de finalizar</div>` : ''}
+      </section>
+
+      <section class="ag-review__sec" onclick="agendaGoTo('report')">
+        <div class="ag-review__hd">
+          <span><i class="fa-solid fa-file-pen"></i> Relato ${temRelato ? '<i class="fa-solid fa-circle-check ag-review__ok"></i>' : '<i class="fa-solid fa-triangle-exclamation ag-review__warn"></i>'}</span>
+          <i class="fa-solid fa-pen ag-review__edit"></i>
+        </div>
+        ${temRelato
+          ? `<div class="ag-review__texto">${esc(r.relato).replace(/\n/g, '<br>')}</div>`
+          : '<div class="ag-review__empty">Nenhum relato escrito.</div>'}
+        ${r.observacoes ? `<div class="ag-review__texto ag-review__texto--obs"><strong>Obs:</strong> ${esc(r.observacoes).replace(/\n/g, '<br>')}</div>` : ''}
+      </section>
+
+      <section class="ag-review__sec" onclick="agendaGoTo('sign')">
+        <div class="ag-review__hd">
+          <span><i class="fa-solid fa-signature"></i> Assinatura ${temAssin ? '<i class="fa-solid fa-circle-check ag-review__ok"></i>' : '<i class="fa-solid fa-triangle-exclamation ag-review__warn"></i>'}</span>
+          <i class="fa-solid fa-pen ag-review__edit"></i>
+        </div>
+        ${temAssin
+          ? `<div class="ag-review__sig">
+               <img src="${r.assinatura_responsavel_img}" alt="assinatura">
+               <div class="ag-review__sig-nome">${esc(r.assinatura_responsavel_nome)}</div>
+             </div>`
+          : '<div class="ag-review__empty">Ainda não assinado.</div>'}
+      </section>
+
+      <div class="ag-actions">
+        <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaSubmit()" ${podeFinalizar ? '' : 'disabled'}>
+          <i class="fa-solid fa-flag-checkered"></i> Finalizar e fazer check-out
+        </button>
+        ${!podeFinalizar
+          ? `<small class="ag-hint ag-hint--warn">${nPend > 0 ? `Aguarde ${nPend} foto${nPend>1?'s':''} terminar de enviar.` : 'Complete relato e assinatura antes de finalizar.'}</small>`
+          : '<small class="ag-hint">GPS e horário de saída serão capturados agora.</small>'}
+      </div>
+    </div>
+  `;
 }
 
 // ── VIEW: Concluído ───────────────────────────────────────────────
@@ -628,6 +921,10 @@ function viewDone() {
 
 // ── Ações ─────────────────────────────────────────────────────────
 export async function goTo(view) {
+  // Autosalva relato/obs ao sair da tela de relato
+  if (st.view === 'report' && view !== 'report') {
+    await saveRelatoObs(true);
+  }
   st.view = view;
   renderCurrentView();
   if (view === 'exec') startTimer();
@@ -635,7 +932,7 @@ export async function goTo(view) {
 
 export function back() {
   if (st.view === 'detail') { st.view = 'list'; st.visitaSel = null; renderCurrentView(); return; }
-  if (st.view === 'exec')   { st.view = 'detail'; renderCurrentView(); return; }
+  if (['exec','photos','report','sign','review'].includes(st.view)) { st.view = 'detail'; renderCurrentView(); return; }
   st.view = 'list';
   renderCurrentView();
 }
@@ -645,6 +942,8 @@ export async function backToList() {
   st.visitaSel = null;
   st.relatorioSel = null;
   st.fotos = [];
+  // Não limpa pendingFotos — se voltou pra lista com uploads pendentes,
+  // eles continuam na fila e podem ser retomados na próxima abertura da visita.
   limparEstadoPersistido();
   await renderAgenda();
 }
@@ -656,6 +955,12 @@ export async function openDetail(visitaId) {
   if (v.status === 'em_execucao' || v.status === 'concluido') {
     st.relatorioSel = await loadRelatorio(v.id);
     st.fotos = st.relatorioSel ? await loadFotos(st.relatorioSel.id) : [];
+    // Carrega pendentes dessa visita se houver
+    const pend = loadPending();
+    if (pend.length && st.relatorioSel) {
+      st.pendingFotos = pend.filter(p => p.relatorioId === st.relatorioSel.id);
+      if (st.pendingFotos.length) setTimeout(() => processarFilaUpload(), 500);
+    }
   }
   st.view = 'detail';
   renderCurrentView();
@@ -671,7 +976,7 @@ export function changeDate(delta) {
 export function goToday() { st.data = getHoje(); renderAgenda(); }
 
 // ── Check-in ──────────────────────────────────────────────────────
-let checkinEmAndamento = false; // guard contra duplo-clique
+let checkinEmAndamento = false;
 
 export async function checkIn() {
   if (checkinEmAndamento) return;
@@ -681,7 +986,6 @@ export async function checkIn() {
 
   checkinEmAndamento = true;
   try {
-    // Se já existe um relatório em andamento para essa visita, reutiliza
     const existente = await loadRelatorio(v.id);
     if (existente) {
       st.relatorioSel = existente;
@@ -712,7 +1016,6 @@ export async function checkIn() {
       .select()
       .single();
     if (err1) {
-      // Se falhou por duplicata (constraint), busca o existente
       if (err1.code === '23505' || err1.message.includes('duplicate')) {
         const rec = await loadRelatorio(v.id);
         if (rec) {
@@ -761,26 +1064,14 @@ function startTimer() {
   }, 30000);
 }
 
-// ── Fotos ─────────────────────────────────────────────────────────
-function preservarTextoRelatorio() {
-  const rel = document.getElementById('ag-relato')?.value ?? null;
-  const obs = document.getElementById('ag-obs')?.value ?? null;
-  if (rel === null && obs === null) return;
-  const r = st.relatorioSel;
-  if (r) st.relatorioSel = { ...r, relato: rel ?? r.relato, observacoes: obs ?? r.observacoes };
-}
-
-// Tenta subir uma foto para o Storage + criar registro em fotos_relatorio
-// Retorna: { ok: bool, rec?: obj, error?: string }
+// ── Fotos: upload confiável com compressão + fila persistente ─────
 async function tentarUploadFoto(file, relatorioId) {
   try {
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `${relatorioId}/${Date.now()}.${ext}`;
-
+    const path = `${relatorioId}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.jpg`;
     const { error: upErr } = await supabase.storage
       .from('field-photos')
-      .upload(path, file, { contentType: file.type, upsert: false });
-    if (upErr) return { ok: false, error: 'Falha no upload: ' + upErr.message };
+      .upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false });
+    if (upErr) return { ok: false, error: 'Upload: ' + upErr.message };
 
     const { data: signed } = await supabase.storage
       .from('field-photos')
@@ -798,11 +1089,41 @@ async function tentarUploadFoto(file, relatorioId) {
       })
       .select()
       .single();
-    if (recErr) return { ok: false, error: 'Falha ao salvar registro: ' + recErr.message };
+    if (recErr) return { ok: false, error: 'DB: ' + recErr.message };
 
     return { ok: true, rec };
   } catch (e) {
     return { ok: false, error: e?.message || 'Erro desconhecido' };
+  }
+}
+
+// Processa a fila em background. Reentrada é segura via flag.
+let processandoFila = false;
+async function processarFilaUpload() {
+  if (processandoFila) return;
+  processandoFila = true;
+  try {
+    while (st.pendingFotos.length > 0) {
+      const p = st.pendingFotos[0];
+      p.tentando = true;
+      renderCurrentView();
+      const res = await tentarUploadFoto(p.file, p.relatorioId);
+      if (res.ok) {
+        st.fotos.push(res.rec);
+        st.pendingFotos.shift();
+        await persistPending();
+        renderCurrentView();
+      } else {
+        p.tentando = false;
+        p.error = res.error;
+        renderCurrentView();
+        break; // Aguarda retry manual ou reconexão
+      }
+    }
+    if (st.pendingFotos.length === 0) limparPending();
+  } finally {
+    processandoFila = false;
+    renderCurrentView();
   }
 }
 
@@ -811,54 +1132,41 @@ export async function addPhoto(input) {
   if (!files.length) return;
   const r = st.relatorioSel;
   if (!r) { toast('Erro: sem relatório ativo', false); return; }
-
-  preservarTextoRelatorio();
   input.value = '';
 
-  toast(files.length > 1 ? `Enviando ${files.length} fotos...` : 'Enviando foto...');
-  let okCount = 0, falhaCount = 0;
-  for (const file of files) {
-    const res = await tentarUploadFoto(file, r.id);
-    if (res.ok) { st.fotos.push(res.rec); okCount++; }
-    else {
-      st.pendingFotos.push({ tempId: 'tmp_' + Date.now() + '_' + Math.random(), file, error: res.error, tentando: false });
-      falhaCount++;
-    }
+  toast(files.length > 1 ? `Comprimindo ${files.length} fotos...` : 'Comprimindo foto...');
+  for (const original of files) {
+    let file = original;
+    try { file = await comprimirImagem(original); }
+    catch (e) { console.warn('Falha na compressão, usando original:', e); }
+    const b64 = await fileToBase64(file).catch(() => null);
+    st.pendingFotos.push({
+      tempId: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      relatorioId: r.id,
+      file,
+      fileB64: b64,
+      error: null,
+      tentando: false,
+    });
   }
-  if (okCount && !falhaCount) toast(`✓ ${okCount} foto${okCount>1?'s':''} adicionada${okCount>1?'s':''}`);
-  else if (okCount && falhaCount) toast(`${okCount} enviada${okCount>1?'s':''}, ${falhaCount} pendente${falhaCount>1?'s':''}`, false);
-  else toast('⚠ Nenhuma foto enviada — toque em Reenviar', false);
+  await persistPending();
   renderCurrentView();
+  processarFilaUpload();
 }
 
 export async function retryFoto(tempId) {
-  const idx = st.pendingFotos.findIndex(p => p.tempId === tempId);
-  if (idx < 0) return;
-  const p = st.pendingFotos[idx];
-  const r = st.relatorioSel;
-  if (!r) return;
-
-  preservarTextoRelatorio();
-  p.tentando = true;
-  renderCurrentView();
-
-  const res = await tentarUploadFoto(p.file, r.id);
-  if (res.ok) {
-    st.fotos.push(res.rec);
-    st.pendingFotos.splice(idx, 1);
-    toast('✓ Foto enviada');
-  } else {
-    p.tentando = false;
-    p.error = res.error;
-    toast('Ainda falhou. Tenta novamente daqui a pouco.', false);
-  }
-  renderCurrentView();
+  const p = st.pendingFotos.find(x => x.tempId === tempId);
+  if (!p || p.tentando) return;
+  // Move essa foto para o início da fila
+  st.pendingFotos = [p, ...st.pendingFotos.filter(x => x.tempId !== tempId)];
+  processarFilaUpload();
 }
 
-export function descartarPending(tempId) {
+export async function descartarPending(tempId) {
   const idx = st.pendingFotos.findIndex(p => p.tempId === tempId);
   if (idx >= 0) {
     st.pendingFotos.splice(idx, 1);
+    await persistPending();
     renderCurrentView();
   }
 }
@@ -867,39 +1175,85 @@ export async function removePhoto(fotoId) {
   const foto = st.fotos.find(f => f.id === fotoId);
   if (!foto) return;
   if (!confirm('Remover esta foto?')) return;
-  preservarTextoRelatorio();
   if (foto.storage_path) {
     await supabase.storage.from('field-photos').remove([foto.storage_path]);
   }
   await supabase.from('fotos_relatorio').delete().eq('id', fotoId);
   st.fotos = st.fotos.filter(f => f.id !== fotoId);
+  await sincronizarLegendasNoRelato();
   renderCurrentView();
 }
 
 export async function saveFotoObs(fotoId, texto) {
-  await supabase.from('fotos_relatorio').update({ observacao: texto || null }).eq('id', fotoId);
+  const val = (texto || '').trim() || null;
+  await supabase.from('fotos_relatorio').update({ observacao: val }).eq('id', fotoId);
   const foto = st.fotos.find(f => f.id === fotoId);
-  if (foto) foto.observacao = texto || null;
+  if (foto) foto.observacao = val;
+  await sincronizarLegendasNoRelato();
 }
 
-// ── Salvar relato + observações ───────────────────────────────────
-// irParaAssinatura = true → vai direto pra tela de assinatura
-// irParaAssinatura = false → continua na tela de relatório
-export async function saveReport(irParaAssinatura = false) {
-  const relato = document.getElementById('ag-relato')?.value?.trim() ?? '';
-  const obs    = document.getElementById('ag-obs')?.value?.trim() ?? '';
+// ── Legenda → Relato (auto-sincroniza) ────────────────────────────
+async function sincronizarLegendasNoRelato() {
   const r = st.relatorioSel;
   if (!r) return;
 
+  const relatoAtual = r.relato || '';
+  const idx = relatoAtual.indexOf(RELATO_MARKER);
+  const textoUsuario = idx >= 0 ? relatoAtual.slice(0, idx) : relatoAtual;
+
+  const linhasFoto = st.fotos
+    .map((f, i) => (f.observacao || '').trim() ? `${i+1}. ${f.observacao.trim()}` : null)
+    .filter(Boolean);
+
+  let novoRelato;
+  if (linhasFoto.length === 0) {
+    novoRelato = textoUsuario.replace(/\s+$/, '');
+  } else {
+    const userLimpo = textoUsuario.replace(/\s+$/, '');
+    novoRelato = userLimpo + RELATO_MARKER + linhasFoto.join('\n');
+  }
+
+  if (novoRelato === relatoAtual) return;
+
+  const { error } = await supabase.from('relatorios').update({ relato: novoRelato || null }).eq('id', r.id);
+  if (error) { console.warn('Falha ao sincronizar relato:', error); return; }
+  st.relatorioSel = { ...r, relato: novoRelato };
+}
+
+// ── Salvar relato + observações ───────────────────────────────────
+async function saveRelatoObs(silent = false) {
+  const r = st.relatorioSel;
+  if (!r) return;
+  const relatoRaw = document.getElementById('ag-relato')?.value ?? '';
+  const obs       = document.getElementById('ag-obs')?.value?.trim() ?? '';
+
+  // Se o texto do usuário mudou, preserva a parte auto-gerada de fotos (após o marker)
+  const relatoAtual = r.relato || '';
+  const idxAtual = relatoAtual.indexOf(RELATO_MARKER);
+  const parteAuto = idxAtual >= 0 ? relatoAtual.slice(idxAtual) : '';
+
+  // O textarea contém o texto COMPLETO (usuário + auto). Precisa separar:
+  const idxNovo = relatoRaw.indexOf(RELATO_MARKER);
+  const textoUsuario = (idxNovo >= 0 ? relatoRaw.slice(0, idxNovo) : relatoRaw).replace(/\s+$/, '');
+
+  const novoRelato = parteAuto
+    ? (textoUsuario + parteAuto)
+    : textoUsuario;
+
   const { error } = await supabase
     .from('relatorios')
-    .update({ relato: relato || null, observacoes: obs || null })
+    .update({ relato: novoRelato || null, observacoes: obs || null })
     .eq('id', r.id);
-  if (error) { toast('Erro ao salvar: ' + error.message, false); return; }
+  if (error) { if (!silent) toast('Erro ao salvar: ' + error.message, false); return; }
 
-  st.relatorioSel = { ...r, relato: relato || null, observacoes: obs || null };
-  toast('✓ Relatório salvo');
-  st.view = irParaAssinatura ? 'sign' : 'report';
+  st.relatorioSel = { ...r, relato: novoRelato || null, observacoes: obs || null };
+  if (!silent) toast('✓ Relato salvo');
+}
+
+// Botão "Salvar e voltar" no viewReport
+export async function saveReport() {
+  await saveRelatoObs(false);
+  st.view = 'exec';
   renderCurrentView();
   startTimer();
 }
@@ -908,7 +1262,11 @@ export async function saveReport(irParaAssinatura = false) {
 export function sigClear() {
   if (!st.sigPad) return;
   const { canvas, ctx } = st.sigPad;
+  const ratio = window.devicePixelRatio || 1;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
   st.sigPad.empty = true;
 }
 
@@ -929,23 +1287,18 @@ async function uploadSignature(canvas, relatorioId) {
   });
 }
 
-// ── Check-out + submit ────────────────────────────────────────────
-export async function submit() {
+// Salva assinatura agora (não espera checkout) e volta pro menu
+export async function confirmSign() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
   if (!v || !r) return;
 
   const nome = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
   if (!nome) { toast('Preencha o nome do responsável', false); return; }
-  if (!st.sigPad || st.sigPad.empty) { toast('Faça a assinatura antes de finalizar', false); return; }
-  if (st.pendingFotos.length > 0) {
-    const ok = confirm(`Ainda existem ${st.pendingFotos.length} foto(s) que não foram enviadas. Finalizar mesmo assim? Elas serão perdidas.`);
-    if (!ok) return;
-  }
+  if (!st.sigPad || st.sigPad.empty) { toast('Faça a assinatura antes de confirmar', false); return; }
 
   toast('Enviando assinatura...');
-  let sigUrl = null;
-  let sigPath = null;
+  let sigUrl, sigPath;
   try {
     const res = await uploadSignature(st.sigPad.canvas, r.id);
     sigUrl = res.url;
@@ -953,6 +1306,42 @@ export async function submit() {
   } catch (e) {
     toast('Erro no upload da assinatura: ' + e.message, false);
     return;
+  }
+
+  const { error } = await supabase
+    .from('relatorios')
+    .update({
+      assinatura_responsavel_nome: nome,
+      assinatura_responsavel_img:  sigUrl,
+      assinatura_storage_path:     sigPath,
+    })
+    .eq('id', r.id);
+  if (error) { toast('Erro ao salvar: ' + error.message, false); return; }
+
+  st.relatorioSel = {
+    ...r,
+    assinatura_responsavel_nome: nome,
+    assinatura_responsavel_img:  sigUrl,
+    assinatura_storage_path:     sigPath,
+  };
+  toast('✓ Assinatura confirmada');
+  st.view = 'exec';
+  renderCurrentView();
+  startTimer();
+}
+
+// ── Check-out final (só valida + carimba fim) ─────────────────────
+export async function submit() {
+  const v = st.visitaSel;
+  const r = st.relatorioSel;
+  if (!v || !r) return;
+
+  if (!r.assinatura_responsavel_img) {
+    toast('Assinatura ainda não coletada', false); return;
+  }
+  if (st.pendingFotos.length > 0) {
+    const ok = confirm(`Ainda existem ${st.pendingFotos.length} foto(s) que não foram enviadas. Finalizar mesmo assim? Elas serão perdidas.`);
+    if (!ok) return;
   }
 
   toast('Capturando localização...');
@@ -965,9 +1354,6 @@ export async function submit() {
       checkout_at:  now,
       checkout_lat: gps.lat,
       checkout_lng: gps.lng,
-      assinatura_responsavel_nome: nome,
-      assinatura_responsavel_img:  sigUrl,
-      assinatura_storage_path:     sigPath,
       status: 'concluido',
     })
     .eq('id', r.id);
@@ -987,10 +1373,17 @@ export async function submit() {
 
   clearInterval(timerInterval);
   limparEstadoPersistido();
+  limparPending();
   const pendentes = st.pendingFotos.length;
+  st.pendingFotos = [];
   toast(pendentes > 0
     ? `✓ Concluída · ⚠ ${pendentes} foto${pendentes > 1 ? 's' : ''} não subiu`
     : '✓ Visita concluída');
   st.view = 'done';
   renderCurrentView();
 }
+
+// Reenvia fila quando volta o online
+window.addEventListener('online', () => {
+  if (st.pendingFotos.length > 0) processarFilaUpload();
+});
