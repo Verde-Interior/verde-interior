@@ -17,6 +17,7 @@ import Agenda from './components/Agenda/Agenda';
 import Clientes from './components/Clientes/Clientes';
 import EscalaCampo from './components/EscalaCampo/EscalaCampo';
 import Relatorios from './components/Relatorios/Relatorios';
+import Estoque from './components/Estoque/Estoque';
 import './App.css';
 
 const IconDashboard = () => (
@@ -103,6 +104,13 @@ const IconRelatorios = () => (
   </svg>
 );
 
+const IconEstoque = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M2 5l6-3 6 3v6l-6 3-6-3V5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none"/>
+    <path d="M2 5l6 3 6-3M8 8v6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+
 const NAV_ITEMS_TOP = [
   { id: 'dashboard',  Icon: IconDashboard, label: 'Dashboard' },
   { id: 'kanban',     Icon: IconPipeline,  label: 'Pipeline'  },
@@ -110,6 +118,7 @@ const NAV_ITEMS_TOP = [
   { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
   { id: 'escala',     Icon: IconEscala,    label: 'Escala'    },
   { id: 'relatorios', Icon: IconRelatorios,label: 'Relatórios'},
+  { id: 'estoque',    Icon: IconEstoque,   label: 'Estoque'   },
   { id: 'agenda',     Icon: IconAgenda,    label: 'Agenda'    },
   { id: 'tarefas',    Icon: IconTarefas,   label: 'Tarefas'   },
 ];
@@ -209,6 +218,7 @@ function AppLayout() {
         {tela === 'clientes'      && <Clientes />}
         {tela === 'escala'        && <EscalaCampo />}
         {tela === 'relatorios'    && <Relatorios />}
+        {tela === 'estoque'       && <Estoque />}
         {tela === 'agenda'        && <Agenda />}
         {tela === 'tarefas'       && <Tarefas />}
         {tela === 'configuracoes' && <Configuracoes />}
