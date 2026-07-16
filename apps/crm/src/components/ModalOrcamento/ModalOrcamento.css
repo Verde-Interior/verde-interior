@@ -404,6 +404,17 @@
   gap: 10px;
 }
 
+/* Destaque temporário quando o modal é aberto com foco em uma seção */
+.modal__secao--foco {
+  animation: modal-secao-foco 2s ease-out;
+  border-radius: 12px;
+}
+@keyframes modal-secao-foco {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.55); background-color: rgba(238, 242, 255, 0.6); }
+  50%  { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.15); background-color: rgba(238, 242, 255, 0.9); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);    background-color: transparent; }
+}
+
 .modal__anexo-badge {
   font-size: 10px;
   font-weight: 700;

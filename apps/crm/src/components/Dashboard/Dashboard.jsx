@@ -1,6 +1,7 @@
 // src/components/Dashboard/Dashboard.jsx
 import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { supabase } from '../../lib/supabase';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -95,8 +96,12 @@ const FU_ASSUNTO_LABEL = {
 };
 const STORAGE_ORDEM = 'crm-verde-dashboard-ordem';
 
+const STORAGE_ABA = 'crm-verde-dashboard-aba';
+
 export default function Dashboard({ onNavegar }) {
   const { leads, ESTAGIOS, TIPOS_SERVICO, metricas, abrirModal, tarefas, atualizarLead } = useCRM();
+  const [aba, setAba] = useState(() => localStorage.getItem(STORAGE_ABA) || 'comercial');
+  useEffect(() => { localStorage.setItem(STORAGE_ABA, aba); }, [aba]);
 
   const [estagioExpandido, setEstagioExpandido] = useState(null);
   const [filtroTarefas, setFiltroTarefas]       = useState(null);
@@ -829,41 +834,63 @@ export default function Dashboard({ onNavegar }) {
         )}
       </header>
 
+      {/* ── Tabs Comercial / Operacional ── */}
+      <div className="dashboard__tabs">
+        <button
+          className={`dashboard__tab ${aba === 'comercial' ? 'dashboard__tab--ativa' : ''}`}
+          onClick={() => setAba('comercial')}
+        >
+          💼 Comercial
+        </button>
+        <button
+          className={`dashboard__tab ${aba === 'operacional' ? 'dashboard__tab--ativa' : ''}`}
+          onClick={() => setAba('operacional')}
+        >
+          🌿 Operacional
+        </button>
+      </div>
+
       <div className="dashboard__corpo">
 
-        {/* ── KPIs — sempre no topo, não reordenável ── */}
-        <section className="dashboard__secao">
-          <h2 className="dashboard__secao-titulo">Visão Geral</h2>
-          <div className="dashboard__kpis">
-            <KpiCard label="Leads no Pipeline"   valor={animLeads}            sub="total de contatos" />
-            <KpiCard label="Valor em Aberto"      valor={fmt(animPipeline)}    sub="orçamentos não fechados" onClick={() => onNavegar('kanban')} />
-            <KpiCard label="Recorrência Mensal"   valor={fmt(animRecorrencia)} sub="contratos ativos/mês" destaque />
-            <KpiCard label="Taxa de Conversão"    valor={`${animConversao}%`}  sub="aprovados vs finalizados" />
-          </div>
-        </section>
+        {aba === 'comercial' && (
+          <>
+            {/* ── KPIs — sempre no topo, não reordenável ── */}
+            <section className="dashboard__secao">
+              <h2 className="dashboard__secao-titulo">Visão Geral</h2>
+              <div className="dashboard__kpis">
+                <KpiCard label="Leads no Pipeline"   valor={animLeads}            sub="total de contatos" />
+                <KpiCard label="Valor em Aberto"      valor={fmt(animPipeline)}    sub="orçamentos não fechados" onClick={() => onNavegar('kanban')} />
+                <KpiCard label="Recorrência Mensal"   valor={fmt(animRecorrencia)} sub="contratos ativos/mês" destaque />
+                <KpiCard label="Taxa de Conversão"    valor={`${animConversao}%`}  sub="aprovados vs finalizados" />
+              </div>
+            </section>
 
-        {/* ── Seções reordenáveis ── */}
-        {ordemSecoes.map((id) => {
-          const content = renderSecaoContent(id);
-          if (!content) return null;
-          const isDragSrc  = dragSrc.current === id;
-          const isDropTgt  = dragOver === id;
-          return (
-            <div
-              key={id}
-              className={`dashboard__bloco ${isDragSrc ? 'dashboard__bloco--arrastando' : ''} ${isDropTgt ? 'dashboard__bloco--drop' : ''}`}
-              draggable
-              onDragStart={(e) => onDragStart(e, id)}
-              onDragOver={(e)  => onDragOver(e, id)}
-              onDragLeave={onDragLeave}
-              onDrop={(e)      => onDrop(e, id)}
-              onDragEnd={onDragEnd}
-            >
-              <DragHandle />
-              {content}
-            </div>
-          );
-        })}
+            {/* ── Seções reordenáveis ── */}
+            {ordemSecoes.map((id) => {
+              const content = renderSecaoContent(id);
+              if (!content) return null;
+              const isDragSrc  = dragSrc.current === id;
+              const isDropTgt  = dragOver === id;
+              return (
+                <div
+                  key={id}
+                  className={`dashboard__bloco ${isDragSrc ? 'dashboard__bloco--arrastando' : ''} ${isDropTgt ? 'dashboard__bloco--drop' : ''}`}
+                  draggable
+                  onDragStart={(e) => onDragStart(e, id)}
+                  onDragOver={(e)  => onDragOver(e, id)}
+                  onDragLeave={onDragLeave}
+                  onDrop={(e)      => onDrop(e, id)}
+                  onDragEnd={onDragEnd}
+                >
+                  <DragHandle />
+                  {content}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {aba === 'operacional' && <DashboardOperacional onNavegar={onNavegar} />}
 
       </div>
 
@@ -981,6 +1008,233 @@ export default function Dashboard({ onNavegar }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Dashboard — Aba Operacional (agenda, campo, clientes, visitas)
+// ─────────────────────────────────────────────────────────────────────────────
+function DashboardOperacional({ onNavegar }) {
+  const [loading, setLoading] = useState(true);
+  const [dados, setDados] = useState({
+    agendaHoje: [],
+    agendaSemana: [],
+    relatoriosSemana: [],
+    ultimosRelatorios: [],
+    clientes: [],
+    employees: [],
+  });
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const hoje = new Date().toISOString().split('T')[0];
+      const daquiSete = new Date();
+      daquiSete.setDate(daquiSete.getDate() + 7);
+      const daquiSeteStr = daquiSete.toISOString().split('T')[0];
+      const setePassados = new Date();
+      setePassados.setDate(setePassados.getDate() - 7);
+      const setePassadosIso = setePassados.toISOString();
+
+      const [ag, agSem, relSem, ultimosRel, cli, emp] = await Promise.all([
+        supabase.from('agenda').select(`
+          id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
+          cliente:clientes(id, nome_empresa, bairro)
+        `).eq('data_agendada', hoje).order('ordem_rota'),
+        supabase.from('agenda').select(`
+          id, data_agendada, funcionario_id, status, tipos_tarefa,
+          cliente:clientes(id, nome_empresa)
+        `).gte('data_agendada', hoje).lte('data_agendada', daquiSeteStr),
+        supabase.from('relatorios').select('id, funcionario_id, checkin_at, checkout_at, agendamento_id').gte('checkin_at', setePassadosIso),
+        supabase.from('relatorios').select(`
+          id, funcionario_id, checkin_at,
+          agenda:agenda(cliente:clientes(nome_empresa, bairro))
+        `).order('checkin_at', { ascending: false }).limit(6),
+        supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visitas, ativo').eq('ativo', true),
+        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
+      ]);
+
+      setDados({
+        agendaHoje:        ag.data ?? [],
+        agendaSemana:      agSem.data ?? [],
+        relatoriosSemana:  relSem.data ?? [],
+        ultimosRelatorios: ultimosRel.data ?? [],
+        clientes:          cli.data ?? [],
+        employees:         emp.data ?? [],
+      });
+      setLoading(false);
+    })();
+  }, []);
+
+  const empMap = useMemo(() => new Map((dados.employees ?? []).map(e => [String(e.id), e.name])), [dados.employees]);
+
+  const kpis = useMemo(() => {
+    const hj = new Date().toISOString().split('T')[0];
+    const visitasHoje = dados.agendaHoje.length;
+    const publicadasHoje = dados.agendaHoje.filter(v => v.status === 'publicado' || v.status === 'em_execucao' || v.status === 'concluido').length;
+    const concluidasHoje = dados.agendaHoje.filter(v => v.status === 'concluido').length;
+    const funcAtivosHoje = new Set(dados.agendaHoje.filter(v => v.funcionario_id).map(v => String(v.funcionario_id))).size;
+    const visitasSemana = dados.agendaSemana.length;
+    const trocasSemana = dados.agendaSemana.filter(v => (v.tipos_tarefa ?? []).includes('troca')).length;
+    return {
+      visitasHoje, publicadasHoje, concluidasHoje, funcAtivosHoje, visitasSemana, trocasSemana,
+      clientesAtivos: dados.clientes.length,
+      relatoriosSemana: dados.relatoriosSemana.length,
+    };
+  }, [dados]);
+
+  const freqMap = useMemo(() => {
+    const map = { Semanal: 0, Quinzenal: 0, Mensal: 0, Outro: 0 };
+    dados.clientes.forEach(c => {
+      const f = c.frequencia_visitas;
+      if (f === 'semanal') map.Semanal++;
+      else if (f === 'quinzenal') map.Quinzenal++;
+      else if (f === 'mensal') map.Mensal++;
+      else map.Outro++;
+    });
+    return map;
+  }, [dados.clientes]);
+
+  const grupoMap = useMemo(() => {
+    const map = {};
+    dados.clientes.forEach(c => {
+      const g = c.grupo_servico ?? 'Sem grupo';
+      map[g] = (map[g] ?? 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [dados.clientes]);
+
+  if (loading) {
+    return (
+      <div className="dashboard-op__loading">
+        <div className="dashboard-op__spinner" />
+        <p>Carregando dados operacionais...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-op">
+      {/* KPIs operacionais */}
+      <section className="dashboard__secao">
+        <h2 className="dashboard__secao-titulo">Visão Geral — Campo</h2>
+        <div className="dashboard__kpis">
+          <KpiCard label="Visitas Hoje" valor={kpis.visitasHoje} sub={`${kpis.concluidasHoje} concluída${kpis.concluidasHoje !== 1 ? 's' : ''}`} onClick={() => onNavegar('escala')} />
+          <KpiCard label="Funcionários em campo" valor={kpis.funcAtivosHoje} sub="com visitas hoje" />
+          <KpiCard label="Clientes ativos" valor={kpis.clientesAtivos} sub="base atual" onClick={() => onNavegar('clientes')} destaque />
+          <KpiCard label="Trocas na semana" valor={kpis.trocasSemana} sub={`de ${kpis.visitasSemana} visitas`} />
+        </div>
+      </section>
+
+      <div className="dashboard-op__grid">
+
+        {/* Agenda de hoje */}
+        <section className="dashboard__secao dashboard__card">
+          <div className="dashboard__card-header">
+            <h2 className="dashboard__secao-titulo">Agenda de hoje</h2>
+            <button className="dashboard__ver-todos" onClick={() => onNavegar('escala')}>Ver Escala →</button>
+          </div>
+          {dados.agendaHoje.length === 0 ? (
+            <p className="dashboard-op__vazio">Nenhuma visita agendada para hoje.</p>
+          ) : (
+            <div className="dashboard-op__agenda-lista">
+              {dados.agendaHoje.slice(0, 8).map((v) => {
+                const stCor = v.status === 'concluido' ? '#10B981' : v.status === 'em_execucao' ? '#3B82F6' : v.status === 'publicado' ? '#F59E0B' : '#9CA3AF';
+                return (
+                  <div key={v.id} className="dashboard-op__agenda-item">
+                    <span className="dashboard-op__agenda-hora">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</span>
+                    <div className="dashboard-op__agenda-mid">
+                      <div className="dashboard-op__agenda-cli">{v.cliente?.nome_empresa ?? '—'}</div>
+                      <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'} · 📍 {v.cliente?.bairro ?? '—'}</div>
+                    </div>
+                    <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{v.status ?? 'rascunho'}</span>
+                  </div>
+                );
+              })}
+              {dados.agendaHoje.length > 8 && (
+                <p className="dashboard-op__mais">+ {dados.agendaHoje.length - 8} visita{dados.agendaHoje.length - 8 !== 1 ? 's' : ''}</p>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Frequência de manutenção */}
+        <section className="dashboard__secao dashboard__card">
+          <h2 className="dashboard__secao-titulo">Frequência de manutenção</h2>
+          <div className="dashboard__servicos">
+            {Object.entries(freqMap).map(([f, n]) => {
+              const pct = kpis.clientesAtivos > 0 ? Math.round((n / kpis.clientesAtivos) * 100) : 0;
+              return (
+                <div key={f} className="servico-barra">
+                  <div className="servico-barra__header">
+                    <span className="servico-barra__nome">{f}</span>
+                    <span className="servico-barra__pct">{n} · {pct}%</span>
+                  </div>
+                  <div className="servico-barra__track">
+                    <div className="servico-barra__fill" style={{ width: `${pct}%`, background: f === 'Semanal' ? '#3B82F6' : f === 'Quinzenal' ? '#8B5CF6' : f === 'Mensal' ? '#10B981' : '#9CA3AF' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+
+      <div className="dashboard-op__grid">
+        {/* Últimas visitas concluídas */}
+        <section className="dashboard__secao dashboard__card">
+          <div className="dashboard__card-header">
+            <h2 className="dashboard__secao-titulo">Últimas visitas concluídas</h2>
+            <button className="dashboard__ver-todos" onClick={() => onNavegar('relatorios')}>Ver Relatórios →</button>
+          </div>
+          {dados.ultimosRelatorios.length === 0 ? (
+            <p className="dashboard-op__vazio">Nenhum relatório na base.</p>
+          ) : (
+            <div className="dashboard-op__ult-lista">
+              {dados.ultimosRelatorios.map((r) => {
+                const cli = r.agenda?.cliente;
+                const quando = r.checkin_at ? new Date(r.checkin_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+                return (
+                  <div key={r.id} className="dashboard-op__ult-item">
+                    <div className="dashboard-op__ult-info">
+                      <div className="dashboard-op__ult-empresa">{cli?.nome_empresa ?? '—'}</div>
+                      <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'} · 📍 {cli?.bairro ?? '—'}</div>
+                    </div>
+                    <span className="dashboard-op__ult-data">{quando}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Grupos de clientes */}
+        <section className="dashboard__secao dashboard__card">
+          <h2 className="dashboard__secao-titulo">Clientes por grupo</h2>
+          {grupoMap.length === 0 ? (
+            <p className="dashboard-op__vazio">Nenhum cliente ativo.</p>
+          ) : (
+            <div className="dashboard__servicos">
+              {grupoMap.map(([g, n]) => {
+                const pct = Math.round((n / kpis.clientesAtivos) * 100);
+                return (
+                  <div key={g} className="servico-barra">
+                    <div className="servico-barra__header">
+                      <span className="servico-barra__nome">{g}</span>
+                      <span className="servico-barra__pct">{n} · {pct}%</span>
+                    </div>
+                    <div className="servico-barra__track">
+                      <div className="servico-barra__fill" style={{ width: `${pct}%`, background: '#1A7A4A' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+
     </div>
   );
 }

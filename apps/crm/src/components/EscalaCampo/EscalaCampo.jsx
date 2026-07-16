@@ -877,7 +877,7 @@ export default function EscalaCampo() {
   // ── Painéis / ações avançadas ────────────────────────────────────────────────
   const [showAtrasados,   setShowAtrasados]   = useState(false);
   const [otimizando,      setOtimizando]      = useState(null); // empId em otimização
-  const [copiando,        setCopiando]        = useState(false);
+  const [modalCopiar,     setModalCopiar]     = useState(false);
   const [mostrarPrioridade, setMostrarPrioridade] = useState(false);
 
   // ── Edição de visita ────────────────────────────────────────────────────────
@@ -1133,50 +1133,6 @@ export default function EscalaCampo() {
     await carregarAgenda();
   }
 
-  // ── Copiar semana anterior ─────────────────────────────────────────────────
-
-  async function copiarSemanaAnterior() {
-    if (agenda.length > 0) {
-      if (!confirm('Essa semana já tem visitas. Copiar da semana anterior vai adicionar em cima delas. Continuar?')) return;
-    } else {
-      if (!confirm('Copiar todas as visitas da semana anterior como rascunho para esta semana?')) return;
-    }
-    setCopiando(true);
-    try {
-      const anterior = getSemana(new Date(new Date(semana[0] + 'T12:00').getTime() - 7 * 86400000));
-      const { data: visitasAnt, error } = await supabase
-        .from('agenda')
-        .select('cliente_id, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, data_agendada')
-        .gte('data_agendada', anterior[0])
-        .lte('data_agendada', anterior[5]);
-      if (error) throw error;
-      if (!visitasAnt?.length) { alert('Nenhuma visita na semana anterior para copiar.'); return; }
-
-      const novas = visitasAnt.map(v => {
-        const idxDia = anterior.indexOf(v.data_agendada);
-        return {
-          cliente_id:            v.cliente_id,
-          funcionario_id:        v.funcionario_id,
-          cliente_servico_id:    v.cliente_servico_id,
-          data_agendada:         semana[idxDia] ?? semana[0],
-          hora_estimada_chegada: v.hora_estimada_chegada,
-          duracao_estimada_min:  v.duracao_estimada_min,
-          ordem_rota:            v.ordem_rota,
-          observacoes_gestor:    v.observacoes_gestor,
-          status:                'rascunho',
-        };
-      });
-      const { error: insErr } = await supabase.from('agenda').insert(novas);
-      if (insErr) throw insErr;
-      await carregarAgenda();
-      alert(`✓ ${novas.length} visita${novas.length !== 1 ? 's' : ''} copiada${novas.length !== 1 ? 's' : ''} como rascunho.`);
-    } catch (e) {
-      alert('Erro ao copiar: ' + e.message);
-    } finally {
-      setCopiando(false);
-    }
-  }
-
   // ── Otimizar rota do funcionário no dia ────────────────────────────────────
 
   async function otimizarRotaEmp(empId) {
@@ -1356,11 +1312,10 @@ export default function EscalaCampo() {
           )}
           <button
             className="ec__btn-copiar"
-            onClick={copiarSemanaAnterior}
-            disabled={copiando}
-            title="Copiar todas as visitas da semana anterior como rascunho"
+            onClick={() => setModalCopiar(true)}
+            title="Copiar a agenda de um funcionário e dia específico para outro funcionário e dia"
           >
-            {copiando ? '⏳ Copiando...' : '↺ Copiar semana anterior'}
+            ↺ Copiar agenda
           </button>
           <div className="ec__nav-semana">
             <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
@@ -1660,6 +1615,17 @@ export default function EscalaCampo() {
           clientes={clientes}
           onFechar={() => setModalRedistrib(false)}
           onMudou={carregarAgenda}
+        />
+      )}
+
+      {/* ── Modal de copiar agenda (dia+pessoa origem → dia+pessoa destino) ── */}
+      {modalCopiar && (
+        <ModalCopiarAgenda
+          employees={employees}
+          clientes={clientes}
+          diaSel={diaSel}
+          onFechar={() => setModalCopiar(false)}
+          onCopiado={() => { setModalCopiar(false); carregarAgenda(); }}
         />
       )}
 
@@ -2234,6 +2200,206 @@ function PainelAtrasados({ atrasados, onFechar, onAgendar }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  ModalCopiarAgenda — copiar visitas de (funcionário X, dia Y) para (funcionário W, dia Z)
+// ────────────────────────────────────────────────────────────────────────────
+function ModalCopiarAgenda({ employees, clientes, diaSel, onFechar, onCopiado }) {
+  const clienteMap = useMemo(() => {
+    const m = new Map();
+    clientes.forEach(c => m.set(c.id, c));
+    return m;
+  }, [clientes]);
+
+  const ontem = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const [origemFunc, setOrigemFunc] = useState(employees[0]?.id ? String(employees[0].id) : '');
+  const [origemData, setOrigemData] = useState(ontem);
+  const [destinoFunc, setDestinoFunc] = useState(employees[0]?.id ? String(employees[0].id) : '');
+  const [destinoData, setDestinoData] = useState(diaSel);
+
+  const [preview, setPreview] = useState([]); // visitas encontradas
+  const [buscando, setBuscando] = useState(false);
+  const [copiando, setCopiando] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  async function buscar() {
+    if (!origemFunc || !origemData) return;
+    setBuscando(true);
+    setMsg('');
+    try {
+      const { data, error } = await supabase
+        .from('agenda')
+        .select('id, cliente_id, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, tipos_tarefa, status')
+        .eq('funcionario_id', origemFunc)
+        .eq('data_agendada', origemData)
+        .order('ordem_rota', { ascending: true });
+      if (error) throw error;
+      setPreview(data ?? []);
+      if (!data?.length) setMsg('Nenhuma visita encontrada para essa pessoa e dia.');
+    } catch (e) {
+      setMsg('Erro ao buscar: ' + e.message);
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  useEffect(() => { setPreview([]); setMsg(''); }, [origemFunc, origemData]);
+
+  async function copiar() {
+    if (!preview.length || !destinoFunc || !destinoData) return;
+    if (destinoFunc === origemFunc && destinoData === origemData) {
+      if (!confirm('Você está copiando para a mesma pessoa e mesmo dia. Isso vai duplicar as visitas. Continuar?')) return;
+    }
+    setCopiando(true);
+    try {
+      const novas = preview.map(v => ({
+        cliente_id:            v.cliente_id,
+        funcionario_id:        destinoFunc,
+        cliente_servico_id:    v.cliente_servico_id,
+        data_agendada:         destinoData,
+        hora_estimada_chegada: v.hora_estimada_chegada,
+        duracao_estimada_min:  v.duracao_estimada_min,
+        ordem_rota:            v.ordem_rota,
+        observacoes_gestor:    v.observacoes_gestor,
+        tipos_tarefa:          v.tipos_tarefa,
+        status:                'rascunho',
+      }));
+      const { error } = await supabase.from('agenda').insert(novas);
+      if (error) throw error;
+      alert(`✓ ${novas.length} visita${novas.length !== 1 ? 's' : ''} copiada${novas.length !== 1 ? 's' : ''} como rascunho.`);
+      onCopiado();
+    } catch (e) {
+      alert('Erro ao copiar: ' + e.message);
+    } finally {
+      setCopiando(false);
+    }
+  }
+
+  const nomeOrigem  = employees.find(e => String(e.id) === String(origemFunc))?.name  ?? '—';
+  const nomeDestino = employees.find(e => String(e.id) === String(destinoFunc))?.name ?? '—';
+
+  return (
+    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+      <div className="ec-modal ec-modal--copiar">
+        <header className="ec-modal__header">
+          <h3 className="ec-modal__titulo">↺ Copiar agenda</h3>
+          <button className="ec-modal__fechar" onClick={onFechar}>✕</button>
+        </header>
+
+        <div className="ec-modal__corpo">
+
+          {/* Origem */}
+          <section className="ec-copiar__sec">
+            <h4 className="ec-copiar__sec-titulo">1. Copiar de quem, e de qual dia?</h4>
+            <div className="ec-copiar__linha">
+              <label className="ec-copiar__campo">
+                <span>Funcionário</span>
+                <select value={origemFunc} onChange={e => setOrigemFunc(e.target.value)}>
+                  {employees.map(e => (
+                    <option key={e.id} value={String(e.id)}>{e.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="ec-copiar__campo">
+                <span>Dia</span>
+                <input type="date" value={origemData} onChange={e => setOrigemData(e.target.value)} />
+              </label>
+              <button
+                className="ec-copiar__btn-buscar"
+                onClick={buscar}
+                disabled={buscando || !origemFunc || !origemData}
+              >
+                {buscando ? '⏳' : '🔍 Buscar'}
+              </button>
+            </div>
+          </section>
+
+          {/* Preview */}
+          {preview.length > 0 && (
+            <section className="ec-copiar__sec">
+              <h4 className="ec-copiar__sec-titulo">
+                2. O que {nomeOrigem} fez em {new Date(origemData + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                <span className="ec-copiar__count">{preview.length} visita{preview.length !== 1 ? 's' : ''}</span>
+              </h4>
+              <div className="ec-copiar__preview">
+                <table className="ec-copiar__tabela">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Cliente</th>
+                      <th>Hora</th>
+                      <th>Dur.</th>
+                      <th>Tipos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((v, i) => {
+                      const c = clienteMap.get(v.cliente_id);
+                      return (
+                        <tr key={v.id}>
+                          <td>{i + 1}</td>
+                          <td>{c?.nome_empresa ?? '—'}</td>
+                          <td>{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</td>
+                          <td>{v.duracao_estimada_min ? `${v.duracao_estimada_min}min` : '—'}</td>
+                          <td className="ec-copiar__tipos">
+                            {(v.tipos_tarefa ?? []).join(', ') || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {msg && !preview.length && <p className="ec-copiar__msg">{msg}</p>}
+
+          {/* Destino */}
+          {preview.length > 0 && (
+            <section className="ec-copiar__sec">
+              <h4 className="ec-copiar__sec-titulo">3. Aplicar para quem, e em qual dia?</h4>
+              <div className="ec-copiar__linha">
+                <label className="ec-copiar__campo">
+                  <span>Funcionário</span>
+                  <select value={destinoFunc} onChange={e => setDestinoFunc(e.target.value)}>
+                    {employees.map(e => (
+                      <option key={e.id} value={String(e.id)}>{e.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ec-copiar__campo">
+                  <span>Dia</span>
+                  <input type="date" value={destinoData} onChange={e => setDestinoData(e.target.value)} />
+                </label>
+              </div>
+              <p className="ec-copiar__hint">
+                Vai criar {preview.length} visita{preview.length !== 1 ? 's' : ''} como <strong>rascunho</strong> na agenda de {nomeDestino} em {new Date(destinoData + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}.
+              </p>
+            </section>
+          )}
+
+        </div>
+
+        <footer className="ec-modal__footer">
+          <button className="ec-btn" onClick={onFechar} disabled={copiando}>Cancelar</button>
+          <button
+            className="ec-btn ec-btn--primario"
+            onClick={copiar}
+            disabled={copiando || !preview.length || !destinoFunc || !destinoData}
+          >
+            {copiando ? 'Copiando...' : `↺ Copiar ${preview.length} visita${preview.length !== 1 ? 's' : ''}`}
+          </button>
+        </footer>
       </div>
     </div>
   );

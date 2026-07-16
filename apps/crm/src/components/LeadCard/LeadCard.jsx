@@ -16,6 +16,12 @@ export default function LeadCard({ lead }) {
 
   const jaEhCliente = !!lead.clienteSupabaseId;
   const podePromover = lead.estagioId === 'orcamento_aprovado' && !jaEhCliente;
+  const podeGerarOrc = lead.estagioId === 'contato_recebido' || lead.estagioId === 'orcamento_pendente';
+
+  function handleGerarOrcamento(e) {
+    e.stopPropagation();
+    abrirModal(lead, { focarSecao: 'anexo' });
+  }
 
   async function handlePromover(e) {
     e.stopPropagation();
@@ -171,6 +177,17 @@ export default function LeadCard({ lead }) {
             📞 Ligar
           </a>
         </div>
+      )}
+
+      {/* Botão "Gerar orçamento" — só em contato_recebido / orcamento_pendente */}
+      {podeGerarOrc && (
+        <button
+          className="lead-card__gerar-orc"
+          onClick={handleGerarOrcamento}
+          title="Abrir o card e ir direto para o gerador/anexo de orçamento"
+        >
+          📄 Gerar Orçamento
+        </button>
       )}
 
       {/* Botão "Virar cliente" (só em orçamento aprovado, uma vez) */}

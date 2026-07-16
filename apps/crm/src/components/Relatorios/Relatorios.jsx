@@ -24,15 +24,25 @@ export default function Relatorios() {
   const [loading,    setLoading]    = useState(true);
   const [busca,      setBusca]      = useState('');
   const [filtroFunc, setFiltroFunc] = useState('todos');
-  const [filtroDias, setFiltroDias] = useState(30);
+  // Range de datas (defaults: últimos 30 dias)
+  const hojeStr = new Date().toISOString().split('T')[0];
+  const trintaAtrasStr = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  })();
+  const [dataInicio, setDataInicio] = useState(trintaAtrasStr);
+  const [dataFim,    setDataFim]    = useState(hojeStr);
   const [flagsAlerta, setFlagsAlerta] = useState({ semFotos: false, semAssin: false, foraLocal: false });
   const [detalhe,    setDetalhe]    = useState(null); // relatorio expandido
 
   async function carregar() {
     setLoading(true);
-    const desde = new Date();
-    desde.setDate(desde.getDate() - filtroDias);
-    const iso = desde.toISOString();
+    // Se dataInicio > dataFim, inverte para não retornar vazio silenciosamente
+    let ini = dataInicio, fim = dataFim;
+    if (ini > fim) [ini, fim] = [fim, ini];
+    const isoInicio = `${ini}T00:00:00`;
+    const isoFim    = `${fim}T23:59:59`;
 
     const [relRes, empRes] = await Promise.all([
       supabase
@@ -51,7 +61,8 @@ export default function Relatorios() {
           ),
           fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem)
         `)
-        .gte('checkin_at', iso)
+        .gte('checkin_at', isoInicio)
+        .lte('checkin_at', isoFim)
         .order('checkin_at', { ascending: false }),
       supabase.from('employees').select('id, name').order('name'),
     ]);
@@ -61,7 +72,7 @@ export default function Relatorios() {
     setLoading(false);
   }
 
-  useEffect(() => { carregar(); }, [filtroDias]);
+  useEffect(() => { carregar(); }, [dataInicio, dataFim]);
 
   const empMap = useMemo(() => {
     const m = new Map();
@@ -142,12 +153,26 @@ export default function Relatorios() {
           ))}
         </select>
 
-        <select className="rel__select" value={filtroDias} onChange={e => setFiltroDias(Number(e.target.value))}>
-          <option value={7}>Últimos 7 dias</option>
-          <option value={30}>Últimos 30 dias</option>
-          <option value={90}>Últimos 90 dias</option>
-          <option value={365}>Último ano</option>
-        </select>
+        <div className="rel__range">
+          <input
+            type="date"
+            className="rel__data"
+            value={dataInicio}
+            max={dataFim}
+            onChange={e => setDataInicio(e.target.value)}
+            title="Data inicial"
+          />
+          <span className="rel__range-sep">→</span>
+          <input
+            type="date"
+            className="rel__data"
+            value={dataFim}
+            min={dataInicio}
+            max={hojeStr}
+            onChange={e => setDataFim(e.target.value)}
+            title="Data final"
+          />
+        </div>
 
         <div className="rel__flags">
           <button

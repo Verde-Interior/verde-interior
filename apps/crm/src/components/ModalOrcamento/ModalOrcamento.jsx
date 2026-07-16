@@ -10,7 +10,22 @@ export default function ModalOrcamento() {
   const {
     modalAberto, leadSelecionado, fecharModal, atualizarLead,
     ESTAGIOS, TIPOS_SERVICO, MOTIVOS_PERDA, CANAIS_ORIGEM, FREQUENCIAS_VISITA,
+    modalFocoSecao,
   } = useCRM();
+
+  // Rola até a seção pedida quando o modal abre com foco
+  useEffect(() => {
+    if (!modalAberto || !modalFocoSecao) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-modal-secao="${modalFocoSecao}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('modal__secao--foco');
+        setTimeout(() => el.classList.remove('modal__secao--foco'), 2200);
+      }
+    }, 120);
+    return () => clearTimeout(t);
+  }, [modalAberto, modalFocoSecao]);
 
   // ── Campos editáveis do modal ──────────────────────────────────────────────
   const [estagioId, setEstagioId]         = useState('');
@@ -1052,7 +1067,7 @@ export default function ModalOrcamento() {
 
           {/* ── Anexo de Orçamento ── */}
           {(estagioId === 'contato_recebido' || estagioId === 'orcamento_pendente') && (
-            <section className="modal__secao modal__secao--anexo">
+            <section className="modal__secao modal__secao--anexo" data-modal-secao="anexo">
               <h3 className="modal__secao-titulo">📎 Arquivo do Orçamento</h3>
               <label className="modal__anexo-drop">
                 <input
@@ -1073,7 +1088,7 @@ export default function ModalOrcamento() {
           )}
 
           {estagioId === 'orcamento_enviado' && (
-            <section className="modal__secao modal__secao--anexo">
+            <section className="modal__secao modal__secao--anexo" data-modal-secao="anexo">
               <h3 className="modal__secao-titulo">
                 📎 Arquivo do Orçamento
                 {anexos.length > 0 && (

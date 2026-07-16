@@ -709,14 +709,17 @@ export function CRMProvider({ children }) {
   );
 
   // Modal de orçamento
-  const abrirModal = useCallback((lead) => {
+  const [modalFocoSecao, setModalFocoSecao] = useState(null); // 'anexo' | 'fluxo' | null
+  const abrirModal = useCallback((lead, opcoes = {}) => {
     setLeadSelecionado(lead);
     setModalAberto(true);
+    setModalFocoSecao(opcoes.focarSecao ?? null);
   }, []);
 
   const fecharModal = useCallback(() => {
     setLeadSelecionado(null);
     setModalAberto(false);
+    setModalFocoSecao(null);
   }, []);
 
   // ── Ações de tarefas ──────────────────────────────────────────────────────
@@ -811,6 +814,7 @@ export function CRMProvider({ children }) {
         leadsPorEstagio,
         abrirModal,
         fecharModal,
+        modalFocoSecao,
         // Tarefas
         tarefas,
         adicionarTarefa,

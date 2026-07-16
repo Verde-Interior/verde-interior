@@ -275,6 +275,26 @@
 }
 .lead-card__promover:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* Botão "Gerar Orçamento" — leva ao anexo/gerador dentro do modal */
+.lead-card__gerar-orc {
+  margin-top: 8px;
+  width: 100%;
+  background: #EEF2FF;
+  color: #4338CA;
+  border: 1px solid #C7D2FE;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+.lead-card__gerar-orc:hover {
+  background: #E0E7FF;
+  border-color: #A5B4FC;
+}
+
 .lead-card__cliente-tag {
   margin-top: 8px;
   background: var(--forest-50);
