@@ -475,6 +475,9 @@ function viewDetail() {
           </button>
         ` : ''}
         ${v.status === 'concluido' ? `
+          <button class="ag-btn ag-btn--big" onclick="agendaGoTo('review')">
+            <i class="fa-solid fa-file-lines"></i> Ver relatório completo
+          </button>
           <div class="ag-done-info"><i class="fa-solid fa-check"></i> Visita concluída</div>
         ` : ''}
       </div>
@@ -758,10 +761,16 @@ function setupCanvasEDrawing(canvas, preservar = false) {
     return requestAnimationFrame(() => setupCanvasEDrawing(canvas, preservar));
   }
 
-  // Preserva desenho anterior via dataURL antes de resetar o canvas
+  // Preserva desenho anterior via dataURL antes de resetar o canvas.
+  // Prioridade: resize atual > cache em memória (_cached) > URL salva no relatório.
   let dataAnterior = null;
+  let origem = null;
   if (preservar && st.sigPad && !st.sigPad.empty) {
     try { dataAnterior = canvas.toDataURL('image/png'); } catch { /* ignore */ }
+  } else if (st.sigPad?._cached) {
+    dataAnterior = st.sigPad._cached;
+  } else if (st.relatorioSel?.assinatura_responsavel_img) {
+    origem = st.relatorioSel.assinatura_responsavel_img;
   }
 
   canvas.width = Math.floor(rect.width * ratio);
@@ -773,14 +782,27 @@ function setupCanvasEDrawing(canvas, preservar = false) {
   ctx.lineWidth = 2.4;
   ctx.strokeStyle = '#1a1a1a';
 
-  st.sigPad = st.sigPad || { canvas, ctx, empty: true };
+  st.sigPad = st.sigPad || { canvas, ctx, empty: true, _cached: null };
   st.sigPad.canvas = canvas;
   st.sigPad.ctx = ctx;
 
   if (dataAnterior) {
     const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      st.sigPad.empty = false;
+    };
     img.src = dataAnterior;
+  } else if (origem) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      st.sigPad.empty = false;
+      try { st.sigPad._cached = canvas.toDataURL('image/png'); } catch {}
+    };
+    img.onerror = () => { /* silencia — URL pode ter expirado */ };
+    img.src = origem;
   }
 
   // Handlers só na primeira vez
@@ -815,7 +837,14 @@ function setupCanvasEDrawing(canvas, preservar = false) {
     c.stroke();
     pad.last = p;
   }
-  function end() { pad.drawing = false; pad.last = null; }
+  function end() {
+    pad.drawing = false;
+    pad.last = null;
+    // Cache dataURL após cada traço para sobreviver a navegações entre abas
+    if (st.sigPad && !st.sigPad.empty) {
+      try { st.sigPad._cached = canvas.toDataURL('image/png'); } catch {}
+    }
+  }
 
   canvas.addEventListener('mousedown', start);
   canvas.addEventListener('mousemove', move);
@@ -837,21 +866,37 @@ function viewReview() {
   const temRelato = (r.relato || '').trim().length > 0 || st.fotos.some(f => (f.observacao || '').trim());
   const temAssin  = !!r.assinatura_responsavel_img;
   const podeFinalizar = temRelato && temAssin && nPend === 0;
+  const readOnly = v.status === 'concluido';
+  const voltar = readOnly ? 'agendaBackToList()' : "agendaGoTo('exec')";
+  const clickFotos = readOnly ? '' : `onclick="agendaGoTo('photos')"`;
+  const clickReport = readOnly ? '' : `onclick="agendaGoTo('report')"`;
+  const clickSign = readOnly ? '' : `onclick="agendaGoTo('sign')"`;
+  const penIco = readOnly ? '' : '<i class="fa-solid fa-pen ag-review__edit"></i>';
 
   return `
     <div class="ag-header ag-header--sub">
-      <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
+      <button class="ag-back" onclick="${voltar}"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
-        <div class="ag-title">Revisar e finalizar</div>
+        <div class="ag-title">${readOnly ? 'Relatório finalizado' : 'Revisar e finalizar'}</div>
         <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
       </div>
     </div>
 
     <div class="ag-review">
-      <section class="ag-review__sec" onclick="agendaGoTo('photos')">
+      ${readOnly ? `
+        <div class="ag-review__done">
+          <i class="fa-solid fa-circle-check"></i>
+          <div>
+            <div class="ag-review__done-title">Visita concluída</div>
+            ${r.checkout_at ? `<div class="ag-review__done-sub">Check-out: ${new Date(r.checkout_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>` : ''}
+          </div>
+        </div>
+      ` : ''}
+
+      <section class="ag-review__sec" ${clickFotos}>
         <div class="ag-review__hd">
           <span><i class="fa-solid fa-camera"></i> Fotos <span class="ag-review__count">${nFotos}</span></span>
-          <i class="fa-solid fa-pen ag-review__edit"></i>
+          ${penIco}
         </div>
         ${nFotos === 0
           ? '<div class="ag-review__empty">Nenhuma foto adicionada.</div>'
@@ -860,24 +905,24 @@ function viewReview() {
                 <img src="${f.url}" alt="foto">
                 ${f.observacao ? `<div class="ag-review__thumb-obs">${esc(f.observacao)}</div>` : ''}
               </div>`).join('')}</div>`}
-        ${nPend > 0 ? `<div class="ag-menu-alert"><i class="fa-solid fa-cloud-arrow-up"></i> ${nPend} foto${nPend>1?'s':''} ainda enviando — aguarde antes de finalizar</div>` : ''}
+        ${!readOnly && nPend > 0 ? `<div class="ag-menu-alert"><i class="fa-solid fa-cloud-arrow-up"></i> ${nPend} foto${nPend>1?'s':''} ainda enviando — aguarde antes de finalizar</div>` : ''}
       </section>
 
-      <section class="ag-review__sec" onclick="agendaGoTo('report')">
+      <section class="ag-review__sec" ${clickReport}>
         <div class="ag-review__hd">
-          <span><i class="fa-solid fa-file-pen"></i> Relato ${temRelato ? '<i class="fa-solid fa-circle-check ag-review__ok"></i>' : '<i class="fa-solid fa-triangle-exclamation ag-review__warn"></i>'}</span>
-          <i class="fa-solid fa-pen ag-review__edit"></i>
+          <span><i class="fa-solid fa-file-pen"></i> Relato ${!readOnly ? (temRelato ? '<i class="fa-solid fa-circle-check ag-review__ok"></i>' : '<i class="fa-solid fa-triangle-exclamation ag-review__warn"></i>') : ''}</span>
+          ${penIco}
         </div>
-        ${temRelato
+        ${(r.relato || '').trim()
           ? `<div class="ag-review__texto">${esc(r.relato).replace(/\n/g, '<br>')}</div>`
           : '<div class="ag-review__empty">Nenhum relato escrito.</div>'}
         ${r.observacoes ? `<div class="ag-review__texto ag-review__texto--obs"><strong>Obs:</strong> ${esc(r.observacoes).replace(/\n/g, '<br>')}</div>` : ''}
       </section>
 
-      <section class="ag-review__sec" onclick="agendaGoTo('sign')">
+      <section class="ag-review__sec" ${clickSign}>
         <div class="ag-review__hd">
-          <span><i class="fa-solid fa-signature"></i> Assinatura ${temAssin ? '<i class="fa-solid fa-circle-check ag-review__ok"></i>' : '<i class="fa-solid fa-triangle-exclamation ag-review__warn"></i>'}</span>
-          <i class="fa-solid fa-pen ag-review__edit"></i>
+          <span><i class="fa-solid fa-signature"></i> Assinatura ${!readOnly ? (temAssin ? '<i class="fa-solid fa-circle-check ag-review__ok"></i>' : '<i class="fa-solid fa-triangle-exclamation ag-review__warn"></i>') : ''}</span>
+          ${penIco}
         </div>
         ${temAssin
           ? `<div class="ag-review__sig">
@@ -887,14 +932,22 @@ function viewReview() {
           : '<div class="ag-review__empty">Ainda não assinado.</div>'}
       </section>
 
-      <div class="ag-actions">
-        <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaSubmit()" ${podeFinalizar ? '' : 'disabled'}>
-          <i class="fa-solid fa-flag-checkered"></i> Finalizar e fazer check-out
-        </button>
-        ${!podeFinalizar
-          ? `<small class="ag-hint ag-hint--warn">${nPend > 0 ? `Aguarde ${nPend} foto${nPend>1?'s':''} terminar de enviar.` : 'Complete relato e assinatura antes de finalizar.'}</small>`
-          : '<small class="ag-hint">GPS e horário de saída serão capturados agora.</small>'}
-      </div>
+      ${readOnly ? `
+        <div class="ag-actions">
+          <button class="ag-btn ag-btn--big" onclick="agendaBackToList()">
+            <i class="fa-solid fa-list"></i> Voltar para agenda
+          </button>
+        </div>
+      ` : `
+        <div class="ag-actions">
+          <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaSubmit()" ${podeFinalizar ? '' : 'disabled'}>
+            <i class="fa-solid fa-flag-checkered"></i> Finalizar e fazer check-out
+          </button>
+          ${!podeFinalizar
+            ? `<small class="ag-hint ag-hint--warn">${nPend > 0 ? `Aguarde ${nPend} foto${nPend>1?'s':''} terminar de enviar.` : 'Complete relato e assinatura antes de finalizar.'}</small>`
+            : '<small class="ag-hint">GPS e horário de saída serão capturados agora.</small>'}
+        </div>
+      `}
     </div>
   `;
 }
@@ -946,6 +999,9 @@ export async function openDetail(visitaId) {
   const v = st.visitas.find(x => x.id === visitaId);
   if (!v) return;
   st.visitaSel = v;
+  // Zera cache da assinatura ao abrir outra visita — a fonte da verdade
+  // volta a ser assinatura_responsavel_img do relatório recém-carregado.
+  if (st.sigPad) st.sigPad._cached = null;
   if (v.status === 'em_execucao' || v.status === 'concluido') {
     st.relatorioSel = await loadRelatorio(v.id);
     st.fotos = st.relatorioSel ? await loadFotos(st.relatorioSel.id) : [];
@@ -1267,12 +1323,23 @@ export async function saveReport() {
 export function sigClear() {
   if (!st.sigPad) return;
   const { canvas, ctx } = st.sigPad;
-  const ratio = window.devicePixelRatio || 1;
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
   st.sigPad.empty = true;
+  st.sigPad._cached = null;
+  // Limpa também a referência local à assinatura salva — se o usuário
+  // não desenhar+salvar de novo, temAssin fica falso e finalização é bloqueada.
+  // O servidor só é atualizado no próximo confirmSign (upsert).
+  if (st.relatorioSel) {
+    st.relatorioSel = {
+      ...st.relatorioSel,
+      assinatura_responsavel_img: null,
+      assinatura_responsavel_nome: null,
+      assinatura_storage_path: null,
+    };
+  }
 }
 
 async function uploadSignature(canvas, relatorioId) {
@@ -1330,6 +1397,8 @@ export async function confirmSign() {
     assinatura_responsavel_img:  sigUrl,
     assinatura_storage_path:     sigPath,
   };
+  // Cache do dataURL para restaurar na próxima abertura da tela
+  try { st.sigPad._cached = st.sigPad.canvas.toDataURL('image/png'); } catch {}
   toast('✓ Assinatura confirmada');
   st.view = 'exec';
   renderCurrentView();

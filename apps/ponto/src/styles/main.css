@@ -453,10 +453,10 @@ body:has(#net-banner.on) .nav{top:44px}
   font-size:18px;font-weight:600;color:var(--text);
 }
 .ag-sign-full__save{
-  background:#7c3aed;color:#fff;border:none;
+  background:var(--g);color:#fff;border:none;
   padding:14px 44px;border-radius:32px;
   font-size:17px;font-weight:600;cursor:pointer;font-family:inherit;
-  box-shadow:0 4px 12px rgba(124,58,237,.35);
+  box-shadow:0 4px 12px rgba(45,90,27,.35);
   position:absolute;left:50%;transform:translateX(-50%);
 }
 .ag-sign-full__save:active{transform:translateX(-50%) scale(.97)}
@@ -626,6 +626,12 @@ body:has(#net-banner.on) .nav{top:44px}
 .ag-review{display:flex;flex-direction:column;gap:12px}
 .ag-review__sec{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:border-color .15s}
 .ag-review__sec:hover{border-color:var(--gc)}
+.ag-review__sec:not([onclick]){cursor:default}
+.ag-review__sec:not([onclick]):hover{border-color:var(--border)}
+.ag-review__done{display:flex;gap:12px;align-items:center;background:var(--gb);border:1px solid var(--gc);border-radius:var(--radius);padding:14px}
+.ag-review__done i{font-size:26px;color:var(--g)}
+.ag-review__done-title{font-size:15px;font-weight:600;color:var(--g)}
+.ag-review__done-sub{font-size:12px;color:var(--text2);margin-top:2px}
 .ag-review__hd{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px}
 .ag-review__hd i{margin-right:6px;color:var(--g)}
 .ag-review__count{background:var(--gb);color:var(--g);border-radius:12px;padding:2px 9px;font-size:12px;margin-left:4px}
