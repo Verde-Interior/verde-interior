@@ -277,7 +277,7 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 720px;
+  max-width: 900px;
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
@@ -416,11 +416,11 @@
   color: var(--text-primary);
 }
 
-/* Fotos */
+/* Fotos — 2 por linha para máxima visibilidade das plantas */
 .rel-fotos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
 }
 
 .rel-foto {
@@ -428,20 +428,21 @@
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  cursor: pointer;
+  cursor: zoom-in;
   transition: all var(--transition-fast);
 }
-.rel-foto:hover { box-shadow: var(--shadow-md); transform: scale(1.02); }
-.rel-foto img { width: 100%; height: 110px; object-fit: cover; display: block; }
+.rel-foto:hover { box-shadow: var(--shadow-md); transform: scale(1.01); }
+.rel-foto img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
 .rel-foto__obs {
-  font-size: 11px;
-  padding: 5px 8px;
+  font-size: 12px;
+  padding: 7px 10px;
   color: var(--text-secondary);
   background: white;
   border-top: 1px solid var(--surface-border);
+  line-height: 1.4;
 }
 .rel-foto__load {
-  height: 110px;
+  aspect-ratio: 4/3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -595,5 +596,5 @@
   .rel-modal__corpo { padding: 12px 14px; }
   .rel-modal__footer { padding: 12px 14px; }
   .rel-grid { grid-template-columns: repeat(2, 1fr); }
-  .rel-fotos { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .rel-fotos { grid-template-columns: repeat(2, 1fr); }
 }

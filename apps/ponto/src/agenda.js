@@ -6,7 +6,7 @@ import { toast, F, getHoje } from './utils.js';
 const DIAS_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-// Marcador que separa relato do usuário da parte gerada a partir de legendas
+// Marcador que separa observações do usuário da parte gerada a partir de legendas
 // (tudo depois do marcador é auto-regenerado quando fotos mudam)
 const RELATO_MARKER = '\n\n— Fotos —\n';
 
@@ -122,7 +122,10 @@ function limparPending() {
 }
 
 // ── Compressão de imagem (client-side, sem lib) ───────────────────
-async function comprimirImagem(file, maxDim = 1600, quality = 0.82) {
+// WebP 1024px quality 0.75 → ~40-80KB por foto (vs ~300-500KB do JPEG 1600px original)
+// Ainda mantém detalhes suficientes para avaliar saúde da planta (folhas, cor, pragas).
+// Fallback JPEG 0.75 se browser não suportar WebP canvas.
+async function comprimirImagem(file, maxDim = 1024, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -135,13 +138,21 @@ async function comprimirImagem(file, maxDim = 1600, quality = 0.82) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+        // Tenta WebP primeiro
         canvas.toBlob(blob => {
-          if (!blob) return reject(new Error('toBlob retornou null'));
-          const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg';
-          resolve(new File([blob], nome, { type: 'image/jpeg' }));
-        }, 'image/jpeg', quality);
+          if (blob && blob.type === 'image/webp') {
+            const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.webp';
+            return resolve(new File([blob], nome, { type: 'image/webp' }));
+          }
+          // Fallback: WebP não suportado → JPEG
+          canvas.toBlob(jpegBlob => {
+            if (!jpegBlob) return reject(new Error('toBlob retornou null'));
+            const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg';
+            resolve(new File([jpegBlob], nome, { type: 'image/jpeg' }));
+          }, 'image/jpeg', quality);
+        }, 'image/webp', quality);
       } catch (e) { reject(e); }
     };
     img.onerror = () => reject(new Error('Falha ao ler imagem'));
@@ -479,9 +490,8 @@ function viewExec() {
 
   const nFotos    = st.fotos.length;
   const nPend     = st.pendingFotos.length;
-  // Considera relato "preenchido" apenas o texto do usuário (antes do marker)
-  const relatoUser = (r.relato || '').split(RELATO_MARKER)[0].trim();
-  const temRelato = relatoUser.length > 0 || st.fotos.some(f => (f.observacao || '').trim());
+  // Considera relato "preenchido" se há texto no relato OU legendas nas fotos (que vão pra obs)
+  const temRelato = (r.relato || '').trim().length > 0 || st.fotos.some(f => (f.observacao || '').trim());
   const temAssin  = !!r.assinatura_responsavel_img;
 
   return `
@@ -581,7 +591,7 @@ function viewPhotos() {
       ${st.fotos.length === 0 && st.pendingFotos.length === 0
         ? '<div class="ag-photos__empty">Nenhuma foto ainda. Toque em <strong>Câmera</strong> ou <strong>Galeria</strong> para adicionar.</div>'
         : ''}
-      <small class="ag-hint">Legendas escritas aqui aparecem automaticamente no relato.</small>
+      <small class="ag-hint">Legendas escritas aqui aparecem automaticamente nas observações.</small>
     </div>
   `;
 }
@@ -591,7 +601,7 @@ function photoItem(f, i) {
     <div class="ag-photo-item" data-id="${f.id}">
       <img src="${f.url}" alt="foto ${i+1}">
       <div class="ag-photo-item__body">
-        <input class="ag-photo-item__obs" placeholder="Legenda (aparece no relato)"
+        <input class="ag-photo-item__obs" placeholder="Legenda (aparece nas observações)"
                value="${esc(f.observacao)}"
                onblur="agendaSaveFotoObs('${f.id}', this.value)">
         <div class="ag-photo-item__acoes">
@@ -633,6 +643,10 @@ function viewReport() {
   const r = st.relatorioSel;
   if (!v || !r) return viewList();
 
+  // Migração lazy: relatos antigos podem ter o marker de fotos misturado —
+  // agora as legendas vão só pra observações. Remove tudo depois do marker.
+  const relatoLimpo = (r.relato || '').split(RELATO_MARKER)[0].trim();
+
   return `
     <div class="ag-header ag-header--sub">
       <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
@@ -645,13 +659,13 @@ function viewReport() {
     <div class="ag-form">
       <div class="ag-field">
         <label>O que foi feito na visita</label>
-        <textarea id="ag-relato" rows="6" placeholder="Descreva o que foi executado...">${esc(r.relato)}</textarea>
-        <small class="ag-hint">Legendas das fotos aparecem automaticamente abaixo depois do marcador <em>— Fotos —</em>.</small>
+        <textarea id="ag-relato" rows="6" placeholder="Descreva o que foi executado...">${esc(relatoLimpo)}</textarea>
       </div>
 
       <div class="ag-field">
         <label>Observações gerais</label>
         <textarea id="ag-obs" rows="4" placeholder="Plantas que precisam atenção, materiais consumidos, etc.">${esc(r.observacoes)}</textarea>
+        <small class="ag-hint">Legendas das fotos aparecem automaticamente abaixo depois do marcador <em>— Fotos —</em>.</small>
       </div>
 
       <div class="ag-actions">
@@ -677,52 +691,31 @@ function wireReportInputs() {
   obs.addEventListener('input', agendarSave);
 }
 
-// ── VIEW: Assinatura ─────────────────────────────────────────────
+// ── VIEW: Assinatura (fullscreen) ────────────────────────────────
 function viewSign() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
   if (!v || !r) return viewList();
 
+  const nomeDefault = r.assinatura_responsavel_nome || v.cliente?.contato_nome || '';
+
   return `
-    <div class="ag-header ag-header--sub">
-      <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
-      <div>
-        <div class="ag-title">Assinatura</div>
-        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
-      </div>
-    </div>
+    <div class="ag-sign-full">
+      <button class="ag-sign-full__close" onclick="agendaGoTo('exec')" aria-label="Fechar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <button class="ag-sign-full__clear" onclick="agendaSigClear()">Limpar</button>
 
-    <div class="ag-sign">
-      <div class="ag-sign__msg ag-sign__landscape-hint" id="ag-sign-hint">
-        <i class="fa-solid fa-rotate"></i>
-        Vire o celular na horizontal — a área de assinatura fica maior.
+      <div class="ag-sign-full__canvas-wrap">
+        <canvas id="ag-sig-canvas"></canvas>
       </div>
 
-      <div class="ag-field">
-        <label>Nome do responsável</label>
-        <input type="text" id="ag-sig-nome"
-               value="${esc(r.assinatura_responsavel_nome || v.cliente?.contato_nome || '')}"
-               placeholder="Nome completo de quem está assinando">
+      <div class="ag-sign-full__footer">
+        <div class="ag-sign-full__label">Assinatura</div>
+        <button class="ag-sign-full__save" onclick="agendaConfirmSign()">Salvar</button>
       </div>
 
-      <div class="ag-field">
-        <div class="ag-field__row">
-          <label>Assinatura</label>
-          <button class="ag-sig-clear-inline" onclick="agendaSigClear()">
-            <i class="fa-solid fa-eraser"></i> Limpar
-          </button>
-        </div>
-        <div class="ag-sig-wrap">
-          <canvas id="ag-sig-canvas" style="touch-action:none;display:block;width:100%;height:100%;"></canvas>
-        </div>
-      </div>
-
-      <div class="ag-actions">
-        <button class="ag-btn ag-btn--pri ag-btn--big" onclick="agendaConfirmSign()">
-          <i class="fa-solid fa-check"></i> Confirmar assinatura
-        </button>
-        <small class="ag-hint">A assinatura é salva agora. O check-out final é feito na tela de revisão.</small>
-      </div>
+      <input type="hidden" id="ag-sig-nome" value="${esc(nomeDefault)}">
     </div>
   `;
 }
@@ -733,23 +726,12 @@ function wireSignature() {
   if (!canvas) return;
 
   // Espera o layout terminar antes de medir (fix crítico para o offset de toque)
-  requestAnimationFrame(() => {
-    setupCanvasEDrawing(canvas);
-    updateLandscapeHint();
-  });
-
-  function updateLandscapeHint() {
-    const hint = document.getElementById('ag-sign-hint');
-    if (!hint) return;
-    const isLandscape = window.innerWidth >= window.innerHeight;
-    hint.style.display = isLandscape ? 'none' : '';
-  }
+  requestAnimationFrame(() => setupCanvasEDrawing(canvas));
 
   // Re-setup + preserva desenho quando gira o dispositivo
   function onResize() {
     if (!document.getElementById('ag-sig-canvas')) return;
     setupCanvasEDrawing(canvas, /*preservar=*/true);
-    updateLandscapeHint();
   }
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
@@ -839,8 +821,7 @@ function viewReview() {
 
   const nFotos = st.fotos.length;
   const nPend  = st.pendingFotos.length;
-  const relatoUser = (r.relato || '').split(RELATO_MARKER)[0].trim();
-  const temRelato = relatoUser.length > 0 || st.fotos.some(f => (f.observacao || '').trim());
+  const temRelato = (r.relato || '').trim().length > 0 || st.fotos.some(f => (f.observacao || '').trim());
   const temAssin  = !!r.assinatura_responsavel_img;
   const podeFinalizar = temRelato && temAssin && nPend === 0;
 
@@ -1067,7 +1048,8 @@ function startTimer() {
 // ── Fotos: upload confiável com compressão + fila persistente ─────
 async function tentarUploadFoto(file, relatorioId) {
   try {
-    const path = `${relatorioId}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.jpg`;
+    const ext  = file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${relatorioId}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from('field-photos')
       .upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false });
@@ -1192,32 +1174,32 @@ export async function saveFotoObs(fotoId, texto) {
   await sincronizarLegendasNoRelato();
 }
 
-// ── Legenda → Relato (auto-sincroniza) ────────────────────────────
+// ── Legenda → Observações (auto-sincroniza) ───────────────────────
 async function sincronizarLegendasNoRelato() {
   const r = st.relatorioSel;
   if (!r) return;
 
-  const relatoAtual = r.relato || '';
-  const idx = relatoAtual.indexOf(RELATO_MARKER);
-  const textoUsuario = idx >= 0 ? relatoAtual.slice(0, idx) : relatoAtual;
+  const obsAtual = r.observacoes || '';
+  const idx = obsAtual.indexOf(RELATO_MARKER);
+  const textoUsuario = idx >= 0 ? obsAtual.slice(0, idx) : obsAtual;
 
   const linhasFoto = st.fotos
     .map((f, i) => (f.observacao || '').trim() ? `${i+1}. ${f.observacao.trim()}` : null)
     .filter(Boolean);
 
-  let novoRelato;
+  let novoObs;
   if (linhasFoto.length === 0) {
-    novoRelato = textoUsuario.replace(/\s+$/, '');
+    novoObs = textoUsuario.replace(/\s+$/, '');
   } else {
     const userLimpo = textoUsuario.replace(/\s+$/, '');
-    novoRelato = userLimpo + RELATO_MARKER + linhasFoto.join('\n');
+    novoObs = userLimpo + RELATO_MARKER + linhasFoto.join('\n');
   }
 
-  if (novoRelato === relatoAtual) return;
+  if (novoObs === obsAtual) return;
 
-  const { error } = await supabase.from('relatorios').update({ relato: novoRelato || null }).eq('id', r.id);
-  if (error) { console.warn('Falha ao sincronizar relato:', error); return; }
-  st.relatorioSel = { ...r, relato: novoRelato };
+  const { error } = await supabase.from('relatorios').update({ observacoes: novoObs || null }).eq('id', r.id);
+  if (error) { console.warn('Falha ao sincronizar observações:', error); return; }
+  st.relatorioSel = { ...r, observacoes: novoObs };
 }
 
 // ── Salvar relato + observações ───────────────────────────────────
@@ -1225,28 +1207,31 @@ async function saveRelatoObs(silent = false) {
   const r = st.relatorioSel;
   if (!r) return;
   const relatoRaw = document.getElementById('ag-relato')?.value ?? '';
-  const obs       = document.getElementById('ag-obs')?.value?.trim() ?? '';
+  // Blindagem: se o usuário digitar/colar o marker no relato, ainda joga fora
+  // (legendas vivem só em observacoes agora)
+  const relato = relatoRaw.split(RELATO_MARKER)[0].trim();
+  const obsRaw = document.getElementById('ag-obs')?.value ?? '';
 
-  // Se o texto do usuário mudou, preserva a parte auto-gerada de fotos (após o marker)
-  const relatoAtual = r.relato || '';
-  const idxAtual = relatoAtual.indexOf(RELATO_MARKER);
-  const parteAuto = idxAtual >= 0 ? relatoAtual.slice(idxAtual) : '';
+  // Legendas ficam em observacoes: preserva a parte auto-gerada (após o marker)
+  const obsAtual = r.observacoes || '';
+  const idxAtual = obsAtual.indexOf(RELATO_MARKER);
+  const parteAuto = idxAtual >= 0 ? obsAtual.slice(idxAtual) : '';
 
-  // O textarea contém o texto COMPLETO (usuário + auto). Precisa separar:
-  const idxNovo = relatoRaw.indexOf(RELATO_MARKER);
-  const textoUsuario = (idxNovo >= 0 ? relatoRaw.slice(0, idxNovo) : relatoRaw).replace(/\s+$/, '');
+  // O textarea de obs contém o texto COMPLETO (usuário + auto). Precisa separar:
+  const idxNovo = obsRaw.indexOf(RELATO_MARKER);
+  const textoUsuario = (idxNovo >= 0 ? obsRaw.slice(0, idxNovo) : obsRaw).replace(/\s+$/, '');
 
-  const novoRelato = parteAuto
+  const novoObs = parteAuto
     ? (textoUsuario + parteAuto)
     : textoUsuario;
 
   const { error } = await supabase
     .from('relatorios')
-    .update({ relato: novoRelato || null, observacoes: obs || null })
+    .update({ relato: relato || null, observacoes: novoObs || null })
     .eq('id', r.id);
   if (error) { if (!silent) toast('Erro ao salvar: ' + error.message, false); return; }
 
-  st.relatorioSel = { ...r, relato: novoRelato || null, observacoes: obs || null };
+  st.relatorioSel = { ...r, relato: relato || null, observacoes: novoObs || null };
   if (!silent) toast('✓ Relato salvo');
 }
 
@@ -1293,9 +1278,10 @@ export async function confirmSign() {
   const r = st.relatorioSel;
   if (!v || !r) return;
 
-  const nome = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
-  if (!nome) { toast('Preencha o nome do responsável', false); return; }
-  if (!st.sigPad || st.sigPad.empty) { toast('Faça a assinatura antes de confirmar', false); return; }
+  // Nome vem do contato do cliente (hidden input pré-preenchido); fallback genérico
+  const nomeInput = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
+  const nome = nomeInput || v.cliente?.contato_nome || 'Responsável';
+  if (!st.sigPad || st.sigPad.empty) { toast('Faça a assinatura antes de salvar', false); return; }
 
   toast('Enviando assinatura...');
   let sigUrl, sigPath;

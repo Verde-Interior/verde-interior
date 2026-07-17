@@ -1,9 +1,6 @@
-// Service Worker do App Ponto — v8
-// Estratégia:
-//   • Assets do próprio app (JS/CSS/HTML/imagens): cache-first (rápido, funciona offline)
-//   • Chamadas ao Supabase (API/Storage/Auth): NUNCA cachear (dados sempre frescos)
-//   • Outras origens (fontes, CDN): cache-first
-const CACHE = 'vi-ponto-v8';
+// Service Worker do App Ponto
+// __BUILD_TS__ é substituído por um timestamp no build (scripts/inject-sw-version.js)
+const CACHE = 'vi-ponto-__BUILD_TS__';
 const ASSETS = [
   '/',
   '/index.html',

@@ -18,6 +18,26 @@ async function signedUrl(path, ttlSec = 60 * 60) {
   return data?.signedUrl ?? null;
 }
 
+// Reverse geocoding via Nominatim (OpenStreetMap) — free, sem chave de API
+async function reverseGeocode(lat, lng) {
+  if (lat == null || lng == null) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=pt-BR`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    const a = data?.address;
+    if (!a) return data?.display_name ?? null;
+    const rua    = a.road || a.pedestrian || a.footway || a.residential || '';
+    const num    = a.house_number || '';
+    const bairro = a.suburb || a.neighbourhood || a.city_district || '';
+    if (!rua && !bairro) return data.display_name ?? null;
+    let out = rua;
+    if (num) out += `, ${num}`;
+    if (bairro) out += out ? ` — ${bairro}` : bairro;
+    return out || data.display_name || null;
+  } catch { return null; }
+}
+
 export default function Relatorios() {
   const [relatorios, setRelatorios] = useState([]);
   const [employees,  setEmployees]  = useState([]);
@@ -285,6 +305,9 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
   const [urlsFotos, setUrlsFotos] = useState({}); // fotoId -> signed url
   const [assinUrl, setAssinUrl] = useState(null);
   const [removendo, setRemovendo] = useState(false);
+  const [enderecoIn,  setEnderecoIn]  = useState(null); // rua+num do check-in
+  const [enderecoOut, setEnderecoOut] = useState(null); // rua+num do check-out
+  const [loadingEnd,  setLoadingEnd]  = useState(false);
 
   async function remover() {
     const nome = c?.nome_empresa ?? 'este relatório';
@@ -332,6 +355,16 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
       } else if (r.assinatura_responsavel_img) {
         setAssinUrl(r.assinatura_responsavel_img);
       }
+
+      // Endereços a partir das coordenadas (Nominatim)
+      setLoadingEnd(true);
+      const [endIn, endOut] = await Promise.all([
+        reverseGeocode(r.checkin_lat,  r.checkin_lng),
+        reverseGeocode(r.checkout_lat, r.checkout_lng),
+      ]);
+      setEnderecoIn(endIn);
+      setEnderecoOut(endOut);
+      setLoadingEnd(false);
     })();
   }, [r]);
 
@@ -392,18 +425,26 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
             </div>
           </section>
 
-          {/* GPS */}
+          {/* Localização — endereço reverso via Nominatim */}
           <section className={`rel-sec ${foraLocal ? 'rel-sec--warn' : ''}`}>
             <h4 className="rel-sec__titulo">📍 Localização</h4>
             <div className="rel-info">
               {r.checkin_lat != null ? (
                 <>
                   <div>
-                    <strong>Check-in:</strong> {r.checkin_lat.toFixed(6)}, {r.checkin_lng.toFixed(6)}
+                    <strong>Check-in:</strong>{' '}
+                    {loadingEnd
+                      ? <span className="rel-hint">buscando endereço…</span>
+                      : (enderecoIn || <span className="rel-hint">endereço não localizado</span>)}
                     {mapaUrl && <a className="rel-link" href={mapaUrl} target="_blank" rel="noopener"> ver no mapa</a>}
                   </div>
                   {r.checkout_lat != null && (
-                    <div><strong>Check-out:</strong> {r.checkout_lat.toFixed(6)}, {r.checkout_lng.toFixed(6)}</div>
+                    <div>
+                      <strong>Check-out:</strong>{' '}
+                      {loadingEnd
+                        ? <span className="rel-hint">buscando endereço…</span>
+                        : (enderecoOut || <span className="rel-hint">endereço não localizado</span>)}
+                    </div>
                   )}
                   {dist != null && (
                     <div className={`rel-dist ${foraLocal ? 'rel-dist--warn' : 'rel-dist--ok'}`}>
@@ -415,13 +456,17 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
             </div>
           </section>
 
-          {/* Relato */}
-          {r.relato && (
-            <section className="rel-sec">
-              <h4 className="rel-sec__titulo">Relato da tarefa</h4>
-              <div className="rel-relato">{r.relato}</div>
-            </section>
-          )}
+          {/* Relato — filtra qualquer bloco de legendas legado (marker "— Fotos —") */}
+          {(() => {
+            const relatoLimpo = (r.relato || '').split('\n\n— Fotos —\n')[0].trim();
+            if (!relatoLimpo) return null;
+            return (
+              <section className="rel-sec">
+                <h4 className="rel-sec__titulo">Relato da tarefa</h4>
+                <div className="rel-relato">{relatoLimpo}</div>
+              </section>
+            );
+          })()}
 
           {r.observacoes && (
             <section className="rel-sec">
