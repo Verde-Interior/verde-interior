@@ -368,6 +368,12 @@ body:has(#net-banner.on) .nav{top:44px}
 .ag-field input:focus,.ag-field textarea:focus{border-color:var(--g)}
 .ag-field textarea{resize:vertical;min-height:80px}
 
+/* Legendas das fotos (read-only, dentro do campo de observações) */
+.ag-captions{margin-top:8px;padding:10px 12px;background:#F5F0E6;border:1px dashed var(--border);border-radius:var(--radius-sm)}
+.ag-captions__title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.ag-captions__body{font-size:13px;color:var(--text);line-height:1.5}
+.ag-captions__hint{display:block;margin-top:6px;font-size:10px;color:var(--text3);font-style:italic}
+
 /* Fotos */
 .ag-fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
 .ag-foto{position:relative;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;display:flex;flex-direction:column}

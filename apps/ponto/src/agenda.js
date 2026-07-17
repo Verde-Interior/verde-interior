@@ -647,6 +647,13 @@ function viewReport() {
   // agora as legendas vão só pra observações. Remove tudo depois do marker.
   const relatoLimpo = (r.relato || '').split(RELATO_MARKER)[0].trim();
 
+  // Split observações: textarea recebe SÓ o texto do usuário; legendas vão em bloco read-only.
+  // Regex tolera qualquer quantidade de \n antes do "— Fotos —" (fix de duplicação legada).
+  const obsUsuario = (r.observacoes || '').split(/\n*— Fotos —\n[\s\S]*$/)[0].replace(/\s+$/, '');
+  const legendasFotos = st.fotos
+    .map((f, i) => (f.observacao || '').trim() ? `${i+1}. ${f.observacao.trim()}` : null)
+    .filter(Boolean);
+
   return `
     <div class="ag-header ag-header--sub">
       <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
@@ -664,8 +671,14 @@ function viewReport() {
 
       <div class="ag-field">
         <label>Observações gerais</label>
-        <textarea id="ag-obs" rows="4" placeholder="Plantas que precisam atenção, materiais consumidos, etc.">${esc(r.observacoes)}</textarea>
-        <small class="ag-hint">Legendas das fotos aparecem automaticamente abaixo depois do marcador <em>— Fotos —</em>.</small>
+        <textarea id="ag-obs" rows="4" placeholder="Plantas que precisam atenção, materiais consumidos, etc.">${esc(obsUsuario)}</textarea>
+        ${legendasFotos.length ? `
+          <div class="ag-captions">
+            <div class="ag-captions__title">— Fotos —</div>
+            <div class="ag-captions__body">${legendasFotos.map(l => esc(l)).join('<br>')}</div>
+            <small class="ag-captions__hint">Legendas das fotos (auto-gerado). Edite pela tela de fotos.</small>
+          </div>
+        ` : ''}
       </div>
 
       <div class="ag-actions">
@@ -1179,9 +1192,9 @@ async function sincronizarLegendasNoRelato() {
   const r = st.relatorioSel;
   if (!r) return;
 
+  // Regex tolera qualquer nº de \n antes do "— Fotos —" e limpa duplicatas legadas.
   const obsAtual = r.observacoes || '';
-  const idx = obsAtual.indexOf(RELATO_MARKER);
-  const textoUsuario = idx >= 0 ? obsAtual.slice(0, idx) : obsAtual;
+  const textoUsuario = obsAtual.split(/\n*— Fotos —\n[\s\S]*$/)[0].replace(/\s+$/, '');
 
   const linhasFoto = st.fotos
     .map((f, i) => (f.observacao || '').trim() ? `${i+1}. ${f.observacao.trim()}` : null)
@@ -1189,10 +1202,11 @@ async function sincronizarLegendasNoRelato() {
 
   let novoObs;
   if (linhasFoto.length === 0) {
-    novoObs = textoUsuario.replace(/\s+$/, '');
+    novoObs = textoUsuario;
+  } else if (textoUsuario) {
+    novoObs = textoUsuario + RELATO_MARKER + linhasFoto.join('\n');
   } else {
-    const userLimpo = textoUsuario.replace(/\s+$/, '');
-    novoObs = userLimpo + RELATO_MARKER + linhasFoto.join('\n');
+    novoObs = '— Fotos —\n' + linhasFoto.join('\n');
   }
 
   if (novoObs === obsAtual) return;
@@ -1210,20 +1224,26 @@ async function saveRelatoObs(silent = false) {
   // Blindagem: se o usuário digitar/colar o marker no relato, ainda joga fora
   // (legendas vivem só em observacoes agora)
   const relato = relatoRaw.split(RELATO_MARKER)[0].trim();
+
+  // Textarea de obs contém APENAS o texto do usuário. Também blinda contra
+  // colagens do marker (dados legados que possam ter sido colados).
   const obsRaw = document.getElementById('ag-obs')?.value ?? '';
+  const textoUsuario = obsRaw.split(/\n*— Fotos —\n[\s\S]*$/)[0].replace(/\s+$/, '');
 
-  // Legendas ficam em observacoes: preserva a parte auto-gerada (após o marker)
-  const obsAtual = r.observacoes || '';
-  const idxAtual = obsAtual.indexOf(RELATO_MARKER);
-  const parteAuto = idxAtual >= 0 ? obsAtual.slice(idxAtual) : '';
+  // Legendas: reconstrói SEMPRE a partir de st.fotos (fonte da verdade).
+  const linhasFoto = st.fotos
+    .map((f, i) => (f.observacao || '').trim() ? `${i+1}. ${f.observacao.trim()}` : null)
+    .filter(Boolean);
 
-  // O textarea de obs contém o texto COMPLETO (usuário + auto). Precisa separar:
-  const idxNovo = obsRaw.indexOf(RELATO_MARKER);
-  const textoUsuario = (idxNovo >= 0 ? obsRaw.slice(0, idxNovo) : obsRaw).replace(/\s+$/, '');
-
-  const novoObs = parteAuto
-    ? (textoUsuario + parteAuto)
-    : textoUsuario;
+  let novoObs;
+  if (linhasFoto.length === 0) {
+    novoObs = textoUsuario;
+  } else if (textoUsuario) {
+    novoObs = textoUsuario + RELATO_MARKER + linhasFoto.join('\n');
+  } else {
+    // Sem texto do usuário: evita começar com \n\n (que o textarea comeria depois).
+    novoObs = '— Fotos —\n' + linhasFoto.join('\n');
+  }
 
   const { error } = await supabase
     .from('relatorios')
