@@ -761,7 +761,6 @@ function setupCanvasEDrawing(canvas, preservar = false) {
     return requestAnimationFrame(() => setupCanvasEDrawing(canvas, preservar));
   }
 
-  // Preserva desenho anterior via dataURL antes de resetar o canvas.
   // Prioridade: resize atual > cache em memória (_cached) > URL salva no relatório.
   let dataAnterior = null;
   let origem = null;
@@ -782,27 +781,35 @@ function setupCanvasEDrawing(canvas, preservar = false) {
   ctx.lineWidth = 2.4;
   ctx.strokeStyle = '#1a1a1a';
 
-  st.sigPad = st.sigPad || { canvas, ctx, empty: true, _cached: null };
+  if (!st.sigPad) {
+    st.sigPad = { canvas, ctx, empty: true, dirty: false, _cached: null, _loadToken: 0 };
+  }
   st.sigPad.canvas = canvas;
   st.sigPad.ctx = ctx;
 
-  if (dataAnterior) {
+  if (dataAnterior || origem) {
+    // Marca como "tem conteúdo" IMEDIATAMENTE — antes do onload assíncrono —
+    // pra Save clicado rápido não falhar por race condition.
+    st.sigPad.empty = false;
+    const token = ++st.sigPad._loadToken;
     const img = new Image();
+    if (origem) img.crossOrigin = 'anonymous';
     img.onload = () => {
+      if (st.sigPad?._loadToken !== token) return; // usuário limpou antes de carregar
       ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      st.sigPad.empty = false;
+      if (origem) {
+        try { st.sigPad._cached = canvas.toDataURL('image/png'); } catch { /* tainted */ }
+      }
     };
-    img.src = dataAnterior;
-  } else if (origem) {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      st.sigPad.empty = false;
-      try { st.sigPad._cached = canvas.toDataURL('image/png'); } catch {}
+    img.onerror = () => {
+      // Falha CORS ou URL expirada. Se veio de _cached, canvas fica vazio → reseta empty.
+      // Se veio de origem (servidor tem assinatura), mantém empty=false — Save vai só
+      // fechar a tela sem re-upload (assinatura já está no servidor).
+      if (!origem && st.sigPad?._loadToken === token) {
+        st.sigPad.empty = true;
+      }
     };
-    img.onerror = () => { /* silencia — URL pode ter expirado */ };
-    img.src = origem;
+    img.src = dataAnterior || origem;
   }
 
   // Handlers só na primeira vez
@@ -825,6 +832,7 @@ function setupCanvasEDrawing(canvas, preservar = false) {
     pad.drawing = true;
     pad.last = pos(e);
     st.sigPad.empty = false;
+    st.sigPad.dirty = true; // usuário desenhou algo novo — precisa upload
   }
   function move(e) {
     if (!pad.drawing) return;
@@ -999,9 +1007,14 @@ export async function openDetail(visitaId) {
   const v = st.visitas.find(x => x.id === visitaId);
   if (!v) return;
   st.visitaSel = v;
-  // Zera cache da assinatura ao abrir outra visita — a fonte da verdade
+  // Zera estado da assinatura ao abrir outra visita — a fonte da verdade
   // volta a ser assinatura_responsavel_img do relatório recém-carregado.
-  if (st.sigPad) st.sigPad._cached = null;
+  if (st.sigPad) {
+    st.sigPad._cached = null;
+    st.sigPad.dirty = false;
+    st.sigPad.empty = true;
+    st.sigPad._loadToken = (st.sigPad._loadToken || 0) + 1;
+  }
   if (v.status === 'em_execucao' || v.status === 'concluido') {
     st.relatorioSel = await loadRelatorio(v.id);
     st.fotos = st.relatorioSel ? await loadFotos(st.relatorioSel.id) : [];
@@ -1328,7 +1341,9 @@ export function sigClear() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
   st.sigPad.empty = true;
+  st.sigPad.dirty = true; // clear é intencional — usuário quer trocar
   st.sigPad._cached = null;
+  st.sigPad._loadToken = (st.sigPad._loadToken || 0) + 1; // cancela loads pendentes
   // Limpa também a referência local à assinatura salva — se o usuário
   // não desenhar+salvar de novo, temAssin fica falso e finalização é bloqueada.
   // O servidor só é atualizado no próximo confirmSign (upsert).
@@ -1368,7 +1383,22 @@ export async function confirmSign() {
   // Nome vem do contato do cliente (hidden input pré-preenchido); fallback genérico
   const nomeInput = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
   const nome = nomeInput || v.cliente?.contato_nome || 'Responsável';
-  if (!st.sigPad || st.sigPad.empty) { toast('Faça a assinatura antes de salvar', false); return; }
+
+  // Caso 1: já tem assinatura salva no servidor e usuário não mexeu desde que abriu
+  // → só volta pro menu, sem re-upload. Isso evita falhar quando o canvas
+  // está apenas exibindo a assinatura carregada (potencialmente taintada por CORS).
+  if (r.assinatura_responsavel_img && !st.sigPad?.dirty) {
+    st.view = 'exec';
+    renderCurrentView();
+    startTimer();
+    return;
+  }
+
+  // Caso 2: canvas vazio → não pode salvar
+  if (!st.sigPad || st.sigPad.empty) {
+    toast('Faça a assinatura antes de salvar', false);
+    return;
+  }
 
   toast('Enviando assinatura...');
   let sigUrl, sigPath;
@@ -1399,6 +1429,7 @@ export async function confirmSign() {
   };
   // Cache do dataURL para restaurar na próxima abertura da tela
   try { st.sigPad._cached = st.sigPad.canvas.toDataURL('image/png'); } catch {}
+  st.sigPad.dirty = false; // acabou de salvar — reseta pra próxima abertura
   toast('✓ Assinatura confirmada');
   st.view = 'exec';
   renderCurrentView();
