@@ -102,6 +102,29 @@
 
 ---
 
+## ✅ Concluído em 20/07/2026 (Fase 4 — Sprint 5 parcial: tech debt viável)
+
+### ESLint no CRM
+- [x] `apps/crm/eslint.config.js` — flat config compatível com ESLint 9 + react + react-hooks + prettier.
+- [x] `npm install -D eslint@^9 @eslint/js eslint-plugin-react eslint-plugin-react-hooks eslint-config-prettier` (com `--legacy-peer-deps`).
+- [x] Scripts `lint`, `test`, `test:watch` no `package.json`.
+- [x] Baseline: 1 erro + 15 warnings (a maioria são "unused vars" e "exhaustive-deps"). Rodar `npm run lint` no `apps/crm`.
+
+### Vitest + primeiros testes
+
+- [x] **CRM (`apps/crm/src/context/CRMContext.test.js`)** — 13 testes de helpers puros: `getTiposServico` (compat legado e novo), `getTipoPrimario`, `addDias` (com transição de mês/ano), `criarFluxoOrcamento` (T1 de 3 vs 6 dias com/sem visita, encadeamento T2/T3). Setup: `npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom --legacy-peer-deps`.
+- [x] **Ponto (`apps/ponto/src/utils.test.js`)** — 11 testes das funções críticas: `calcWorkClosed` (jornada corrida, com intervalo, aberta, parcial), `HM` (positivo/negativo/zero), `esc` (XSS escape com aspas, `<`, `>`, `&`, null/undefined).
+- [x] Ambos passam: `npm test` em cada pasta.
+
+### Ficam como TODO explícito (grandes, precisam de várias iterações)
+
+- [ ] **Refactor `EscalaCampo.jsx` (~2.500 linhas)** em subcomponentes: `EscalaGrid` (grid semanal), `EscalaCartao` (cartão de visita), `EscalaOtimizador` (otimizador de rota), `EscalaModalEdicao` (modal de edição), `EscalaRedistribuicao` (modal de redistribuir ausentes), `EscalaMapa` (mapa opcional). Estratégia recomendada: extrair um componente por vez, mantendo props explícitas + estados no pai, e rodar `npm run build` a cada extração. Não misturar com mudança de comportamento.
+- [ ] **Refactor `ModalOrcamento.jsx` (~1.700 linhas)** em: `SecaoLead`, `SecaoAnexos`, `SecaoServicos`, `SecaoContrato`, `SecaoAgendaLead`, `SecaoFluxo`, `SecaoHistorico`. Mesma estratégia — extrair uma seção por vez com o estado do pai passado por props/callbacks. Testes atuais do CRMContext ajudam a garantir que a lógica core não regride durante o refactor.
+- [ ] **Ampliar cobertura de testes** — adicionar testes para o otimizador de rota em `EscalaCampo` (função pura de reordenação com restrições de janela/dias) e para `promoverParaCliente` (mocking do supabase-js).
+- [ ] **Corrigir os 15 warnings do ESLint no CRM** (maior parte: `exhaustive-deps` em useMemos com dependências propositalmente omitidas, e `unused vars` que podem ser removidos).
+
+---
+
 ## Agora — Alta prioridade
 
 ### CRM — Estoque etapa 2 e 3
