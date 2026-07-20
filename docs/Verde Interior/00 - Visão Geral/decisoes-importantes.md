@@ -42,3 +42,25 @@ Log cronológico de decisões estruturais. **Nunca deletar — apenas adicionar.
 - Fluxo de ponto: `entry → break → return → exit`
 - Lógica de banco de horas (`calcWork`, `calcWorkClosed`)
 - Credenciais Supabase (se rotacionar, atualizar também no Vercel)
+
+---
+
+## Julho 2026
+
+### Leads e tarefas do CRM migrados para o Supabase
+**Data:** 20/07/2026
+**Decisão:** Criar tabelas `public.leads` e `public.tarefas` no Supabase e migrar `CRMContext.jsx` para ler/escrever no Supabase (com `localStorage` mantido só como cache offline). Reset dos dados de teste — não houve backfill.
+**Motivo:** até então leads e tarefas viviam só em `localStorage`; perda de dados ao trocar de dispositivo ou limpar cache. Único módulo do CRM ainda sem persistência real.
+**Impacto:** ver [[schema-supabase]] (novas tabelas + coluna JSONB `dados` para estado aninhado). Migration `015_crm_leads_tarefas.sql`.
+
+### RPC atômica `reorder_agenda`
+**Data:** 20/07/2026
+**Decisão:** Substituir todos os `Promise.all([...UPDATE...])` da `EscalaCampo.jsx` por uma RPC PL/pgSQL `reorder_agenda(p_updates jsonb)` que roda os UPDATEs numa única transação.
+**Motivo:** dois usuários mexendo em drag & drop / otimizador de rota ao mesmo tempo podiam deixar `ordem_rota` inconsistente. Não havia atomicidade entre os UPDATEs paralelos.
+**Impacto:** funções afetadas: `moverSelecionadasPara`, `moverVisita`, `aplicarOrdemRota`, `aplicar` (redistribuição de ausentes). Migration `015_crm_leads_tarefas.sql`.
+
+### Roles no CRM adiados
+**Data:** 20/07/2026
+**Decisão:** Não criar hierarquia de roles no CRM por ora. RLS mantém padrão `_auth_all` (só authenticated).
+**Motivo:** hoje só gestores usam o CRM. Colaboradores de campo usam o App Ponto. Complexidade sem retorno imediato.
+**Reavaliar quando:** algum colaborador de campo precisar entrar no CRM (ex: visualizar próprias visitas na Escala).

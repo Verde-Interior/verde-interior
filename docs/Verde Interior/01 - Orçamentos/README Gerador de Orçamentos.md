@@ -1,9 +1,10 @@
 # Gerador de Orçamentos — Status Atual
 
-**Arquivo:** `tools/orcamentos/verde_interior_gerador_orcamento_10.html`
+**Arquivo:** `tools/orcamentos/verde_interior_gerador_orcamento_10.html` (979 linhas)
 **Stack:** HTML único, offline, sem dependências externas
 **Fontes:** Inter + Montserrat (Google Fonts)
-**Status:** 🟡 Funcionando — melhorias pendentes
+**Status:** 🟡 Funcionando — congelado desde 22/jun/2026, 3 bugs + 6 features essenciais pendentes
+**Última atualização da doc:** 20/07/2026
 
 ---
 
@@ -33,12 +34,22 @@
 
 ---
 
+## Bugs confirmados no código atual
+
+1. **Proposta gerada sem itens** — `gerarProposta()` não valida `itens.length === 0`; documento sai vazio sem aviso
+2. **Override do título editável** — `if(!tituloEl.dataset.customizado){...}` (L749) impede resetar após edição manual; conflito de listeners `input` + `dblclick` (L967-975)
+3. **Toggle reposição não sincroniza** ao trocar de modelo (L713-741)
+
+## Features essenciais pendentes
+
+- Numeração automática de propostas (`ORC-NNN`)
+- Rascunho em localStorage
+- Data de validade automática (+30 dias)
+- Campos de e-mail e telefone do cliente
+- Desconto global
+- Botão "limpar tudo"
+
 ## Próxima ação
 
-Escolher uma das três opções:
-
-- **A)** Corrigir 3 bugs prioritários (rápido)
-- **B)** Implementar 6 funcionalidades essenciais (resultado comercial imediato)
-- **C)** Definir design system antes de evoluir (consistência com outros módulos)
-
-Ver roadmap completo → [[roadmap]]
+Corrigir os 3 bugs primeiro (impacto comercial diário), depois as 6 features essenciais.
+Ver roadmap completo → [[roadmap]] e [[PROXIMOS-PASSOS]].

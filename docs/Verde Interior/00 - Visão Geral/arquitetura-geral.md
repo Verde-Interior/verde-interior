@@ -1,7 +1,7 @@
 # Arquitetura Geral — Verde Interior
 
 > Documento de referência do projeto. Atualizar sempre que uma decisão estrutural for tomada.
-> Última atualização: junho 2026
+> Última atualização: 20/07/2026
 
 ---
 
@@ -37,21 +37,29 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 ---
 
 ### 2. CRM / Dashboard
-- **Status:** construído localmente — funcional, aguardando deploy
+- **Status:** deployado e operacional — 9 módulos ativos
 - **Stack:** React 18 + JSX (Vite)
-- **Deploy:** pendente
+- **Deploy:** Vercel (auto via GitHub, `apps/crm/vercel.json`)
 - **Pasta local:** `apps/crm/`
 
 **O que faz:**
-- Funil Kanban com 5 estágios (leads → aprovados)
-- Funil de Execução para contratos ativos
-- Dashboard com KPIs do pipeline
-- Roteirizador de visitas por bairro e frequência
-- Agenda e gestão de tarefas
-- Busca global (Cmd+K)
-- Persistência via localStorage (Supabase previsto)
+- **Pipeline / Kanban** com 5 estágios (leads → aprovados)
+- **Funil de Execução** para contratos ativos (materiais → pós-venda)
+- **Dashboard** com KPIs, range de datas, agenda e relatórios integrados
+- **Clientes** — CRUD com dias disponíveis, janelas, frequência, completude
+- **Escala de Campo** — otimizador de rota, drag & drop, tooltips, prioridade/bloqueios (Fase 5.2 nível 2)
+- **Relatórios** — visualização de fotos, assinatura, GPS, reverse geocoding (Fase 4)
+- **Agenda** — calendário + sidebar
+- **Tarefas** — CRUD com prioridade, categoria, vínculo com lead
+- **Estoque** — Etapa 1: lista + KPIs (CRUD pendente na Etapa 2)
+- Busca global (Cmd+K), autenticação Supabase
 
-**Backlog mapeado:** ver [[README CRM Dashboard]]
+**Persistência:**
+- Supabase (leitura + escrita): `clientes`, `cliente_servicos`, `agenda`, `relatorios`, `fotos_relatorio`, `employee_bloqueios`
+- Supabase (leitura): `employees`, `estoque_saldos_totais`
+- ⚠️ **localStorage ainda**: `crm-verde-leads`, `crm-verde-tarefas` — migração pendente ([[PROXIMOS-PASSOS]])
+
+**Backlog:** ver [[README CRM Dashboard]] e [[PROXIMOS-PASSOS]]
 
 ---
 
@@ -88,7 +96,8 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 - Assinatura do líder e do responsável do cliente
 - Campo de observações finais
 
-**Decisão pendente:** sistema de fotos — Opção A (slots simples) ou Opção B (dois modos: Execução/Conclusão)
+**Decisão tomada (22/06/2026):** sistema de fotos — Opção B (dois modos: Execução/Conclusão)
+**Pendente:** implementar o modo dinâmico no HTML (hoje ainda hardcoded para o cliente Heimr)
 
 ---
 
@@ -149,7 +158,9 @@ verdeinterior-newproject/
 
 ## Decisões ainda abertas
 
-- [x] ~~Sistema de fotos da OS~~ — Opção B escolhida
+- [x] ~~Sistema de fotos da OS~~ — Opção B escolhida (implementação pendente)
 - [x] ~~Formato do ID único de cliente~~ — `CLI-NNN`, `ORC-NNN`, `OS-NNN` (sequencial por entidade)
 - [x] ~~Status do orçamento que dispara criação de OS~~ — `orcamento_aprovado` gera OS automaticamente
 - [ ] Design system visual unificado (paleta, tipografia, componentes)
+- [ ] Estratégia de roles no CRM (`gestor`, `colab`, `campo`) e proteção de rotas
+- [ ] Momento de migrar os HTMLs (Orçamentos, OS) para módulos React dentro do CRM

@@ -520,7 +520,7 @@ body{font-family:var(--fonte);background:var(--cf);color:var(--graf);min-height:
       </div>
       <div class="doc-sep"></div>
       <div class="dtt">
-        <h2 id="doc-titulo" contenteditable="true" spellcheck="false" style="outline:none;cursor:text;border-bottom:1px dashed transparent;transition:border-color 0.2s;" onmouseover="this.style.borderBottomColor='#d1d5db'" onmouseout="this.style.borderBottomColor='transparent'" onfocus="this.style.borderBottomColor='#2d6a35'" onblur="this.style.borderBottomColor='transparent'">Orçamento</h2>
+        <h2 id="doc-titulo" contenteditable="true" spellcheck="false" title="Duplo-clique para redefinir automaticamente" style="outline:none;cursor:text;border-bottom:1px dashed transparent;transition:border-color 0.2s;" onmouseover="this.style.borderBottomColor='#d1d5db'" onmouseout="this.style.borderBottomColor='transparent'" onfocus="this.style.borderBottomColor='#2d6a35'" onblur="this.style.borderBottomColor='transparent'">Orçamento</h2>
         <div class="dlinha"></div>
       </div>
       <div class="dc" id="doc-corpo">
@@ -591,7 +591,18 @@ function syncCamposCondicionais() {
   // Outros texto
   toggle('campo-outros-texto', M.outros);
   // Reposição
-  if (M.locacao) { toggle('rep-locacao',true); toggle('rep-normal',false); }
+  if (M.locacao) {
+    // Em Locação, reposição é automática (ilimitada). Reseta o toggle manual
+    // pra não deixar estado latente ao trocar de modelo depois.
+    const repTog=document.getElementById('rep-toggle');
+    if(repTog&&repTog.checked) repTog.checked=false;
+    document.querySelectorAll('input[name="rep-tipo"]').forEach(r=>{
+      if(r.value==='ilimitada') r.checked=false;
+      if(r.value==='quantidade') r.checked=true;
+    });
+    toggle('rep-opcoes',false);
+    toggle('rep-locacao',true); toggle('rep-normal',false);
+  }
   else { toggle('rep-locacao',false); toggle('rep-normal',true); }
   // Fidelidade
   toggle('campo-fidelidade', M.locacao);
@@ -942,6 +953,12 @@ function gerarProposta() {
 
   if(!nome||!empresa||!consultor)ok=false;
 
+  const modelosAtivos=Object.values(M).some(v=>v);
+  if(!modelosAtivos){erros.push('Selecionar ao menos um modelo de serviço');ok=false;}
+
+  const itensValidos=itens.map(getItem).filter(it=>it&&(it.desc.trim()||it.vaso.trim()||it.qtd>0||it.valor>0));
+  if(itensValidos.length===0){erros.push('Adicionar ao menos um item com descrição, quantidade ou valor');ok=false;}
+
   if(!ok){
     showToast('⚠ Corrija os campos obrigatórios: '+erros.join(', '),true);
     return;
@@ -966,7 +983,16 @@ document.addEventListener('DOMContentLoaded',()=>{
 // Marca título como customizado se o usuário editar manualmente
 document.addEventListener('DOMContentLoaded',()=>{
   const tEl=document.getElementById('doc-titulo');
-  tEl.addEventListener('input',()=>{tEl.dataset.customizado='1';});
+  tEl.addEventListener('input',()=>{
+    const txt=tEl.textContent.trim();
+    // Se ficou vazio ou bateu com o automático, volta ao modo auto
+    if(!txt||txt===gerarTitulo()){
+      delete tEl.dataset.customizado;
+      if(!txt) tEl.textContent=gerarTitulo();
+      return;
+    }
+    tEl.dataset.customizado='1';
+  });
   // Duplo clique reseta para automático
   tEl.addEventListener('dblclick',()=>{
     delete tEl.dataset.customizado;

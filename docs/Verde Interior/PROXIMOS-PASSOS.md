@@ -1,60 +1,68 @@
 # Verde Interior — Próximos Passos
 
 > Documento de trabalho da equipe. Marcar conforme concluir.
-> Última atualização: junho 2026
+> Última atualização: 20/07/2026
+
+---
+
+## Estado geral (resumo em 1 minuto)
+
+| Módulo | Status | O que sobra |
+|---|---|---|
+| **Ponto Eletrônico** | ✅ Produção, maduro | Reset de senha, XLSX, relatórios avançados, auditoria |
+| **CRM** | ✅ Deployado, 9 módulos ativos | **Migrar leads+tarefas do localStorage para Supabase**, hardening auth por role, Estoque etapa 2 |
+| **Escala de Campo (CRM)** | ✅ Fase 5.2 nível 2 completa | Corrigir race condition no drag & drop |
+| **Relatórios de campo (CRM)** | ✅ Fase 4 completa | — |
+| **Gerador de Orçamentos** | 🟡 Congelado desde 22/jun | Fix 3 bugs, 6 features essenciais |
+| **Ordem de Serviço (HTML)** | 🟡 Congelado desde 22/jun | Modo Execução/Conclusão dinâmico, integração com backend |
+
+---
+
+## ✅ Concluído em 20/07/2026
+
+### CRM — Migrar leads e tarefas para Supabase
+- [x] Tabelas `leads` e `tarefas` criadas (migration `015_crm_leads_tarefas.sql`)
+- [x] RLS `_auth_all` (roles adiados — só gestores usam CRM)
+- [x] `CRMContext.jsx` fala com Supabase (bootstrap + optimistic writes), localStorage vira cache offline
+- [x] Reset em vez de backfill (sem dados de produção a preservar)
+- [x] Schema documentado em [[00 - Visão Geral/schema-supabase]]
+
+### Gerador de Orçamentos — 3 bugs críticos
+- [x] Bug 1: validação de itens vazios + modelo ativo em `gerarProposta()`
+- [x] Bug 2: reset automático do título quando vazio ou igual ao gerado; `title` de descoberta pro dblclick
+- [x] Bug 3: `syncCamposCondicionais` reseta toggle e rádios ao entrar em Locação
+
+### CRM — Race condition da Escala
+- [x] RPC atômica `reorder_agenda(p_updates jsonb)` na migration 015
+- [x] `moverSelecionadasPara`, `moverVisita`, `aplicarOrdemRota`, `aplicar` (redistribuição) todos passam pela RPC
+
+### Passos manuais restantes pra fechar essa sprint
+
+- [ ] **Aplicar a migration 015 no Supabase:** dashboard → SQL Editor → colar `apps/ponto/supabase/migrations/015_crm_leads_tarefas.sql` → rodar. Sem essa etapa, o CRM continua rodando só em localStorage.
+- [ ] Rodar o script de saúde do banco em [[00 - Visão Geral/schema-supabase]] pra confirmar RLS e listar policies
 
 ---
 
 ## Agora — Alta prioridade
 
-### CRM — Deploy no Vercel (Fernando)
-O CRM está construído e funcionando localmente mas ninguém consegue acessar online ainda.
+### CRM — Estoque etapa 2 e 3
+Etapa 1 está publicada: lista + KPIs read-only. Botões "+ Material" e "+ Movimento" estão **desabilitados** (`Estoque.jsx:104-109`).
 
-- [ ] Criar novo projeto no Vercel apontando para `apps/crm/` (Root Directory: `apps/crm`)
-- [ ] Confirmar que o build passa sem erros
-- [ ] Testar acesso pelo link gerado
-- [ ] Atualizar URL do deploy em [[04 - CRM Dashboard/README]]
+- [ ] Etapa 2: modais de cadastro de material e registro de movimento
+- [ ] Etapa 3: histórico de movimentações + integração automática com `FunilExecucao` (saída ao consumir material em obra)
 
----
+### OS (HTML) — Modo Execução/Conclusão dinâmico
+Hoje o sistema de fotos existe mas é hardcoded para o cliente Heimr. Precisa parametrizar por OS e implementar o gating de "Depois só libera após Antes" (Opção B decidida em 22/jun).
 
-### Gerador de Orçamentos — Bugs críticos (Roberto)
-Afetam o uso comercial diário. Resolver antes de qualquer nova funcionalidade.
+- [ ] Parametrizar dados de cliente/plantas por OS (remover hardcode Heimr)
+- [ ] Implementar modo Execução (só "Antes") vs Conclusão (libera "Depois")
+- [ ] Gerar link/QR fixo por OS para acesso do colaborador em campo
 
-- [ ] Bug 1: proposta gerada vazia sem aviso ao usuário
-- [ ] Bug 2: conflito de override no título ao editar inline
-- [ ] Bug 3: reset incorreto do toggle de reposição de plantas
+### Gerador de Orçamentos — 6 funcionalidades essenciais (Roberto)
 
-**Arquivo:** `tools/orcamentos/verde_interior_gerador_orcamento_10.html`
-
----
-
-## Em seguida
-
-### CRM — Persistência real com Supabase (Fernando)
-Hoje os dados ficam no `localStorage` — ao trocar de dispositivo ou limpar o cache, tudo se perde.
-
-- [ ] Criar tabelas no Supabase: `leads`, `tarefas`
-- [ ] Substituir localStorage por leitura/escrita no Supabase
-- [ ] Implementar autenticação (login para acessar o CRM)
-- [ ] Testar sincronização entre os dois usuários em dispositivos diferentes
-
----
-
-### OS — Implementar sistema de fotos Opção B (Fernando/Roberto)
-Decisão tomada: dois modos de uso.
-
-- [ ] Modo Execução: apenas slots de "Antes" disponíveis, "Depois" bloqueados
-- [ ] Modo Conclusão: slots de "Depois" liberados com "Antes" já tirados ao lado
-- [ ] Testar no celular em campo com um colaborador
-- [ ] Disponibilizar acesso via QR code ou link fixo na OS
-
----
-
-### Gerador de Orçamentos — Funcionalidades essenciais (Roberto)
-
-- [ ] Numeração automática de propostas
-- [ ] Salvamento de rascunho em localStorage
-- [ ] Data de validade automática (+30 dias padrão)
+- [ ] Numeração automática de propostas (`ORC-NNN` sequencial)
+- [ ] Salvamento de rascunho em `localStorage`
+- [ ] Data de validade automática (+30 dias)
 - [ ] Campos de e-mail e telefone do cliente
 - [ ] Desconto global
 - [ ] Botão "limpar tudo"
@@ -63,52 +71,55 @@ Decisão tomada: dois modos de uso.
 
 ## Depois
 
-### Ponto Eletrônico — Melhorias (Fernando)
+### Ponto Eletrônico — Fechar as pontas
+Módulo maduro, últimas features documentadas mas não priorizadas.
 
 - [ ] Reset de senha via e-mail (UI faltando)
 - [ ] Gestor redefine senha de colaborador
-- [ ] Exportação XLSX
-- [ ] Relatório de frequência mensal (faltas/atrasos)
+- [ ] Exportação XLSX (hoje só CSV) — usar SheetJS
+- [ ] Relatório de frequência mensal (faltas / atrasos)
 - [ ] Gráfico de evolução do banco de horas
-- [ ] Auditoria: log de edições do gestor
+- [ ] Auditoria: log de edições do gestor (`audit_log` em `punch_records` e `justifications`)
+- [ ] View de Perfil do colaborador (placeholder existe, sem implementação)
+- [ ] Escapar campos de texto livre (XSS potencial em observações)
+
+### CRM — Tech debt
+Componentes gigantes começam a atrapalhar manutenção.
+
+- [ ] Refatorar `ModalOrcamento.jsx` (1.342 linhas) em: `SecaoLead`, `SecaoAnexos`, `SecaoServicos`, `SecaoContrato`, `SecaoHistorico`
+- [ ] Refatorar `EscalaCampo.jsx` (2.406 linhas) em subcomponentes (grid semanal, cartão, otimizador, modal edição)
+- [ ] Configurar ESLint no CRM (Ponto já tem)
+- [ ] Introduzir Vitest com testes dos reducers do `CRMContext` e do otimizador de rota
+
+### CRM — Melhorias de UX pendentes
+
+- [ ] Exportação real em CSV (hoje `exportarDados()` gera JSON com nome "CSV")
+- [ ] Deletar campo legado `orcamentoAnexo` singular (coexiste com `orcamentoAnexos` array)
+- [ ] Modal de novo cliente (verificar se está funcional; validação de completude)
+- [ ] `FunilExecucao`: UI de cadastro/edição de materiais (hoje só mostra faltantes)
 
 ---
 
-### CRM — Funcionalidades complementares (Fernando)
+## Futuro — Plataforma Unificada
 
-- [ ] Validação de motivo obrigatório ao mover lead para "Não Aprovado"
-- [ ] Formulário de cadastro de novo lead (UI)
-- [ ] Filtros no Kanban (por responsável, tipo de serviço, bairro)
-- [ ] Exportação do pipeline em CSV
+Só iniciar quando o CRM tiver leads+tarefas em Supabase e o hardening de roles estiver pronto.
 
----
-
-### Gerador de Orçamentos — Qualidade comercial (Roberto)
-
-- [ ] Itens de cortesia / gratuitos
-- [ ] Opções A/B de proposta
-- [ ] Seção de termos editável
-- [ ] Reordenar itens por drag-and-drop
-- [ ] Duplicar item
-
----
-
-## Futuro — Integração entre módulos
-
-Só iniciar quando os módulos individuais estiverem estáveis e em produção.
-
-- [ ] ID único de cliente implementado em todos os módulos
-- [ ] Orçamento aprovado no CRM → cria OS automaticamente
+- [ ] IDs únicos `CLI-NNN` / `ORC-NNN` / `OS-NNN` propagados em todos os módulos
+- [ ] Trigger: orçamento aprovado no CRM → cria OS automaticamente
+- [ ] Migrar Gerador de Orçamentos (HTML) para módulo React dentro do CRM
+- [ ] Migrar OS (HTML) para módulo React dentro do CRM
 - [ ] OS vinculada ao ponto do colaborador responsável
 - [ ] Dashboard financeiro com margem real por tipo de serviço
+- [ ] Banco de mídias (galeria Antes/Depois para marketing)
+- [ ] Portal do cliente (visualizar OS, aprovar serviços)
 
-Ver: [[README Plataforma Unificada]]
+Ver: [[05 - Plataforma Unificada/README Plataforma Unificada]]
 
 ---
 
 ## Setup do ambiente
 
-**CRM** (Fernando)
+**CRM**
 ```
 cd apps/crm
 npm install
@@ -132,6 +143,7 @@ npm run dev
 - Nomes dos funcionários — são chaves no banco do Ponto
 - Fluxo de ponto: `entry → break → return → exit`
 - Paleta de cores — deriva do logo da empresa
+- Lógica de `calcWork` / `calcWorkClosed` no Ponto
 
 Decisões novas → registrar em [[00 - Visão Geral/decisoes-importantes]]
 Design system → atualizar [[06 - Padrões Comuns/padroes-comuns]]

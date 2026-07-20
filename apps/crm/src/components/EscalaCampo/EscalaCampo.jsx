@@ -1035,11 +1035,16 @@ export default function EscalaCampo() {
         ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
         : 0;
 
-      await Promise.all(
-        ids.map((id, i) =>
-          supabase.from('agenda').update({ funcionario_id: String(novoEmpId), ordem_rota: baseOrdem + i }).eq('id', id)
-        )
-      );
+      // RPC atômica (migration 015): todos os UPDATEs numa única transação —
+      // elimina inconsistências quando dois usuários arrastam em paralelo.
+      const updates = ids.map((id, i) => ({
+        id,
+        funcionario_id: String(novoEmpId),
+        ordem_rota: baseOrdem + i,
+      }));
+      const { error } = await supabase.rpc('reorder_agenda', { p_updates: updates });
+      if (error) throw error;
+
       cancelarSelecao();
       await carregarAgenda();
     } catch (e) {
@@ -1114,10 +1119,11 @@ export default function EscalaCampo() {
     const idx   = lista.findIndex(v => v.id === visita.id);
     const alvo  = lista[idx + dir];
     if (!alvo) return;
-    await Promise.all([
-      supabase.from('agenda').update({ ordem_rota: alvo.ordem_rota }).eq('id', visita.id),
-      supabase.from('agenda').update({ ordem_rota: visita.ordem_rota }).eq('id', alvo.id),
-    ]);
+    // RPC atômica (migration 015): troca as duas ordens numa única transação.
+    await supabase.rpc('reorder_agenda', { p_updates: [
+      { id: visita.id, ordem_rota: alvo.ordem_rota },
+      { id: alvo.id,   ordem_rota: visita.ordem_rota },
+    ]});
     await carregarAgenda();
   }
 
@@ -1173,15 +1179,17 @@ export default function EscalaCampo() {
   }
 
   async function aplicarOrdemRota(ordem, timeline) {
-    await Promise.all(
-      ordem.map((v, i) => {
-        const update = { ordem_rota: i };
-        if (timeline?.[i]?.chegada != null) {
-          update.hora_estimada_chegada = minutosParaHora(timeline[i].chegada);
-        }
-        return supabase.from('agenda').update(update).eq('id', v.id);
-      })
-    );
+    // RPC atômica (migration 015): aplica ordem_rota + hora_estimada_chegada
+    // pra todas as visitas em uma única transação.
+    const updates = ordem.map((v, i) => {
+      const item = { id: v.id, ordem_rota: i };
+      if (timeline?.[i]?.chegada != null) {
+        item.hora_estimada_chegada = minutosParaHora(timeline[i].chegada);
+      }
+      return item;
+    });
+    const { error } = await supabase.rpc('reorder_agenda', { p_updates: updates });
+    if (error) throw error;
     await carregarAgenda();
   }
 
@@ -1951,10 +1959,13 @@ function ModalRedistribuir({ visitas, employees, agendaOrg, bloqueios, clientes,
   async function aplicar() {
     setSalvando(true);
     try {
-      const updates = Object.entries(escolhas).map(([visitaId, novoEmpId]) =>
-        supabase.from('agenda').update({ funcionario_id: String(novoEmpId) }).eq('id', visitaId)
-      );
-      await Promise.all(updates);
+      // RPC atômica (migration 015): redistribuição em uma única transação.
+      const updates = Object.entries(escolhas).map(([visitaId, novoEmpId]) => ({
+        id: visitaId,
+        funcionario_id: String(novoEmpId),
+      }));
+      const { error } = await supabase.rpc('reorder_agenda', { p_updates: updates });
+      if (error) throw error;
       await onMudou();
       onFechar();
     } catch (e) {
