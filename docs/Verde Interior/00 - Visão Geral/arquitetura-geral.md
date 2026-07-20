@@ -38,36 +38,36 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 
 ### 2. CRM / Dashboard
 - **Status:** deployado e operacional — 9 módulos ativos
-- **Stack:** React 18 + JSX (Vite)
+- **Stack:** React 18 + JSX (Vite) + ESLint 9 flat config + Vitest
 - **Deploy:** Vercel (auto via GitHub, `apps/crm/vercel.json`)
 - **Pasta local:** `apps/crm/`
 
 **O que faz:**
-- **Pipeline / Kanban** com 5 estágios (leads → aprovados)
+- **Pipeline / Kanban** com 5 estágios, **multi-tipo de serviço por lead** (016), delete via UI
 - **Funil de Execução** para contratos ativos (materiais → pós-venda)
-- **Dashboard** com KPIs, range de datas, agenda e relatórios integrados
+- **Dashboard** com KPIs, range de datas, agenda e relatórios integrados. Follow-up separa "ação pendente" (borda verde) de "🕐 só lembrete" (borda cinza)
 - **Clientes** — CRUD com dias disponíveis, janelas, frequência, completude
-- **Escala de Campo** — otimizador de rota, drag & drop, tooltips, prioridade/bloqueios (Fase 5.2 nível 2)
-- **Relatórios** — visualização de fotos, assinatura, GPS, reverse geocoding (Fase 4)
+- **Escala de Campo** — otimizador de rota, drag & drop **atômico via RPC `reorder_agenda`** (015), tooltips, prioridade/bloqueios, **aceita visitas de lead** (badge "🌱 lead", 016)
+- **Relatórios** — visualização de fotos, assinatura, GPS, reverse geocoding
 - **Agenda** — calendário + sidebar
 - **Tarefas** — CRUD com prioridade, categoria, vínculo com lead
-- **Estoque** — Etapa 1: lista + KPIs (CRUD pendente na Etapa 2)
+- **Estoque** — Etapa 2 completa: modais de cadastro de material e movimentação (entrada/saída/ajuste/perda/transferência)
 - Busca global (Cmd+K), autenticação Supabase
 
-**Persistência:**
-- Supabase (leitura + escrita): `clientes`, `cliente_servicos`, `agenda`, `relatorios`, `fotos_relatorio`, `employee_bloqueios`
-- Supabase (leitura): `employees`, `estoque_saldos_totais`
-- ⚠️ **localStorage ainda**: `crm-verde-leads`, `crm-verde-tarefas` — migração pendente ([[PROXIMOS-PASSOS]])
+**Persistência (tudo no Supabase agora):**
+- Escrita: `leads`, `tarefas` (015), `clientes`, `cliente_servicos`, `agenda` (com `lead_id`, 016), `relatorios`, `fotos_relatorio`, `employee_bloqueios`, `materiais`, `estoque_movimentacoes`
+- Leitura: `employees`, `estoque_saldos_totais`, `audit_log` (só gestor)
+- Cache local: `localStorage['crm-verde-leads' | 'crm-verde-tarefas']` — apenas rendering rápido + fallback offline
 
 **Backlog:** ver [[README CRM Dashboard]] e [[PROXIMOS-PASSOS]]
 
 ---
 
 ### 3. Gerador de Orçamentos
-- **Status:** funcionando, melhorias pendentes
+- **Status:** ✅ 3 bugs corrigidos + 6 features essenciais + integração com CRM via query string
 - **Stack:** HTML único, sem dependências externas
-- **Tipo:** arquivo local, aberto diretamente no navegador
-- **Pasta local:** `tools/orcamentos/`
+- **Tipo:** arquivo local **e** servido pelo Vite do CRM (dois arquivos idênticos, sincronizados)
+- **Pasta local:** `tools/orcamentos/verde_interior_gerador_orcamento_10.html` e `apps/crm/public/gerador-orcamento.html`
 
 **O que faz:**
 - 7 modelos de serviço com regras de negócio específicas
@@ -75,29 +75,29 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 - Lógica de reposição de plantas (ilimitado para Locação)
 - Campo "AC:" e título editável inline
 - Impressão direta via browser
+- **Numeração automática `ORC-NNN`** (localStorage), rascunho auto-save, validade +30d, email/telefone, desconto global, botão limpar tudo
+- **Integração com CRM:** botão "🛠 Gerar orçamento" no `ModalOrcamento` abre em nova aba com pré-preenchimento por query string
 
-**20 melhorias mapeadas:** ver `01 - Orçamentos/roadmap.md`
+Ver [[README Gerador de Orçamentos]] para detalhes.
 
 ---
 
 ### 4. Ordem de Serviço (OS)
-- **Status:** funcionando na web, adaptação mobile em andamento
-- **Stack:** HTML único, sem dependências externas
-- **Tipo:** arquivo local, aberto diretamente no navegador
-- **Pasta local:** `tools/ordem-de-servico/`
+- **Status:** ✅ Dinâmica, parametrizada por query string, modo Execução/Conclusão implementado (Opção B, 22/jun)
+- **Stack:** HTML único, sem dependências externas (QR via API pública)
+- **Tipo:** arquivo local **e** servido pelo Vite do CRM (idênticos)
+- **Pasta local:** `tools/ordem de servico/plano-execucao-heimr_10.html` (nome legado — arquivo é dinâmico) e `apps/crm/public/os.html`
 
-**O que faz (versão atual — baseada no Heimr):**
-- Cabeçalho com dados do cliente e tipo de serviço
-- Tabela de plantas com operações (nova, substituição, preenchimento, cortesia)
-- Lista de insumos técnicos
-- Roteiro de execução passo a passo com alertas
-- Sistema de fotos com tag de momento (Antes/Depois) e área
-- Checklist de conclusão
-- Assinatura do líder e do responsável do cliente
-- Campo de observações finais
+**O que faz:**
+- Parametrização via query string: `?cliente=&os=&plantas=Nome:Local:Obs|...&modo=execucao|conclusao`
+- **Modo Execução:** só "Antes" liberado; FAB "Finalizar" só habilita quando todas as plantas têm foto Antes
+- **Modo Conclusão:** "Antes" trancado, "Depois" liberado; alterna via botão. Ao concluir, tela de resumo com exportar JSON + imprimir
+- Fotos WebP <100KB via canvas, persistidas em `localStorage['verde-os-<os_id>']`
+- Botões "Copiar link" e "QR" (via api.qrserver.com)
+- Mobile-first: `capture=environment`, grid 2 colunas, FAB fixo
+- Tela fallback "Selecione uma OS" quando sem query string
 
-**Decisão tomada (22/06/2026):** sistema de fotos — Opção B (dois modos: Execução/Conclusão)
-**Pendente:** implementar o modo dinâmico no HTML (hoje ainda hardcoded para o cliente Heimr)
+Ver [[README Ordem de Serviço]] para exemplos de URL.
 
 ---
 
@@ -158,9 +158,14 @@ verdeinterior-newproject/
 
 ## Decisões ainda abertas
 
-- [x] ~~Sistema de fotos da OS~~ — Opção B escolhida (implementação pendente)
+- [x] ~~Sistema de fotos da OS~~ — Opção B escolhida e **implementada** (sprint 3-C, 20/07/2026)
 - [x] ~~Formato do ID único de cliente~~ — `CLI-NNN`, `ORC-NNN`, `OS-NNN` (sequencial por entidade)
 - [x] ~~Status do orçamento que dispara criação de OS~~ — `orcamento_aprovado` gera OS automaticamente
+- [x] ~~Multi-tipo de serviço no lead~~ — array (016)
+- [x] ~~Agenda vinculada a lead ou cliente~~ — cliente_id nullable + lead_id + check (016)
+- [x] ~~Auditoria de edições no Ponto~~ — trigger genérico em audit_log (017)
 - [ ] Design system visual unificado (paleta, tipografia, componentes)
-- [ ] Estratégia de roles no CRM (`gestor`, `colab`, `campo`) e proteção de rotas
-- [ ] Momento de migrar os HTMLs (Orçamentos, OS) para módulos React dentro do CRM
+- [ ] Estratégia de roles no CRM (`gestor`, `colab`, `campo`) e proteção de rotas — **adiado** até algum colaborador de campo precisar entrar no CRM
+- [ ] Refactor de `EscalaCampo.jsx` e `ModalOrcamento.jsx` em subcomponentes (dias de trabalho, iterativo)
+- [ ] Reset de senha via e-mail (precisa SMTP no Supabase Auth) e gestor redefinir senha (precisa Edge Function)
+- [ ] Momento de migrar os HTMLs (Orçamentos, OS) para módulos React dentro do CRM (Plataforma Unificada)

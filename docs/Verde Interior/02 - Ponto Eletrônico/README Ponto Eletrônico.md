@@ -55,11 +55,13 @@
 - Dashboard com 4 KPIs (presença, ausência, intervalo, atrasos)
 - Tabela de status em tempo real
 - Alertas automáticos (banco crítico ≤ -120min, devidas ≥ 4h)
-- Edição de registros em qualquer data (só gestor pode deletar, com warning)
-- Aprovação/recusa de justificativas com visualização de anexos
+- Edição de registros em qualquer data (só gestor pode deletar, com warning) — **auditado automaticamente via trigger** (migration 017)
+- Aprovação/recusa de justificativas com visualização de anexos — **auditado automaticamente**
 - Adicionar / editar / remover colaboradores
-- Exportação CSV
+- **Exportação CSV e XLSX** (SheetJS, sprint 4) — mesmo dataset, mais confiável no Excel
 - Relatórios: tabela com dias, horas, meta, extras, devidas, saldo + gráfico de barras
+- **Frequência mensal** (sprint 4): faltas / atrasos (>08:20) / saídas antecipadas (<17:40) / % adesão por colaborador no período selecionado
+- **Gráfico de banco de horas** (sprint 4): SVG inline dos últimos 6 meses, uma linha por colaborador
 - Filtro de equipe por dropdown; se gestor tem `employee_id`, vê sua própria Minha Agenda
 
 ---
@@ -90,11 +92,12 @@ PWA:      Service Worker com auto-update
 
 - `employees` — dados e métricas da equipe
 - `profiles` — vínculo auth.user ↔ employee + role
-- `punch_records` — registros de ponto com lat/lng
-- `justifications` — ocorrências com anexos
-- `agenda` — visitas agendadas
+- `punch_records` — registros de ponto com lat/lng — **triggered by audit_trigger** (017)
+- `justifications` — ocorrências com anexos — **triggered by audit_trigger** (017)
+- `agenda` — visitas agendadas (agora com `lead_id` opcional além de `cliente_id`)
 - `relatorios` — relatórios de visita com checkin/checkout
 - `fotos_relatorio` — fotos e assinaturas de visita
+- `audit_log` (017) — log imutável de INSERT/UPDATE/DELETE, só gestor lê
 
 **Storage:** bucket `field-photos` (fotos WebP + assinaturas PNG), signed URLs 7-30 dias.
 
@@ -110,26 +113,30 @@ PWA:      Service Worker com auto-update
 ## Bugs / riscos conhecidos
 
 - **Perfil do colaborador não implementado** (`renderProfile()` placeholder)
-- **Sem escape de texto livre** — XSS potencial em campos de observação
+- ✅ **XSS**: helper `esc()` em `utils.js` aplicado nos innerHTML sensíveis (admin, justs, mirror, config, agenda) — sprint 4
 - **Geo sem retry:** timeout de 20s, se falhar o ponto bate sem coordenadas
 - **Zoom bloqueado no viewport** (`user-scalable=no`) — acessibilidade
 - **Alguns `.then()` sem `.catch()`** em `auth.js`, `agenda.js` (uploads e removePhoto)
-- **Sem auditoria** — nenhum log de quem editou o quê
+- ✅ **Auditoria**: `audit_log` + trigger `audit_trigger()` em `punch_records` e `justifications` (migration 017)
 - **RLS não é verificável no cliente** — confiança total no Supabase
 
 ---
 
 ## Próximos passos
 
-- [ ] Reset de senha via e-mail (UI faltando)
-- [ ] Gestor redefine senha de colaborador
-- [ ] Exportação XLSX (adicionar SheetJS)
-- [ ] Relatório de frequência mensal (faltas / atrasos)
-- [ ] Gráfico de evolução do banco de horas (Chart.js sobre `buildWeeks()`)
-- [ ] Auditoria: `audit_log` em `punch_records` e `justifications`
+Feitos em 20/07/2026 (sprint 4):
+- [x] **Exportação XLSX** (SheetJS instalado, botões CSV+XLSX no admin)
+- [x] **Relatório de frequência mensal** (`renderFrequencia()` — dias previstos, faltas, atrasos, saídas antecipadas, % adesão)
+- [x] **Gráfico de banco de horas** (`renderBankChart()` — SVG inline, últimos 6 meses, uma linha por colaborador)
+- [x] **Auditoria** (migration 017 — audit_log + trigger genérico)
+- [x] **XSS escape** (esc() em utils.js)
+- [x] **Vitest** com 11 testes de `calcWorkClosed`, `HM` e `esc` (rodar `npm test`)
+
+Pendentes (precisam de infra — ver PROXIMOS-PASSOS):
+- [ ] **Reset de senha via e-mail** — precisa SMTP configurado no Supabase Auth + coluna `email_recuperacao` em `profiles`.
+- [ ] **Gestor redefine senha de colaborador** — precisa Edge Function com `SERVICE_ROLE_KEY` (não dá pra fazer via anon key).
 - [ ] Implementar view de Perfil
-- [ ] Escapar campos de texto livre
-- [ ] Configurar Vitest + primeiros testes de `calcWork` / `calcWorkClosed`
+- [ ] ESLint 9 flat config (o Ponto já usa uma versão antiga; considerar upgrade)
 
 ## Não mudar sem discussão
 

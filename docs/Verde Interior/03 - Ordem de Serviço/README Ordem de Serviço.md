@@ -1,46 +1,70 @@
 # Ordem de Serviço — Status Atual
 
-**Arquivo atual:** `tools/ordem-de-servico/plano-execucao-heimr_10.html` (1.146 linhas)
-**Pasta local:** `tools/ordem-de-servico/`
-**Stack:** HTML único, offline, sem dependências externas
-**Status:** 🟡 Funcionando na web — dados hardcoded (Heimr) e sistema de fotos sem gating por modo
+**Arquivos:**
+- `tools/ordem de servico/plano-execucao-heimr_10.html` — original standalone (mantido, agora **dinâmico**, apesar do nome legado com "heimr")
+- `apps/crm/public/os.html` — cópia servida pelo Vite (idêntica). Os dois DEVEM ficar em sync.
+
+**Stack:** HTML único, offline, sem dependências externas (QR usa API pública `api.qrserver.com`)
+**Status:** ✅ Modo Execução/Conclusão dinâmico implementado (20/07/2026, sprint 3-C)
 **Última atualização da doc:** 20/07/2026
 
-> Observação: para operações **em campo com colaboradores**, o Sistema de Campo do App Ponto (Minha Agenda → check-in → fotos → assinatura → checkout) já resolve o fluxo mobile. Este HTML segue relevante para documentação impressa/entrega ao cliente.
+> Observação: para operações **em campo com colaboradores**, o Sistema de Campo do App Ponto (Minha Agenda → check-in → fotos → assinatura → checkout) continua sendo o fluxo principal. Esta OS HTML complementa como link/QR compartilhável e como documentação de entrega ao cliente.
 
 ---
 
-## O que funciona (versão atual)
+## O que funciona agora (após sprint 3-C)
 
-- Cabeçalho com dados do cliente e tipo de serviço
-- Barra de info (data, responsável, tipo, status)
-- Tabela de plantas com operações: Nova, Substituição, Preenchimento, Cortesia, Movimentação
-- Lista de insumos técnicos em cards
-- Roteiro de execução passo a passo com alertas críticos
-- Sistema de fotos: tag de Momento (Antes/Depois) + Área (multiselect)
-- Checklist de conclusão (14 itens)
-- Assinatura do líder Verde Interior e responsável do cliente
-- Campo de observações finais
+### Parametrização por URL (removido o hardcode Heimr)
 
-## Situação atual
+Query string aceita:
+- `?cliente=` nome do cliente
+- `?os=` id/número da OS (aparece no cabeçalho)
+- `?endereco=`, `?bairro=`, `?contato=`, `?telefone=`
+- `?plantas=` — formato compacto `Nome:Local:Obs|Nome2:Local2:Obs2` **ou** JSON URL-encoded
+- `?modo=` `execucao` ou `conclusao` (default: `execucao`)
 
-A OS existe e funciona na web. O layout mobile foi construído e aprovado visualmente. Falta tornar o acesso fluido para o colaborador usar no celular em campo.
+Se abrir sem query string, mostra tela "Selecione uma OS" com input para colar URL.
+
+### Modo Execução / Modo Conclusão (Opção B — decisão 22/jun)
+
+- **Execução (default):** só slot "Antes" liberado. "Depois" trancado com cadeado. FAB "✓ Finalizar Execução → Ir para Conclusão" só habilita quando **todas** as plantas têm foto Antes (se faltar, alerta lista quais).
+- **Conclusão:** "Antes" trancado, "Depois" liberado. Botão "Voltar p/ Execução" alterna. Ao concluir todas as fotos "Depois", tela de resumo com "Imprimir" e "Exportar JSON".
+
+Regra extra: remover uma foto "Antes" também remove a "Depois" correspondente (coerente — Depois sem Antes não faz sentido).
+
+### Persistência
+
+- `localStorage['verde-os-<os_id>']` — armazena `{ modo, plantas: [{id, antesUrl, depoisUrl, obsAntes, obsDepois}] }`.
+- Fotos comprimidas via canvas para WebP (~100KB alvo, max 1600px, qualidade decrescente até caber).
+- Restaura ao reabrir a mesma OS.
+
+### Link / QR
+
+- Botão "🔗 Copiar link" no cabeçalho.
+- Botão "📱 QR" abre modal com QR gerado via `api.qrserver.com` (fallback simples — se depois quiser embutir a lib qrcode-generator, trocar em um lugar só).
+
+### Mobile-first
+
+- Grid 2 colunas para "Antes/Depois" quando ambas existem.
+- `capture="environment"` no input file (câmera traseira em mobile).
+- FAB fixo no rodapé.
 
 ---
 
-## Próxima versão
+## Como usar (exemplo)
 
-**Origem dos dados:** importados do orçamento aprovado + campos editáveis para complementar
+```
+/os.html?cliente=Huawei&os=OS-042&endereco=Av+Faria+Lima+123&bairro=Vila+Olimpia&contato=Maria&telefone=11987654321&plantas=Ficus:Sala:podar|Zamioculca:Recepcao:limpar&modo=execucao
+```
 
-**Decisão sobre fotos:** ✅ Opção B (Modo Execução / Modo Conclusão) — 22/06/2026. Implementação ainda pendente no HTML. Ver [[decisoes-pendentes]].
+Depois de finalizar Execução, muda pra `&modo=conclusao` (o próprio botão faz isso).
 
-**Encerramento definido:**
-- Assinatura digital ou campo de nome do cliente
-- Campo de observações finais do colaborador
+---
 
-## Pendências
+## Pendências futuras
 
-- Parametrizar dados de cliente/plantas por OS (remover hardcode Heimr)
-- Implementar Modo Execução (só "Antes") vs Modo Conclusão (libera "Depois")
-- Gerar link/QR fixo por OS para acesso em campo
-- Avaliar se essa OS deve ser migrada para módulo React dentro do CRM (Plataforma Unificada)
+- Integrar geração do link com o CRM: no modal do funil de execução ("orientação/nota fiscal"), adicionar botão "🔗 Gerar link da OS" que monta a URL a partir do lead aprovado.
+- Sinalizar de volta ao CRM quando a OS for concluída (postMessage ou hitting endpoint).
+- Avaliar migrar para módulo React dentro do CRM na Plataforma Unificada (só após refactor do EscalaCampo e ModalOrcamento).
+
+Ver [[decisoes-pendentes]] e [[PROXIMOS-PASSOS]].
