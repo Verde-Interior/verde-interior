@@ -334,6 +334,24 @@
 .es-card__saldo--zerado { background: #FEE2E2; }
 .es-card__saldo--zerado .es-card__saldo-val { color: #991B1B; }
 
+.es-card__editar {
+  background: transparent;
+  border: 1px solid var(--surface-border);
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.es-card__editar:hover {
+  border-color: var(--forest-500);
+  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 6%, transparent);
+}
+
 /* ── Responsivo mobile ──────────────────────────────── */
 @media (max-width: 720px) {
   .es__header { padding: 12px 14px 0; }
@@ -364,4 +382,5 @@
   .es-card__nome { font-size: 13px; }
   .es-card__saldo { padding: 6px 10px; min-width: 70px; }
   .es-card__saldo-val { font-size: 16px; }
+  .es-card__editar { padding: 5px 8px; font-size: 12px; }
 }

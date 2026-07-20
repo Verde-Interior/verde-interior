@@ -5,6 +5,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
+import ModalMaterial from './ModalMaterial';
+import ModalMovimento from './ModalMovimento';
 import './Estoque.css';
 
 // ── Constantes ────────────────────────────────────────────────
@@ -44,6 +46,8 @@ export default function Estoque() {
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todos');
   const [filtroAlerta, setFiltroAlerta] = useState('todos'); // todos | baixo | zerado
+  const [modalMaterial, setModalMaterial] = useState(null);   // null | {} (novo) | material (editar)
+  const [modalMovimento, setModalMovimento] = useState(null); // null | {} (novo)
 
   async function carregar() {
     setLoading(true);
@@ -101,10 +105,18 @@ export default function Estoque() {
             <p className="es__subtitulo">Materiais, ferramentas e movimentações</p>
           </div>
           <div className="es__acoes-topo">
-            <button className="es__btn-sec" disabled title="Cadastrar novo material (Etapa 2)">
+            <button
+              className="es__btn-sec"
+              onClick={() => setModalMaterial({})}
+              title="Cadastrar novo material"
+            >
               + Material
             </button>
-            <button className="es__btn-pri" disabled title="Nova movimentação (Etapa 2)">
+            <button
+              className="es__btn-pri"
+              onClick={() => setModalMovimento({})}
+              title="Nova movimentação de estoque"
+            >
               + Movimento
             </button>
           </div>
@@ -214,9 +226,39 @@ export default function Estoque() {
       ) : (
         <div className="es__lista">
           {filtrados.map(m => (
-            <CartaoMaterial key={m.material_id} material={m} />
+            <CartaoMaterial
+              key={m.material_id}
+              material={m}
+              onEditar={() => setModalMaterial({
+                id:              m.material_id,
+                nome:            m.nome,
+                categoria:       m.categoria,
+                unidade:         m.unidade,
+                sku:             m.sku,
+                descricao:       m.descricao,
+                foto_url:        m.foto_url,
+                estoque_minimo:  m.estoque_minimo,
+                controla_posse:  m.controla_posse,
+                ativo:           m.ativo ?? true,
+              })}
+            />
           ))}
         </div>
+      )}
+
+      {modalMaterial && (
+        <ModalMaterial
+          material={modalMaterial.id ? modalMaterial : null}
+          onFechar={() => setModalMaterial(null)}
+          onSalvo={carregar}
+        />
+      )}
+
+      {modalMovimento && (
+        <ModalMovimento
+          onFechar={() => setModalMovimento(null)}
+          onSalvo={carregar}
+        />
       )}
     </div>
   );
@@ -224,7 +266,7 @@ export default function Estoque() {
 
 // ── Cartão do material ────────────────────────────────────────
 
-function CartaoMaterial({ material: m }) {
+function CartaoMaterial({ material: m, onEditar }) {
   const saldo = Number(m.saldo_total);
   const minimo = Number(m.estoque_minimo ?? 0);
   const zerado = saldo === 0;
@@ -254,6 +296,16 @@ function CartaoMaterial({ material: m }) {
           <span className="es-card__saldo-alerta">{zerado ? '🚫' : '⚠'}</span>
         )}
       </div>
+      {onEditar && (
+        <button
+          className="es-card__editar"
+          onClick={onEditar}
+          title="Editar material"
+          aria-label={`Editar ${m.nome}`}
+        >
+          ✏
+        </button>
+      )}
     </div>
   );
 }

@@ -71,6 +71,12 @@ Log cronológico de decisões estruturais. **Nunca deletar — apenas adicionar.
 **Motivo:** Roberto pediu — a empresa vende combinações reais como "reforma + manutenção" (reforma inicial e manutenção contínua) e "locação + manutenção" (locação para não perder plantas). Modelo singular distorcia badges, filtros e a criação de contratos ao promover cliente.
 **Impacto:** cards do Kanban e da Escala mostram 1 badge por tipo; filtro do Kanban usa `includes`; `promoverParaCliente` cria N contratos (um por tipo recorrente/venda); "Mix de Serviços" do Dashboard conta cada tipo por lead. Alternativa "tabela relacional lead_tipos_servico" descartada por adicionar joins sem ganho.
 
+### Auditoria de edições no Ponto via trigger genérico
+**Data:** 20/07/2026
+**Decisão:** Uma única tabela `public.audit_log` (entidade + entidade_id + acao + usuario + payload_antes/depois JSONB) alimentada por trigger genérico `audit_trigger()` (`SECURITY DEFINER`), anexado hoje em `punch_records` e `justifications` (migration 017). Log é imutável — não permite UPDATE/DELETE. RLS: só gestor lê.
+**Motivo:** gestor pode adicionar/apagar batidas e aprovar/recusar justificativas — sem log, zero rastreabilidade para dissídio, fiscalização e auditoria interna. Alternativa (uma tabela `_audit` por tabela original) descartada por explodir schema.
+**Impacto:** cliente não precisa de nenhuma mudança — trigger é transparente. Para adicionar auditoria em outra tabela: `CREATE TRIGGER foo_audit AFTER INSERT OR UPDATE OR DELETE ON foo FOR EACH ROW EXECUTE FUNCTION public.audit_trigger()`. Verificar no dashboard SQL Editor: `SELECT entidade, acao, usuario_email, criado_em FROM audit_log ORDER BY criado_em DESC LIMIT 10`.
+
 ### Agenda vinculada a lead OU cliente
 **Data:** 20/07/2026
 **Decisão:** Tornar `agenda.cliente_id` nullable + adicionar `agenda.lead_id UUID FK leads(id) ON DELETE CASCADE` + CHECK `agenda_cliente_xor_lead` (exatamente um dos dois preenchido). Migration 016.

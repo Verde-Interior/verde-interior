@@ -1,6 +1,6 @@
 import { state, save, dbAddJust } from './store.js';
 import { supabase } from './supabase.js';
-import { toast } from './utils.js';
+import { toast, esc } from './utils.js';
 import { renderAttachList } from './upload.js';
 
 export function renderJusts() {
@@ -25,7 +25,7 @@ export function renderJusts() {
           return `<div class="ft-doc">DOC</div>`;
         }).join('')}</div>`
       : '';
-    return `<div class="ri" style="flex-direction:column;align-items:flex-start;gap:7px"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><div><div class="ri-name">${j.type} — ${j.date}</div><div class="ri-sub">${j.desc}</div></div><span class="rb ${sm[j.status]}">${j.status}</span></div>${badge}${thumbs}</div>`;
+    return `<div class="ri" style="flex-direction:column;align-items:flex-start;gap:7px"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><div><div class="ri-name">${esc(j.type)} — ${esc(j.date)}</div><div class="ri-sub">${esc(j.desc)}</div></div><span class="rb ${sm[j.status]}">${esc(j.status)}</span></div>${badge}${thumbs}</div>`;
   }).join('') + '</div>';
 }
 

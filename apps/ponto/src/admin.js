@@ -1,5 +1,6 @@
 import { state, save, dbAddPunch, dbDeletePunch, dbUpdateJustStatus } from './store.js';
-import { HM, HMh, WDS, meta, calcWork, calcWorkClosed, TM, getHoje, toast } from './utils.js';
+import { HM, HMh, WDS, meta, calcWork, calcWorkClosed, TM, getHoje, toast, esc } from './utils.js';
+import * as XLSX from 'xlsx';
 
 export function genAlerts() {
   const a = [];
@@ -52,18 +53,21 @@ export function renderAdmin() {
         const files  = j.files || [];
         const badge  = files.length ? `<span class="jf-badge" style="margin-bottom:.5rem;display:inline-flex"><i class="fa-solid fa-paperclip" style="font-size:10px"></i> ${files.length} anexo${files.length > 1 ? 's' : ''}</span><br>` : '';
         const thumbs = files.length ? `<div class="jf-row" style="margin-bottom:.75rem">${files.map(f => { if (f.type === 'img' && f.preview) return `<img src="${f.preview}" class="ft-img" alt="">`; if (f.type === 'pdf') return `<div class="ft-pdf">PDF</div>`; return `<div class="ft-doc">DOC</div>`; }).join('')}</div>` : '';
-        return `<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px;font-weight:700">${state.EMP[j.user] ? state.EMP[j.user].name : '—'}</span><span style="font-size:12px;color:var(--text2)">${j.date} — ${j.type}</span></div><div style="font-size:12px;color:var(--text2);margin-bottom:.625rem">${j.desc}</div>${badge}${thumbs}<div style="display:flex;gap:8px"><button class="brs" onclick="resolveJ(${idx},true)"><i class="fa-solid fa-check"></i> Aprovar</button><button class="brj" onclick="resolveJ(${idx},false)"><i class="fa-solid fa-xmark"></i> Recusar</button></div></div>`;
+        return `<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px;font-weight:700">${esc(state.EMP[j.user] ? state.EMP[j.user].name : '—')}</span><span style="font-size:12px;color:var(--text2)">${esc(j.date)} — ${esc(j.type)}</span></div><div style="font-size:12px;color:var(--text2);margin-bottom:.625rem">${esc(j.desc)}</div>${badge}${thumbs}<div style="display:flex;gap:8px"><button class="brs" onclick="resolveJ(${idx},true)"><i class="fa-solid fa-check"></i> Aprovar</button><button class="brj" onclick="resolveJ(${idx},false)"><i class="fa-solid fa-xmark"></i> Recusar</button></div></div>`;
       }).join('')
     : '<div class="card"><div class="empty"><i class="fa-regular fa-circle-check"></i>Nenhuma pendente</div></div>';
 
   document.getElementById('repbody').innerHTML = state.EMP.map(e =>
-    `<tr><td title="${e.name}">${e.name}</td><td><span class="bc">${e.c}</span></td><td>${e.days}</td><td>${HMh(e.worked)}</td><td>${meta(e)}h</td><td class="pos" style="font-weight:700">+${HMh(e.extra)}</td><td class="neg" style="font-weight:700">${e.due > 0 ? HMh(e.due) : '--'}</td><td style="font-weight:700;color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</td></tr>`
+    `<tr><td title="${esc(e.name)}">${esc(e.name)}</td><td><span class="bc">${esc(e.c)}</span></td><td>${e.days}</td><td>${HMh(e.worked)}</td><td>${meta(e)}h</td><td class="pos" style="font-weight:700">+${HMh(e.extra)}</td><td class="neg" style="font-weight:700">${e.due > 0 ? HMh(e.due) : '--'}</td><td style="font-weight:700;color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</td></tr>`
   ).join('');
+
+  renderFrequencia();
+  renderBankChart();
 
   const barsHtml = state.EMP.map(e => {
     const pct = Math.min(100, Math.round((e.worked / meta(e)) * 100));
     const bc  = pct >= 100 ? '#1D9E75' : pct >= 80 ? '#EF9F27' : '#E24B4A';
-    return `<div style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;font-weight:500">${e.name}</span><span style="font-size:11px;color:var(--text3)">${HMh(e.worked)} (${pct}%)</span></div><div class="bar-mini"><div class="bf-mini" style="width:${pct}%;background:${bc}"></div></div></div>`;
+    return `<div style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;font-weight:500">${esc(e.name)}</span><span style="font-size:11px;color:var(--text3)">${HMh(e.worked)} (${pct}%)</span></div><div class="bar-mini"><div class="bf-mini" style="width:${pct}%;background:${bc}"></div></div></div>`;
   }).join('');
   document.getElementById('dash-chart').innerHTML = `<div class="sl">Progresso mensal da equipe</div>${barsHtml}`;
 
@@ -188,7 +192,7 @@ export function renderEdit() {
   document.getElementById('elist').innerHTML = recs.length
     ? '<div class="rl">' + recs.map((p, i) => {
         const tm = TM[p.type] || { lbl: p.type, cls: 'rb-e' };
-        return `<div class="ri"><div><div class="ri-name">${tm.lbl}${p.obs ? ` <span style="font-size:11px;color:var(--text3)">(${p.obs})</span>` : ''}</div></div><div style="display:flex;align-items:center;gap:8px"><span class="rb ${tm.cls}">${p.time}</span><button onclick="delER('${dv}',${i})" class="bsm" style="padding:4px 7px;color:#E24B4A;border-color:#E24B4A" title="Remover"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button></div></div>`;
+        return `<div class="ri"><div><div class="ri-name">${tm.lbl}${p.obs ? ` <span style="font-size:11px;color:var(--text3)">(${esc(p.obs)})</span>` : ''}</div></div><div style="display:flex;align-items:center;gap:8px"><span class="rb ${tm.cls}">${esc(p.time)}</span><button onclick="delER('${dv}',${i})" class="bsm" style="padding:4px 7px;color:#E24B4A;border-color:#E24B4A" title="Remover"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button></div></div>`;
       }).join('') + '</div>'
     : '<div class="card"><div class="empty"><i class="fa-regular fa-clock"></i>Nenhum registro nesta data</div></div>';
 
@@ -246,46 +250,231 @@ export function saveAdd() {
   })();
 }
 
-export function expCSV(mode) {
+// Monta o dataset (header + rows) usado por CSV e XLSX.
+// Retorna { header: string[], rows: Array<Array<string|number>>, baseFname: string }.
+function _buildExportDataset(mode) {
   const sel  = document.getElementById('ru').value;
   const rs   = document.getElementById('rs').value;
   const re   = document.getElementById('re').value;
-  const rows = sel === 'all'
+  const emps = sel === 'all'
     ? state.EMP.map((e, i) => ({ ...e, idx: i }))
     : [{ ...state.EMP[parseInt(sel)], idx: parseInt(sel) }];
-  const bom = '﻿';
-  let csv = '';
-  // eslint-disable-next-line no-useless-assignment
-  let fname = '';
 
   if (mode === 'espelho') {
-    csv = bom + 'Colaborador,Cargo,Contrato,Data,Dia,Entrada,Intervalo,Retorno,Saída,Horas Trabalhadas,Saldo do Dia\n';
-    rows.forEach(e => {
-      (state.HIST[e.idx] || []).filter(d => d.date >= rs && d.date <= re).sort((a, b) => a.date.localeCompare(b.date)).forEach(d => {
-        const dt  = new Date(d.date + 'T12:00:00');
-        const ent = d.records.find(p => p.type === 'entry');
-        const brk = d.records.find(p => p.type === 'break');
-        const ret = d.records.find(p => p.type === 'return');
-        const ex  = d.records.find(p => p.type === 'exit');
-        const wk  = calcWorkClosed(d.records);
-        const sld = wk - e.j * 60;
-        csv += [e.name, e.cargo, e.c, d.date.split('-').reverse().join('/'), WDS[dt.getDay()], ent ? ent.time : '--', brk ? brk.time : '--', ret ? ret.time : '--', ex ? ex.time : '--', HM(wk), (sld >= 0 ? '+' : '') + HM(sld)].join(',') + '\n';
-      });
+    const header = ['Colaborador','Cargo','Contrato','Data','Dia','Entrada','Intervalo','Retorno','Saída','Horas Trabalhadas','Saldo do Dia'];
+    const rows = [];
+    emps.forEach(e => {
+      (state.HIST[e.idx] || [])
+        .filter(d => d.date >= rs && d.date <= re)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .forEach(d => {
+          const dt  = new Date(d.date + 'T12:00:00');
+          const ent = d.records.find(p => p.type === 'entry');
+          const brk = d.records.find(p => p.type === 'break');
+          const ret = d.records.find(p => p.type === 'return');
+          const ex  = d.records.find(p => p.type === 'exit');
+          const wk  = calcWorkClosed(d.records);
+          const sld = wk - e.j * 60;
+          rows.push([
+            e.name, e.cargo, e.c,
+            d.date.split('-').reverse().join('/'),
+            WDS[dt.getDay()],
+            ent ? ent.time : '--', brk ? brk.time : '--', ret ? ret.time : '--', ex ? ex.time : '--',
+            HM(wk), (sld >= 0 ? '+' : '') + HM(sld),
+          ]);
+        });
     });
-    fname = `vi-espelho-${rs}-${re}.csv`;
-  } else if (mode === 'resumo') {
-    csv = bom + 'Colaborador,Cargo,Contrato,Jornada(h),Dias,Meta(h),Trabalhadas,Extras,Devidas,Banco(min),Banco\n';
-    csv += rows.map(e => [e.name, e.cargo, e.c, e.j, e.days, meta(e), HMh(e.worked), '+' + HMh(e.extra), e.due > 0 ? HMh(e.due) : '0h00', e.bank, HM(e.bank)].join(',')).join('\n');
-    fname = `vi-resumo-${rs}-${re}.csv`;
-  } else {
-    csv = bom + 'Colaborador,Cargo,Contrato,Jornada(h),Banco(min),Banco,Extras Acum.,Devidas Acum.\n';
-    csv += rows.map(e => [e.name, e.cargo, e.c, e.j, e.bank, HM(e.bank), '+' + HMh(e.extra), e.due > 0 ? HMh(e.due) : '0h00'].join(',')).join('\n');
-    fname = `vi-banco-${getHoje()}.csv`;
+    return { header, rows, baseFname: `vi-espelho-${rs}-${re}` };
   }
 
+  if (mode === 'resumo') {
+    const header = ['Colaborador','Cargo','Contrato','Jornada(h)','Dias','Meta(h)','Trabalhadas','Extras','Devidas','Banco(min)','Banco'];
+    const rows = emps.map(e => [
+      e.name, e.cargo, e.c, e.j, e.days, meta(e), HMh(e.worked), '+' + HMh(e.extra),
+      e.due > 0 ? HMh(e.due) : '0h00', e.bank, HM(e.bank),
+    ]);
+    return { header, rows, baseFname: `vi-resumo-${rs}-${re}` };
+  }
+
+  // banco (default)
+  const header = ['Colaborador','Cargo','Contrato','Jornada(h)','Banco(min)','Banco','Extras Acum.','Devidas Acum.'];
+  const rows = emps.map(e => [
+    e.name, e.cargo, e.c, e.j, e.bank, HM(e.bank), '+' + HMh(e.extra),
+    e.due > 0 ? HMh(e.due) : '0h00',
+  ]);
+  return { header, rows, baseFname: `vi-banco-${getHoje()}` };
+}
+
+export function expCSV(mode) {
+  const { header, rows, baseFname } = _buildExportDataset(mode);
+  const bom = '﻿';
+  const csv = bom + header.join(',') + '\n' + rows.map(r => r.join(',')).join('\n') + '\n';
+  const fname = `${baseFname}.csv`;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = fname; a.click();
+  toast('✓ Exportado: ' + fname);
+}
+
+// ── Relatório de frequência mensal ────────────────────────────
+// Conta faltas / atrasos / saídas antecipadas por colaborador no
+// período selecionado nos inputs #rs / #re. Segundos-graça definidos
+// em constantes (fáceis de ajustar sem tocar em regra de negócio).
+const LIMITE_ENTRADA_ATRASO = 8 * 60 + 20;    // 08:20 → atraso
+const LIMITE_SAIDA_ANTECIPADA = 17 * 60 + 40; // 17:40 → saída antes
+
+function contarFrequencia(empIdx, rs, re) {
+  // Gera lista de dias úteis (seg-sex) no intervalo.
+  const previstos = [];
+  const cur = new Date(rs + 'T12:00:00');
+  const fim = new Date(re + 'T12:00:00');
+  while (cur <= fim) {
+    const d = cur.getDay();
+    if (d !== 0 && d !== 6) {
+      previstos.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const hist = state.HIST[empIdx] || [];
+  const porData = new Map(hist.filter(d => d.date >= rs && d.date <= re).map(d => [d.date, d.records]));
+
+  let faltas = 0, atrasos = 0, saidasAntes = 0;
+  previstos.forEach((data) => {
+    const recs = porData.get(data);
+    if (!recs || !recs.length) { faltas += 1; return; }
+    const ent = recs.find(p => p.type === 'entry');
+    if (ent) {
+      const [h, m] = ent.time.split(':').map(Number);
+      if (h * 60 + m > LIMITE_ENTRADA_ATRASO) atrasos += 1;
+    }
+    const ex = recs.find(p => p.type === 'exit');
+    if (ex) {
+      const [h, m] = ex.time.split(':').map(Number);
+      if (h * 60 + m < LIMITE_SAIDA_ANTECIPADA) saidasAntes += 1;
+    }
+  });
+
+  return { previstos: previstos.length, faltas, atrasos, saidasAntes };
+}
+
+export function renderFrequencia() {
+  const el = document.getElementById('freqbody');
+  if (!el) return;
+  const rs = document.getElementById('rs')?.value;
+  const re = document.getElementById('re')?.value;
+  if (!rs || !re) { el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:12px">Selecione um intervalo acima</td></tr>'; return; }
+
+  el.innerHTML = state.EMP.map((e, i) => {
+    const f = contarFrequencia(i, rs, re);
+    const trabalhados = f.previstos - f.faltas;
+    const adesao = f.previstos > 0 ? Math.round((trabalhados / f.previstos) * 100) : 0;
+    const cor = adesao >= 95 ? '#1D9E75' : adesao >= 80 ? '#EF9F27' : '#E24B4A';
+    return `<tr>
+      <td title="${esc(e.name)}">${esc(e.name)}</td>
+      <td>${f.previstos}</td>
+      <td style="font-weight:700;color:${f.faltas > 0 ? '#E24B4A' : 'var(--text3)'}">${f.faltas}</td>
+      <td style="font-weight:700;color:${f.atrasos > 0 ? '#EF9F27' : 'var(--text3)'}">${f.atrasos}</td>
+      <td style="font-weight:700;color:${f.saidasAntes > 0 ? '#EF9F27' : 'var(--text3)'}">${f.saidasAntes}</td>
+      <td style="font-weight:700;color:${cor}">${adesao}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Gráfico de banco de horas (SVG inline, sem lib) ───────────
+// Últimos 6 meses. Uma linha por colaborador.
+export function renderBankChart() {
+  const el = document.getElementById('bankchart');
+  if (!el) return;
+
+  // Coleta banco mensal (proxy: soma de (trabalhado - meta) por mês, a partir de HIST)
+  const meses = [];
+  const hoje = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  const dadosPorEmp = state.EMP.map((e, i) => {
+    const hist = state.HIST[i] || [];
+    const bankMes = meses.map((m) => {
+      const days = hist.filter(d => d.date.startsWith(m));
+      const meta = e.j * 60;
+      return days.reduce((s, d) => s + (calcWorkClosed(d.records) - meta), 0);
+    });
+    return { name: e.name, bank: bankMes };
+  });
+
+  if (dadosPorEmp.every(d => d.bank.every(v => v === 0))) {
+    el.innerHTML = '<div class="empty"><i class="fa-regular fa-chart-line"></i>Sem histórico suficiente para plotar</div>';
+    return;
+  }
+
+  // Escala Y baseada no min/max de todos os pontos
+  const allVals = dadosPorEmp.flatMap(d => d.bank);
+  const maxAbs = Math.max(60, ...allVals.map(Math.abs));
+  const H = 160, W = 640, PAD_L = 60, PAD_B = 40, PAD_T = 12, PAD_R = 12;
+  const chartH = H - PAD_T - PAD_B;
+  const chartW = W - PAD_L - PAD_R;
+  const xStep = chartW / (meses.length - 1);
+  const yMid = PAD_T + chartH / 2;
+  const yFor = (v) => yMid - (v / maxAbs) * (chartH / 2);
+  const xFor = (i) => PAD_L + i * xStep;
+
+  const cores = ['#1D6B4A', '#3B82F6', '#EF9F27', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#0EA5E9'];
+
+  // Grid horizontal (0, ±max/2, ±max)
+  const gridLines = [-maxAbs, -maxAbs / 2, 0, maxAbs / 2, maxAbs]
+    .map(v => `<line x1="${PAD_L}" y1="${yFor(v)}" x2="${W - PAD_R}" y2="${yFor(v)}" stroke="${v === 0 ? '#999' : '#E5E5E5'}" stroke-width="${v === 0 ? 1.2 : 1}"/><text x="${PAD_L - 6}" y="${yFor(v) + 4}" text-anchor="end" font-size="10" fill="#999">${HM(v)}</text>`)
+    .join('');
+
+  // Rótulos X (meses)
+  const xLabels = meses.map((m, i) => {
+    const [y, mo] = m.split('-');
+    const nome = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][parseInt(mo) - 1];
+    return `<text x="${xFor(i)}" y="${H - 20}" text-anchor="middle" font-size="10" fill="#666">${nome}/${y.slice(2)}</text>`;
+  }).join('');
+
+  // Linhas por colaborador
+  const linhas = dadosPorEmp.map((d, empIdx) => {
+    const cor = cores[empIdx % cores.length];
+    const pts = d.bank.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ');
+    const dots = d.bank.map((v, i) => `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3" fill="${cor}"/>`).join('');
+    return `<polyline fill="none" stroke="${cor}" stroke-width="2" points="${pts}"/>${dots}`;
+  }).join('');
+
+  const legenda = dadosPorEmp.map((d, i) => {
+    const cor = cores[i % cores.length];
+    return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);margin-right:12px"><span style="width:12px;height:3px;background:${cor};border-radius:2px"></span>${esc(d.name)}</span>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${W}px;height:${H}px" xmlns="http://www.w3.org/2000/svg">
+        ${gridLines}
+        ${xLabels}
+        ${linhas}
+      </svg>
+    </div>
+    <div style="margin-top:8px;line-height:1.8">${legenda}</div>
+  `;
+}
+
+// Exporta o mesmo dataset em XLSX (SheetJS). Mais confiável para colar em
+// planilhas com acentos e delimitadores regionais que o CSV não resolve.
+export function expXLSX(mode) {
+  const { header, rows, baseFname } = _buildExportDataset(mode);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  // Larguras de coluna automáticas (aproximadas pelo tamanho do maior valor)
+  ws['!cols'] = header.map((h, i) => {
+    const maxLen = Math.max(h.length, ...rows.map(r => String(r[i] ?? '').length));
+    return { wch: Math.min(maxLen + 2, 40) };
+  });
+  const sheetName = mode === 'espelho' ? 'Espelho' : mode === 'resumo' ? 'Resumo' : 'Banco';
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const fname = `${baseFname}.xlsx`;
+  XLSX.writeFile(wb, fname);
   toast('✓ Exportado: ' + fname);
 }

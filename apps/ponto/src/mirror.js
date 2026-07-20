@@ -1,5 +1,5 @@
 import { state } from './store.js';
-import { HM, WDS, MESES, F, meta, calcWorkClosed, toast } from './utils.js';
+import { HM, WDS, MESES, F, meta, calcWorkClosed, toast, esc } from './utils.js';
 
 export function buildMirrorMonths() {
   const hist   = state.HIST[state.cu] || [];
@@ -90,7 +90,7 @@ td{padding:8px 10px;border-bottom:1px solid #e8e6df}tr:nth-child(even) td{backgr
 </style></head><body>
 <div class="hdr"><div class="brand"><div class="v">Verde</div><div class="i">interior</div></div>
 <div class="title"><h2>Espelho de Ponto — ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}</h2><p>Emitido em ${new Date().toLocaleDateString('pt-BR')}</p></div></div>
-<div class="info"><div><span>Colaborador: </span><strong>${e.name}</strong></div><div><span>Cargo: </span><strong>${e.cargo}</strong></div><div><span>Contrato: </span><strong>${e.c}</strong></div><div><span>Jornada: </span><strong>${e.j}h/dia</strong></div><div><span>Meta: </span><strong>${metaH}h</strong></div></div>
+<div class="info"><div><span>Colaborador: </span><strong>${esc(e.name)}</strong></div><div><span>Cargo: </span><strong>${esc(e.cargo)}</strong></div><div><span>Contrato: </span><strong>${esc(e.c)}</strong></div><div><span>Jornada: </span><strong>${e.j}h/dia</strong></div><div><span>Meta: </span><strong>${metaH}h</strong></div></div>
 <table><thead><tr><th>Data</th><th>Entrada</th><th>Intervalo</th><th>Retorno</th><th>Saída</th><th>Trabalhadas</th><th>Saldo</th></tr></thead>
 <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">Sem registros neste período</td></tr>'}</tbody></table>
 <div class="tots">

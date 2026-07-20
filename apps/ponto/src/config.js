@@ -1,6 +1,6 @@
 import { state, save, dbAddEmployee, dbDeleteEmployee, dbUpdateEmployee } from './store.js';
 import { supabase } from './supabase.js';
-import { HM, toast } from './utils.js';
+import { HM, toast, esc } from './utils.js';
 import { AUTH } from './auth.js';
 
 export function renderConfig() {
@@ -8,14 +8,14 @@ export function renderConfig() {
   document.getElementById('cfg-list').innerHTML = state.EMP.map((e, i) => `
     <div class="cfg-row">
       <div style="flex:1;min-width:0">
-        <div class="cfg-name">${e.name}</div>
-        <div class="cfg-info">${e.cargo} · ${e.c} · ${e.j}h/dia · Banco: <strong style="color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</strong></div>
+        <div class="cfg-name">${esc(e.name)}</div>
+        <div class="cfg-info">${esc(e.cargo)} · ${esc(e.c)} · ${e.j}h/dia · Banco: <strong style="color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</strong></div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button onclick="editEmp(${i})" class="bsm" style="padding:5px 10px" title="Editar ${e.name}">
+        <button onclick="editEmp(${i})" class="bsm" style="padding:5px 10px" title="Editar ${esc(e.name)}">
           <i class="fa-solid fa-pen" style="font-size:12px"></i>
         </button>
-        <button onclick="removeEmp(${i})" class="bsm" style="color:#E24B4A;border-color:#E24B4A;padding:5px 10px" title="Remover ${e.name}">
+        <button onclick="removeEmp(${i})" class="bsm" style="color:#E24B4A;border-color:#E24B4A;padding:5px 10px" title="Remover ${esc(e.name)}">
           <i class="fa-solid fa-user-minus" style="font-size:12px"></i>
         </button>
       </div>

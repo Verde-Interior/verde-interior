@@ -1,7 +1,7 @@
 // src/agenda.js — Sistema de Campo: Minha Agenda (funcionário)
 import { supabase } from './supabase.js';
 import { AUTH } from './auth.js';
-import { toast, F, getHoje } from './utils.js';
+import { toast, F, getHoje, esc } from './utils.js';
 
 const DIAS_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -193,10 +193,6 @@ function statusLabel(s) {
     cancelado:   { txt: 'Cancelada',    cls: 'ag-badge--cancel' },
   })[s] || { txt: s, cls: '' };
 }
-function esc(str) {
-  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-}
-
 async function captureGPS() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve({ lat: null, lng: null });

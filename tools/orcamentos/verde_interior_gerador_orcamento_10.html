@@ -336,7 +336,9 @@ body{font-family:var(--fonte);background:var(--cf);color:var(--graf);min-height:
     <div class="htitle">Gerador de Orçamentos</div>
     <div class="hsub">Verde Interior Paisagismo</div>
   </div>
-  <button class="btn-gerar" id="btn-gerar" onclick="gerarProposta()">⎙ Gerar Proposta / PDF</button>
+  <button type="button" title="Limpar rascunho salvo" onclick="limparRascunho()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.85);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;margin-left:auto;font-family:var(--fonte);">🗑 Rascunho</button>
+  <button type="button" title="Limpar todos os campos" onclick="limparTudo()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.85);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--fonte);">🧹 Limpar tudo</button>
+  <button class="btn-gerar" id="btn-gerar" onclick="gerarProposta()" style="margin-left:0;">⎙ Gerar Proposta / PDF</button>
 </header>
 
 <div class="app-body">
@@ -349,6 +351,10 @@ body{font-family:var(--fonte);background:var(--cf);color:var(--graf);min-height:
       <input type="text" id="cli-nome" placeholder="Ex: Ana Paula Silva"></div>
     <div class="cg"><label>Empresa / Organização <span class="req">*</span></label>
       <input type="text" id="cli-empresa" placeholder="Ex: Huawei do Brasil"></div>
+    <div class="g2">
+      <div class="cg"><label>E-mail</label><input type="email" id="cli-email" placeholder="contato@empresa.com"></div>
+      <div class="cg"><label>Telefone</label><input type="tel" id="cli-telefone" placeholder="(11) 99999-9999"></div>
+    </div>
     <div class="g2">
       <div class="cg"><label>CNPJ</label><input type="text" id="cli-cnpj" placeholder="00.000.000/0001-00"></div>
       <div class="cg"><label>Cargo</label><input type="text" id="cli-cargo" placeholder="Ex: Gerente de Facilities"></div>
@@ -446,6 +452,8 @@ body{font-family:var(--fonte);background:var(--cf);color:var(--graf);min-height:
       <input type="text" id="prazo" placeholder="Ex: 10 dias úteis após aprovação"></div>
     <div class="cg"><label>Condições de Pagamento</label>
       <input type="text" id="pagamento" placeholder="Ex: Boleto / PIX até 30 dias"></div>
+    <div class="cg"><label>Desconto (%)</label>
+      <input type="number" id="desconto" min="0" max="100" step="0.1" placeholder="0"></div>
     <div id="campo-fidelidade" class="cg campo-hidden">
       <label>Fidelidade <span class="req">*</span></label>
       <input type="text" id="fidelidade" placeholder="Ex: 12 meses">
@@ -516,6 +524,12 @@ body{font-family:var(--fonte);background:var(--cf);color:var(--graf);min-height:
           <div class="dac" id="doc-ac">AC: –</div>
           <div class="demp" id="doc-emp">–</div>
           <div class="ddat" id="doc-dat">São Paulo, –</div>
+          <div class="ddat" style="margin-top:2px;">
+            <span id="orc-numero" style="font-weight:700;color:var(--vd);">Nº ORC-001</span>
+            <button type="button" title="Resetar contador" onclick="resetarContador()" style="background:none;border:none;color:var(--ct);cursor:pointer;font-size:11px;padding:0 3px;">↺</button>
+          </div>
+          <div class="ddat" id="doc-validade">Validade: –</div>
+          <div class="ddat" id="doc-contato" style="margin-top:2px;"></div>
         </div>
       </div>
       <div class="doc-sep"></div>
@@ -756,6 +770,12 @@ function atualizar() {
   document.getElementById('doc-ac').textContent='AC: '+([nome,empresa].filter(Boolean).join(' – ')||'–');
   const cargo=document.getElementById('cli-cargo').value.trim(); document.getElementById('doc-emp').textContent=[cargo,local].filter(Boolean).join(' · ')||'';
   document.getElementById('doc-dat').textContent='São Paulo, '+hoje();
+  const email=document.getElementById('cli-email').value.trim();
+  const telefone=document.getElementById('cli-telefone').value.trim();
+  const contatoEl=document.getElementById('doc-contato');
+  if(contatoEl) contatoEl.textContent=[email,telefone].filter(Boolean).join(' · ');
+  const dValEl=document.getElementById('doc-validade');
+  if(dValEl) dValEl.textContent='Validade: '+validadeStr()+' (30 dias)';
   const tituloEl=document.getElementById('doc-titulo');
   if(!tituloEl.dataset.customizado){tituloEl.textContent=gerarTitulo();}
 
@@ -765,8 +785,14 @@ function atualizar() {
   const grupos={venda:[],reforma:[],locacao:[],'manut-rec':[],'manut-pont':[],eventos:[],outros:[]};
   todosItens.forEach(it=>{if(grupos[it.cat])grupos[it.cat].push(it);});
 
-  const totalUnico=[...grupos.venda,...grupos.reforma,...grupos['manut-pont'],...grupos.eventos,...grupos.outros].reduce((s,i)=>s+i.qtd*i.valor,0);
-  const totalRec=[...grupos.locacao,...grupos['manut-rec']].reduce((s,i)=>s+i.qtd*i.valor,0);
+  const subtotalUnico=[...grupos.venda,...grupos.reforma,...grupos['manut-pont'],...grupos.eventos,...grupos.outros].reduce((s,i)=>s+i.qtd*i.valor,0);
+  const subtotalRec=[...grupos.locacao,...grupos['manut-rec']].reduce((s,i)=>s+i.qtd*i.valor,0);
+  const descPct=Math.max(0,Math.min(100,parseFloat(document.getElementById('desconto')?.value)||0));
+  const descFrac=descPct/100;
+  const descUnico=subtotalUnico*descFrac;
+  const descRec=subtotalRec*descFrac;
+  const totalUnico=subtotalUnico-descUnico;
+  const totalRec=subtotalRec-descRec;
 
   if(!modelosAtivos.length&&!todosItens.length){
     document.getElementById('doc-corpo').innerHTML='<div class="empty-doc"><div class="ei">🌿</div>Preencha o formulário ao lado para visualizar o orçamento em tempo real.</div>';
@@ -836,12 +862,20 @@ function atualizar() {
       [{g:grupos.venda,l:'Venda e instalação'},{g:grupos.reforma,l:'Reforma'},{g:grupos['manut-pont'],l:'Manutenção Pontual'},{g:grupos.eventos,l:'Eventos'},{g:grupos.outros,l:'Outros'}]
         .filter(({g})=>g.length>0)
         .forEach(({g,l})=>{html+=`<div class="rl"><span>${l}</span><span>${brl(g.reduce((s,i)=>s+i.qtd*i.valor,0))}</span></div>`;});
+      if(descPct>0){
+        html+=`<div class="rl"><span>Subtotal</span><span>${brl(subtotalUnico)}</span></div>`;
+        html+=`<div class="rl" style="color:var(--verm);"><span>Desconto (${descPct}%)</span><span>- ${brl(descUnico)}</span></div>`;
+      }
       html+=`<div class="rtot"><span class="lbl">Total</span><span class="val">${brl(totalUnico)}</span></div></div>`;
     }
     if(totalRec>0){html+=`<div class="rb rec"><div class="rbt">Investimento Mensal Recorrente</div>`;
       [{g:grupos.locacao,l:'Locação de vasos e plantas'},{g:grupos['manut-rec'],l:'Manutenção recorrente'}]
         .filter(({g})=>g.length>0)
         .forEach(({g,l})=>{html+=`<div class="rl"><span>${l}</span><span>${brl(g.reduce((s,i)=>s+i.qtd*i.valor,0))}/mês</span></div>`;});
+      if(descPct>0){
+        html+=`<div class="rl"><span>Subtotal</span><span>${brl(subtotalRec)}/mês</span></div>`;
+        html+=`<div class="rl" style="color:var(--verm);"><span>Desconto (${descPct}%)</span><span>- ${brl(descRec)}/mês</span></div>`;
+      }
       html+=`<div class="rtot"><span class="lbl">Total mensal</span><span class="val">${brl(totalRec)}/mês</span></div>`;
       if(fidelidade)html+=`<div style="font-size:10px;color:#7c3aed;margin-top:5px;font-weight:600;">Fidelidade: ${fidelidade}</div>`;
       html+=`</div>`;
@@ -866,9 +900,10 @@ function atualizar() {
   html+=`<div class="dinc"><strong>Incluso no orçamento:</strong><span>Compra de todos os materiais para execução dos serviços e mão de obra. Frete e impostos inclusos.</span></div>`;
   if(validadeV)html+=`<div class="dval">Validade da proposta: ${fdt(validadeV)}</div>`;
   html+=`<div class="dobs-lbl">Observações</div><div class="dobs" contenteditable="true" spellcheck="false"></div>`;
+  const contatoCli=[email,telefone].filter(Boolean).join(' · ');
   html+=`<div class="dass">
     <div class="dab"><div class="dal"><div class="an">Verde Interior Paisagismo LTDA</div><div class="as">CNPJ: 22846244/0001-22</div></div></div>
-    <div class="dab"><div class="dal"><div class="an">${nome||'________________________________'}</div><div class="as">${empresa||'Empresa / Cliente'}</div></div></div>
+    <div class="dab"><div class="dal"><div class="an">${nome||'________________________________'}</div><div class="as">${empresa||'Empresa / Cliente'}${contatoCli?'<br>'+contatoCli:''}</div></div></div>
   </div>`;
 
   document.getElementById('doc-corpo').innerHTML=html;
@@ -963,7 +998,10 @@ function gerarProposta() {
     showToast('⚠ Corrija os campos obrigatórios: '+erros.join(', '),true);
     return;
   }
-  showToast('✓ Proposta validada! Abrindo impressão...',false);
+  // Atribui número da proposta (só na 1ª geração deste rascunho)
+  atribuirNumeroSeNovo();
+  salvarRascunho();
+  showToast('✓ Proposta '+formatarNumeroOrc(orcAtribuido||lerContador())+' validada! Abrindo impressão...',false);
   setTimeout(()=>window.print(),600);
 }
 
@@ -975,23 +1013,136 @@ function showToast(msg,erro){
   setTimeout(()=>t.classList.remove('show'),3500);
 }
 
+// ── CONTADOR DE PROPOSTAS (ORC-NNN) ──
+const LS_CONT='verde-orc-contador';
+const LS_RASC='verde-orc-rascunho';
+let orcAtribuido=null; // número já gravado no rascunho atual (se houver)
+
+function lerContador(){ const v=parseInt(localStorage.getItem(LS_CONT)); return (isNaN(v)||v<1)?1:v; }
+function gravarContador(n){ localStorage.setItem(LS_CONT,String(n)); }
+function formatarNumeroOrc(n){ return 'ORC-'+String(n).padStart(3,'0'); }
+function renderNumeroOrc(){
+  const el=document.getElementById('orc-numero');
+  if(!el) return;
+  const n=orcAtribuido||lerContador();
+  el.textContent='Nº '+formatarNumeroOrc(n);
+}
+function atribuirNumeroSeNovo(){
+  if(orcAtribuido) return;
+  orcAtribuido=lerContador();
+  gravarContador(orcAtribuido+1); // próximo será o seguinte
+  renderNumeroOrc();
+}
+function resetarContador(){
+  if(!confirm('Resetar o contador de propostas para ORC-001?')) return;
+  gravarContador(1); orcAtribuido=null; renderNumeroOrc();
+  showToast('Contador resetado',false);
+}
+
+// ── VALIDADE (hoje + 30 dias) ──
+function validadeStr(){
+  const d=new Date(); d.setDate(d.getDate()+30);
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  return dd+'/'+mm+'/'+d.getFullYear();
+}
+
+// ── RASCUNHO (localStorage + debounce) ──
+const CAMPOS_RASC=['cli-nome','cli-empresa','cli-email','cli-telefone','cli-cnpj','cli-cargo','cli-local','cli-origem','consultor','frequencia','outros-texto','rep-qtd','prazo','pagamento','desconto','fidelidade','data-entrega','data-retirada','validade','foto-cols','foto-altura'];
+function coletarRascunho(){
+  const d={};
+  CAMPOS_RASC.forEach(id=>{const el=document.getElementById(id); if(el) d[id]=el.value;});
+  d.modelos={...M};
+  d.repToggle=!!document.getElementById('rep-toggle')?.checked;
+  d.repTipo=document.querySelector('input[name="rep-tipo"]:checked')?.value||'quantidade';
+  d.docTitulo=document.getElementById('doc-titulo')?.textContent||'';
+  d.tituloCustom=!!document.getElementById('doc-titulo')?.dataset.customizado;
+  d.orcNumero=orcAtribuido;
+  return d;
+}
+let rascTimer=null;
+function salvarRascunhoDebounced(){
+  clearTimeout(rascTimer);
+  rascTimer=setTimeout(salvarRascunho,1500);
+}
+function salvarRascunho(){
+  try{ localStorage.setItem(LS_RASC,JSON.stringify(coletarRascunho())); }catch(e){ console.warn('rascunho:',e); }
+}
+function restaurarRascunho(){
+  try{
+    const raw=localStorage.getItem(LS_RASC); if(!raw) return false;
+    const d=JSON.parse(raw);
+    CAMPOS_RASC.forEach(id=>{const el=document.getElementById(id); if(el&&d[id]!=null) el.value=d[id];});
+    if(d.modelos){ Object.keys(d.modelos).forEach(k=>{ if(d.modelos[k]&&!M[k]) toggleM(k); }); }
+    const repT=document.getElementById('rep-toggle');
+    if(repT&&d.repToggle){ repT.checked=true; }
+    if(d.repTipo){ document.querySelectorAll('input[name="rep-tipo"]').forEach(r=>{ r.checked=(r.value===d.repTipo); }); }
+    if(d.tituloCustom&&d.docTitulo){
+      const t=document.getElementById('doc-titulo'); t.textContent=d.docTitulo; t.dataset.customizado='1';
+    }
+    if(d.orcNumero){ orcAtribuido=d.orcNumero; }
+    return true;
+  }catch(e){ console.warn('restaurar rascunho:',e); return false; }
+}
+function limparRascunho(){
+  if(!confirm('Limpar o rascunho salvo? (os campos preenchidos permanecem visíveis, mas nada será salvo até nova edição)')) return;
+  localStorage.removeItem(LS_RASC); orcAtribuido=null; renderNumeroOrc();
+  showToast('Rascunho limpo',false);
+}
+
+// ── LIMPAR TUDO ──
+function limparTudo(){
+  if(!confirm('Isso apaga TODOS os campos preenchidos e o rascunho. Continuar?')) return;
+  // Desmarca modelos ativos
+  Object.keys(M).forEach(k=>{ if(M[k]) toggleM(k); });
+  // Limpa inputs, textareas e selects
+  document.querySelectorAll('.painel input, .painel textarea, .painel select').forEach(el=>{
+    if(el.type==='checkbox'||el.type==='radio'){
+      // Restaura radio default do rep-tipo
+      if(el.name==='rep-tipo') el.checked=(el.value==='quantidade');
+      else el.checked=false;
+    } else { el.value=''; }
+  });
+  // Zera itens dinâmicos
+  document.getElementById('lista-itens').innerHTML=''; itens=[]; itemId=0;
+  // Zera fotos
+  fotos=[]; renderFotosPainel();
+  // Título e observações
+  const t=document.getElementById('doc-titulo'); delete t.dataset.customizado; t.textContent=gerarTitulo();
+  // Limpa rascunho (mas mantém contador)
+  localStorage.removeItem(LS_RASC); orcAtribuido=null;
+  renderNumeroOrc();
+  atualizar();
+  showToast('Formulário reiniciado',false);
+}
+
 // ── PRÉ-PREENCHIMENTO VIA QUERY STRING (integração com o CRM) ──
 // O CRM abre esse gerador em /gerador-orcamento.html?empresa=X&contato=Y&...
 // Mapeamento explícito para não confiar em nomes de campos.
 document.addEventListener('DOMContentLoaded',()=>{
   try{
     const qs=new URLSearchParams(location.search);
+    const temQS=qs.toString().length>0;
+    // Rascunho tem prioridade menor que query string
+    if(!temQS){ restaurarRascunho(); }
     if(qs.get('empresa'))   document.getElementById('cli-empresa').value=qs.get('empresa');
     if(qs.get('contato'))   document.getElementById('cli-nome').value=qs.get('contato');
+    if(qs.get('email'))     document.getElementById('cli-email').value=qs.get('email');
+    if(qs.get('telefone'))  document.getElementById('cli-telefone').value=qs.get('telefone');
     if(qs.get('bairro'))    document.getElementById('cli-local').value=qs.get('bairro');
     else if(qs.get('endereco')) document.getElementById('cli-local').value=qs.get('endereco');
     // Mapeamento do tipoServico do CRM → checkbox do gerador
     const svcMap={venda:'venda',reforma:'reforma',locacao:'locacao',locacao_evento:'eventos',manutencao:'manut-rec'};
     const svcKey=svcMap[qs.get('servico')];
-    if(svcKey && typeof toggleM==='function'){ toggleM(svcKey); }
+    if(svcKey && typeof toggleM==='function' && !M[svcKey]){ toggleM(svcKey); }
+    renderNumeroOrc();
     atualizar();
   }catch(e){ console.warn('Falha ao ler query params:',e); }
 });
+
+// Listener global de salvamento debounced
+document.addEventListener('input',salvarRascunhoDebounced);
+document.addEventListener('change',salvarRascunhoDebounced);
 
 // ── REP-OPCOES MANUAL ──
 document.addEventListener('DOMContentLoaded',()=>{

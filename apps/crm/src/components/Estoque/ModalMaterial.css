@@ -1,0 +1,75 @@
+/* src/components/Estoque/ModalMaterial.css */
+
+.mm {
+  max-width: 560px;
+}
+
+.mm__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mm__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mm__preview {
+  margin-top: 8px;
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  object-fit: cover;
+  background: var(--cream-50);
+}
+
+.mm__flags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mm__flag {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.mm__flag:hover {
+  border-color: color-mix(in srgb, var(--forest-500) 30%, var(--surface-border));
+  background: color-mix(in srgb, var(--forest-500) 3%, var(--surface-card));
+}
+
+.mm__flag input[type="checkbox"] {
+  margin-top: 3px;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--forest-500);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mm__flag-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mm__flag-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .mm__grid { grid-template-columns: 1fr; gap: 14px; }
+}

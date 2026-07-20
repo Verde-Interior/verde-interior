@@ -83,3 +83,17 @@ export function classify(f) {
   if (f.type === 'application/pdf' || f.name.endsWith('.pdf')) return 'pdf';
   return 'doc';
 }
+
+// Escapa texto vindo de input do usuário antes de ir pra innerHTML.
+// Evita XSS em campos livres (obs de ponto, descricao de justificativa,
+// relato de campo, observacoes_gestor da agenda).
+// Uso: `<div>${esc(user.obs)}</div>` em template literal.
+export function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}

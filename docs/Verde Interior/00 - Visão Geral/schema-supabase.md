@@ -2,7 +2,7 @@
 
 Referência técnica das tabelas, views, funções e políticas do banco.
 Fonte de verdade: `apps/ponto/supabase/migrations/`.
-Última atualização: 20/07/2026 (após migration 016 — multi-tipo + agenda-para-lead).
+Última atualização: 20/07/2026 (após migration 017 — audit_log).
 
 ---
 
@@ -78,6 +78,14 @@ Numeração: incrementar sempre a partir da última migration existente. As migr
 - Constraints: transferência exige destino e não pode ter mesma origem/destino
 - RLS: `mov_auth_all`
 
+### Auditoria (017_audit_log_ponto.sql)
+
+**`audit_log`** — log imutável de INSERT/UPDATE/DELETE em tabelas críticas
+- `id bigserial PK`, `entidade text` (nome da tabela), `entidade_id text`, `acao text` (`INSERT`/`UPDATE`/`DELETE`), `usuario_id uuid` (auth.uid()), `usuario_email text`, `payload_antes jsonb`, `payload_depois jsonb`, `criado_em timestamptz`
+- Índices: `(entidade, entidade_id)`, `(usuario_id)`, `(criado_em DESC)`
+- RLS: só `is_gestor()` pode SELECT. INSERT vem só de triggers (`SECURITY DEFINER`). UPDATE/DELETE bloqueados (log imutável).
+- Triggers ativos em: `punch_records`, `justifications`. Adicionar em outra tabela: `CREATE TRIGGER foo_audit AFTER INSERT OR UPDATE OR DELETE ON foo FOR EACH ROW EXECUTE FUNCTION public.audit_trigger()`.
+
 ### CRM — Leads e Tarefas (015_crm_leads_tarefas.sql, migração desta sprint)
 
 **`leads`** — pipeline comercial
@@ -109,6 +117,8 @@ Numeração: incrementar sempre a partir da última migration existente. As migr
 **`my_employee_id() → int`** (schema.sql) — retorna `employee_id` do perfil logado. `SECURITY DEFINER`.
 
 **`set_updated_at() → trigger`** (015) — função genérica para setar `updated_at` em UPDATE.
+
+**`audit_trigger() → trigger`** (017) — grava INSERT/UPDATE/DELETE em `audit_log` com snapshot antes/depois em JSONB. `SECURITY DEFINER` para conseguir escrever mesmo quando o usuário não tem privilégio direto em `audit_log`. Anexar como trigger em qualquer tabela.
 
 **`reorder_agenda(p_updates jsonb) → int`** (015) — Aplica múltiplos UPDATEs em `agenda` numa única transação. Aceita `funcionario_id`, `ordem_rota`, `hora_estimada_chegada` por item (campos ausentes preservam valor atual via COALESCE). Substitui os `Promise.all([...UPDATE...])` do EscalaCampo e elimina race condition do drag & drop e do otimizador de rota. `SECURITY INVOKER`.
 

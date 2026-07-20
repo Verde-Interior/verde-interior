@@ -54,6 +54,54 @@
 
 ---
 
+## ✅ Concluído em 20/07/2026 (Fases 2 + 3 — Sprints 3 e 4)
+
+### Sprint 3-A — CRM Estoque etapa 2
+- [x] `ModalMaterial.jsx`/`.css`: cadastro/edição de material (nome, categoria, unidade, SKU, descrição, foto_url, estoque_minimo, controla_posse, ativo). ESC/overlay fecha.
+- [x] `ModalMovimento.jsx`/`.css`: entrada/saída/ajuste/perda/transferência com radio-pill colorido. Select de material com busca (só ativos). Titular via employees. Transferência exige `titular_destino_id` distinto.
+- [x] Botões "+ Material" e "+ Movimento" no header desabilitaram → agora funcionais.
+- [x] Botão ✏ no cartão da lista abre modal em modo editar.
+- [x] `criado_por` = `supabase.auth.getUser().email` (fallback `'sistema'`).
+
+### Sprint 3-B — Gerador de Orçamentos: 6 features
+- [x] Numeração automática `ORC-NNN` — contador em `localStorage['verde-orc-contador']`, exibido no cabeçalho da proposta, só incrementa ao gerar com sucesso. Botão ↺ para resetar.
+- [x] Salvamento de rascunho — `localStorage['verde-orc-rascunho']` com debounce 1500ms. Query string tem prioridade sobre rascunho ao carregar. Botão "🗑 Rascunho" limpa.
+- [x] Validade automática — cabeçalho mostra `Validade: DD/MM/YYYY (30 dias)`, calculada dinamicamente.
+- [x] Campos e-mail + telefone do cliente — inputs `#cli-email` e `#cli-telefone` + pré-preenchimento via query string.
+- [x] Desconto global — campo `#desconto` (0-100%), atualiza subtotal/desconto/total em Investimento Único e Recorrente. Só aparece quando > 0.
+- [x] Botão "🧹 Limpar tudo" — reset completo com confirm. Preserva contador ORC.
+- [x] Arquivos `tools/orcamentos/verde_interior_gerador_orcamento_10.html` e `apps/crm/public/gerador-orcamento.html` mantidos idênticos.
+
+### Sprint 3-C — OS HTML dinâmico (Opção B)
+- [x] Removido hardcode Heimr. Parametrização via query string: `?cliente=&os=&endereco=&bairro=&contato=&telefone=&plantas=Nome:Local:Obs|...&modo=execucao|conclusao`.
+- [x] Modo Execução: só slot "Antes" liberado. FAB "Finalizar Execução" só habilita quando todas as plantas têm foto Antes (alerta lista pendências).
+- [x] Modo Conclusão: "Antes" trancado, "Depois" liberado. Alterna via botão "Voltar p/ Execução". Ao concluir tudo: tela de resumo com exportar JSON + imprimir.
+- [x] Fotos WebP comprimidas via canvas (max 100KB, 1600px). Persistência em `localStorage['verde-os-<osId>']`.
+- [x] Botões "Copiar link" e "QR" (modal com QR via api.qrserver.com).
+- [x] Tela fallback "Selecione uma OS" quando sem query string.
+- [x] Mobile-first: `capture="environment"`, grid 2 colunas, FAB fixo. Arquivos `tools/ordem de servico/...html` e `apps/crm/public/os.html` idênticos.
+
+### Sprint 4 — Ponto Eletrônico
+
+- [x] **Exportação XLSX** — instalado `xlsx` (SheetJS). `expXLSX(mode)` reusa dataset do CSV (`_buildExportDataset`) e gera `.xlsx` com larguras auto de coluna e nome de sheet (Espelho/Resumo/Banco). Botões novos no admin ao lado dos CSV.
+- [x] **XSS escape** — nova função `esc()` em `utils.js`. Aplicada em: `admin.js` (pendentes de justificativa, obs de punch, `repbody`, dashboard de barras), `justs.js` (lista de justificativas do colab), `mirror.js` (nome/cargo no PDF), `config.js` (lista de equipe), `agenda.js` (consolidado — removido `esc` local duplicado).
+- [x] **Auditoria** — migration `017_audit_log_ponto.sql`: tabela `public.audit_log` (entidade + entidade_id + acao + usuario_id/email + payload_antes/depois JSONB) + função genérica `audit_trigger()` (`SECURITY DEFINER`) + triggers em `punch_records` e `justifications`. Zero mudança de código cliente — auditoria automática. RLS: só gestor lê; log imutável.
+- [x] **Relatório de frequência mensal** — `renderFrequencia()` no admin, tabela com dias previstos (seg-sex), faltas, atrasos (entrada > 08:20), saídas antecipadas (saída < 17:40) e % de adesão por colaborador. Usa período dos inputs `#rs`/`#re`.
+- [x] **Gráfico de banco de horas** — `renderBankChart()` renderiza SVG inline (sem lib) com evolução dos últimos 6 meses. Uma linha por colaborador, com legenda. Grid horizontal em ±maxAbs, escala automática.
+
+### Passos manuais para fechar Sprints 3+4
+
+- [ ] **Aplicar migration 017 no Supabase:** dashboard → SQL Editor → colar `apps/ponto/supabase/migrations/017_audit_log_ponto.sql` → rodar. Testar com INSERT em `punch_records` e ver `SELECT * FROM audit_log ORDER BY criado_em DESC LIMIT 5`.
+- [ ] Rebuild + deploy do CRM (Vercel puxa automaticamente do push).
+- [ ] Testar no Ponto: gestor exportando XLSX (Espelho/Resumo/Banco). Verificar que abre no Excel com acentos.
+
+### Ficam para próximas rodadas (precisam de infra)
+
+- [ ] **Reset de senha via e-mail (colaborador)** — precisa: (a) coluna `email_recuperacao` em `profiles` (nullable — colaboradores sem email de verdade não podem usar); (b) configurar SMTP no Supabase Auth (dashboard → Auth → Emails → Custom SMTP); (c) UI "Esqueci minha senha" em `apps/ponto/index.html` chamando `supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://ponto.verdeinterior.app/reset' })`; (d) rota `/reset` que chama `supabase.auth.updateUser({ password })`.
+- [ ] **Gestor redefine senha de colaborador** — precisa Edge Function (não dá pra fazer via anon key). Passos: (a) `supabase functions new admin-reset-password`; (b) na Function, usar `createClient(url, SERVICE_ROLE_KEY)` + `auth.admin.updateUserById(id, { password: gerarSenhaTemp() })`; (c) UI no admin com botão "Redefinir senha" → mostra senha temporária pro gestor repassar. Alternativa sem Function: adicionar coluna `senha_temporaria` em `profiles` + trigger que força troca no primeiro login.
+
+---
+
 ## Agora — Alta prioridade
 
 ### CRM — Estoque etapa 2 e 3
