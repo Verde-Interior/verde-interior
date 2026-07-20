@@ -1,7 +1,7 @@
 # Verde Interior — Próximos Passos
 
 > Documento de trabalho da equipe. Marcar conforme concluir.
-> Última atualização: 20/07/2026
+> Última atualização: 20/07/2026 (Fase 1 fechada)
 
 ---
 
@@ -10,15 +10,15 @@
 | Módulo | Status | O que sobra |
 |---|---|---|
 | **Ponto Eletrônico** | ✅ Produção, maduro | Reset de senha, XLSX, relatórios avançados, auditoria |
-| **CRM** | ✅ Deployado, 9 módulos ativos | **Migrar leads+tarefas do localStorage para Supabase**, hardening auth por role, Estoque etapa 2 |
-| **Escala de Campo (CRM)** | ✅ Fase 5.2 nível 2 completa | Corrigir race condition no drag & drop |
+| **CRM** | ✅ Deployado, 9 módulos ativos + multi-tipo + agenda-a-partir-de-lead | Estoque etapa 2, refactors |
+| **Escala de Campo (CRM)** | ✅ Aceita visitas de leads (não só clientes) | Refactor 2.400 linhas |
 | **Relatórios de campo (CRM)** | ✅ Fase 4 completa | — |
-| **Gerador de Orçamentos** | 🟡 Congelado desde 22/jun | Fix 3 bugs, 6 features essenciais |
+| **Gerador de Orçamentos** | 🟡 Bugs corrigidos, integrado ao CRM | 6 features essenciais |
 | **Ordem de Serviço (HTML)** | 🟡 Congelado desde 22/jun | Modo Execução/Conclusão dinâmico, integração com backend |
 
 ---
 
-## ✅ Concluído em 20/07/2026
+## ✅ Concluído em 20/07/2026 (sprint 1+2)
 
 ### CRM — Migrar leads e tarefas para Supabase
 - [x] Tabelas `leads` e `tarefas` criadas (migration `015_crm_leads_tarefas.sql`)
@@ -36,10 +36,21 @@
 - [x] RPC atômica `reorder_agenda(p_updates jsonb)` na migration 015
 - [x] `moverSelecionadasPara`, `moverVisita`, `aplicarOrdemRota`, `aplicar` (redistribuição) todos passam pela RPC
 
-### Passos manuais restantes pra fechar essa sprint
+---
 
-- [ ] **Aplicar a migration 015 no Supabase:** dashboard → SQL Editor → colar `apps/ponto/supabase/migrations/015_crm_leads_tarefas.sql` → rodar. Sem essa etapa, o CRM continua rodando só em localStorage.
-- [ ] Rodar o script de saúde do banco em [[00 - Visão Geral/schema-supabase]] pra confirmar RLS e listar policies
+## ✅ Concluído em 20/07/2026 (Fase 1 — quick wins)
+
+### 5 observações do dia-a-dia do Roberto
+- [x] **Deletar lead**: função `removerLead` já existia mas sem UI. Adicionado botão 🗑 no `LeadCard` (aparece no hover, canto superior esquerdo) e botão "🗑 Excluir" no header do `ModalOrcamento`. Ambos com confirmação nativa.
+- [x] **Botão "Gerar orçamento" ao lado do "Anexar"**: gerador HTML copiado para `apps/crm/public/gerador-orcamento.html`. `ModalOrcamento` tem botão "🛠 Gerar orçamento" que abre o gerador em nova aba com dados do lead pré-preenchidos via query string. HTML atualizado para ler `?empresa=&contato=&bairro=&servico=...` no load.
+- [x] **Multi-tipo de serviço**: `leads.tipo_servico TEXT` → `leads.tipos_servico TEXT[]` (migration 016). Helpers `getTiposServico()` / `getTipoPrimario()` no CRMContext. AddLeadModal, ModalOrcamento (edit form), LeadCard, KanbanBoard, FunilExecucao, Dashboard, GlobalSearch e `promoverParaCliente` adaptados. Combinações como "reforma+manutenção" e "locação+manutenção" agora funcionam.
+- [x] **Agendar visita técnica direto do lead**: `agenda.cliente_id` agora nullable + `agenda.lead_id UUID FK leads` + CHECK exclusivo (migration 016). Nova seção "📅 Agendar visita técnica na Escala" no ModalOrcamento: select de funcionário + data + hora + duração + observações + botão "Publicar na Escala". EscalaCampo carrega visitas com `lead_id` (join também com `leads`) e mostra badge "🌱 lead" no cartão. Não precisa mais promover para cliente antes de agendar visita técnica.
+- [x] **Follow-up sem poluição**: 9 assuntos genéricos reduzidos para 4 ações essenciais (Enviar orçamento, Confirmar aprovação, Agendar visita, Retornar contato) + 1 marcador "🕐 Só lembrete". Separação visual no Dashboard: itens com ação pendente ganham borda verde (forest-500), itens só-lembrete ficam com borda cinza discreta + opacidade reduzida + tag "🕐 Lembrete". Assuntos legados mantidos silenciosamente no dicionário pra não quebrar leads antigos.
+
+### Passos manuais para fechar Fase 1
+
+- [ ] **Aplicar migration 016 no Supabase:** dashboard → SQL Editor → colar `apps/ponto/supabase/migrations/016_lead_multi_servico_e_agenda_lead.sql` → rodar. Sem isso, multi-tipo e agenda-para-lead não persistem.
+- [ ] Reload no CRM e testar: criar lead com 2 tipos, agendar visita direto do lead, ver o cartão na Escala com badge "🌱 lead".
 
 ---
 

@@ -253,6 +253,31 @@
 /* Esconde o canal quando o handle aparece */
 .lead-card:hover .lead-card__canal { opacity: 0; }
 
+/* ── Excluir lead (aparece no hover) ── */
+.lead-card__excluir {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--cream-400);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+.lead-card:hover .lead-card__excluir { opacity: 0.7; }
+.lead-card__excluir:hover {
+  opacity: 1 !important;
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
 
 /* Botão "Virar cliente" (Fase 5.3 — Kanban ↔ Clientes) */
 .lead-card__promover {

@@ -100,11 +100,27 @@ const STORAGE_KEY_TAREFAS = 'crm-verde-tarefas';
 const LEAD_CORE_FIELDS = [
   'empresa', 'contato', 'cargo', 'telefone', 'email',
   'bairro', 'endereco', 'lat', 'lng',
-  'estagioId', 'tipoServico', 'canalOrigem',
+  'estagioId', 'tiposServico', 'canalOrigem',
   'quantidadeVasos', 'valorEstimado', 'frequenciaVisita',
   'dataEntrada', 'ultimoContato', 'proximoFollowUp',
   'responsavel', 'observacoes', 'motivoPerda', 'clienteSupabaseId',
 ];
+
+// Normaliza acesso ao array de tipos: aceita `tiposServico` (novo, array),
+// `tipoServico` (legado, string) ou vazio. Usar em todo lugar que lê o campo.
+export function getTiposServico(lead) {
+  if (!lead) return [];
+  if (Array.isArray(lead.tiposServico)) return lead.tiposServico.filter(Boolean);
+  if (Array.isArray(lead.tipoServico))  return lead.tipoServico.filter(Boolean);
+  if (lead.tipoServico) return [lead.tipoServico];
+  return [];
+}
+
+// Retorna o tipo "primário" (primeiro do array) — usado quando precisa de um
+// só (ex: promoverParaCliente cria N contratos, mas cor de card é do primário).
+export function getTipoPrimario(lead) {
+  return getTiposServico(lead)[0] ?? null;
+}
 
 const camelToSnake = (s) => s.replace(/[A-Z]/g, (l) => '_' + l.toLowerCase());
 const snakeToCamel = (s) => s.replace(/_([a-z])/g, (_, l) => l.toUpperCase());
@@ -114,9 +130,14 @@ function leadToRow(lead) {
   const dados = {};
   Object.entries(lead).forEach(([k, v]) => {
     if (k === 'id') return; // id gerenciado pelo Supabase
+    // Legado: `tipoServico` (string) foi substituído por `tiposServico` (array).
+    // Nunca gravar o campo legado — normaliza pra array.
+    if (k === 'tipoServico') return;
     if (LEAD_CORE_FIELDS.includes(k)) row[camelToSnake(k)] = v ?? null;
     else dados[k] = v;
   });
+  // Sempre gravar tipos_servico como array (mesmo vazio) para evitar NULL na coluna
+  row.tipos_servico = getTiposServico(lead);
   row.dados = dados;
   return row;
 }
@@ -128,6 +149,8 @@ function rowToLead(row) {
     if (k === 'dados') Object.assign(lead, v || {});
     else lead[snakeToCamel(k)] = v;
   });
+  // Normaliza: garantir que tiposServico exista como array
+  lead.tiposServico = getTiposServico(lead);
   return lead;
 }
 
@@ -309,10 +332,11 @@ export function CRMProvider({ children }) {
       .from('clientes').insert(cliente).select().single();
     if (e1) return { ok: false, error: e1.message };
 
-    // Cria contrato apenas se recorrente ou venda pontual (ignora eventos e reforma one-shot)
-    const tipo = lead.tipoServico;
-    const criaContrato = ['locacao', 'manutencao', 'venda', 'flores'].includes(tipo);
-    if (criaContrato) {
+    // Cria um contrato para cada tipo que faça sentido (locacao, manutencao, venda).
+    // Reforma/evento são one-shot — não criam contrato recorrente.
+    const tiposParaContrato = getTiposServico(lead)
+      .filter((t) => ['locacao', 'manutencao', 'venda'].includes(t));
+    for (const tipo of tiposParaContrato) {
       const { error: e2 } = await supabase.from('cliente_servicos').insert({
         cliente_id: cli.id,
         tipo_servico: tipo,
@@ -321,7 +345,7 @@ export function CRMProvider({ children }) {
         valor_mensal: lead.valorEstimado ?? null,
         ativo: true,
       });
-      if (e2) console.warn('Contrato não criado:', e2.message);
+      if (e2) console.warn(`Contrato (${tipo}) não criado:`, e2.message);
     }
 
     let leadAtualizado = null;
@@ -367,11 +391,12 @@ export function CRMProvider({ children }) {
     [leads]
   );
 
-  // Clientes ativos para o RoutePlanner: aprovados com serviço recorrente (exclui manutenção pontual)
+  // Clientes ativos para o RoutePlanner: aprovados com pelo menos um serviço
+  // recorrente (exclui casos totalmente pontuais).
   const clientesAtivos = leads.filter(
     (l) =>
       l.estagioId === 'orcamento_aprovado' &&
-      TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente' &&
+      getTiposServico(l).some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente') &&
       l.frequenciaVisita !== 'Pontual'
   );
 
@@ -463,7 +488,7 @@ export function CRMProvider({ children }) {
       .filter(
         (l) =>
           l.estagioId === 'orcamento_aprovado' &&
-          TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente' &&
+          getTiposServico(l).some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente') &&
           l.frequenciaVisita !== 'Pontual'
       )
       .reduce((s, l) => s + (l.valorEstimado ?? 0), 0),
@@ -512,6 +537,9 @@ export function CRMProvider({ children }) {
         atualizarTarefa,
         removerTarefa,
         toggleConcluirTarefa,
+        // Helpers
+        getTiposServico,
+        getTipoPrimario,
       }}
     >
       {children}

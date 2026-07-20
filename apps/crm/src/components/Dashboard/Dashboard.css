@@ -663,6 +663,32 @@
   flex-shrink: 0;
 }
 
+/* ── Diferenciação visual: ação pendente vs só lembrete ── */
+/* Ação: destaque azul-esverdeado à esquerda (algo pra fazer) */
+.followup-item--acao {
+  border-left: 3px solid var(--forest-500);
+}
+/* Lembrete: cinza discreto e opacidade reduzida (só data) */
+.followup-item--lembrete {
+  border-left: 3px solid var(--cream-300);
+  opacity: 0.85;
+}
+.followup-item--lembrete .followup-item__empresa {
+  font-weight: 500;
+}
+
+.followup-item__tag-lembrete {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--cream-100);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
 .followup-item__acoes {
   display: flex;
   gap: 6px;

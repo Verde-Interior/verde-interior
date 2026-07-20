@@ -83,23 +83,37 @@ function statusVenc(data) {
 
 const SECOES_PADRAO = ['grid2', 'receita', 'followups', 'leads', 'tarefas'];
 
+// Assuntos enxutos: só ações comerciais reais do funil. Antes tinha 9 opções
+// e a maioria era ruído (orientação_rega, feedback_cliente, nota_fiscal etc).
+// Se precisar de algo fora dessas 4 ações, o usuário escreve na "nota rápida".
+// `tipo` diferencia: "acao" = ação pendente com destaque; "lembrete" = só data.
 const FU_ASSUNTO_LABEL = {
-  enviar_orcamento:    { label: 'Enviar Orçamento',        icone: '📄' },
-  confirmar_aprovacao: { label: 'Confirmar Aprovação',     icone: '✅' },
-  agendar_servico:     { label: 'Agendar Serviço',         icone: '📅' },
-  orientacao_rega:     { label: 'Orientação de Rega',      icone: '💧' },
-  responder_email:     { label: 'Responder E-mail',        icone: '📧' },
-  nota_fiscal:         { label: 'Nota Fiscal / Fat.',      icone: '🧾' },
-  renovacao_contrato:  { label: 'Renovação de Contrato',   icone: '🔄' },
-  retornar_ligacao:    { label: 'Retornar Ligação',        icone: '📞' },
-  feedback_cliente:    { label: 'Feedback do Cliente',     icone: '💬' },
+  enviar_orcamento:    { label: 'Enviar orçamento',    icone: '📄', tipo: 'acao' },
+  confirmar_aprovacao: { label: 'Confirmar aprovação', icone: '✅', tipo: 'acao' },
+  agendar_visita:      { label: 'Agendar visita',      icone: '📅', tipo: 'acao' },
+  retornar_contato:    { label: 'Retornar contato',    icone: '📞', tipo: 'acao' },
+  lembrete:            { label: 'Só lembrete',         icone: '🕐', tipo: 'lembrete' },
+  // legados — mantidos para não quebrar leads antigos, mas escondidos do picker
+  agendar_servico:     { label: 'Agendar serviço',     icone: '📅', tipo: 'acao',   legado: true },
+  orientacao_rega:     { label: 'Orientação de rega',  icone: '💧', tipo: 'acao',   legado: true },
+  responder_email:     { label: 'Responder e-mail',    icone: '📧', tipo: 'acao',   legado: true },
+  nota_fiscal:         { label: 'Nota fiscal',         icone: '🧾', tipo: 'acao',   legado: true },
+  renovacao_contrato:  { label: 'Renovação contrato',  icone: '🔄', tipo: 'acao',   legado: true },
+  retornar_ligacao:    { label: 'Retornar ligação',    icone: '📞', tipo: 'acao',   legado: true },
+  feedback_cliente:    { label: 'Feedback do cliente', icone: '💬', tipo: 'acao',   legado: true },
 };
+
+// Helper: um follow-up é "só lembrete" quando não tem nenhum assunto de ação.
+function ehSoLembrete(assuntos = []) {
+  if (assuntos.length === 0) return true;
+  return assuntos.every((id) => FU_ASSUNTO_LABEL[id]?.tipo === 'lembrete');
+}
 const STORAGE_ORDEM = 'crm-verde-dashboard-ordem';
 
 const STORAGE_ABA = 'crm-verde-dashboard-aba';
 
 export default function Dashboard({ onNavegar }) {
-  const { leads, ESTAGIOS, TIPOS_SERVICO, metricas, abrirModal, tarefas, atualizarLead } = useCRM();
+  const { leads, ESTAGIOS, TIPOS_SERVICO, metricas, abrirModal, tarefas, atualizarLead, getTiposServico } = useCRM();
   const [aba, setAba] = useState(() => localStorage.getItem(STORAGE_ABA) || 'comercial');
   useEffect(() => { localStorage.setItem(STORAGE_ABA, aba); }, [aba]);
 
@@ -289,10 +303,13 @@ export default function Dashboard({ onNavegar }) {
   }
 
   const porServico = useMemo(() => {
+    // Um lead pode contar em mais de um tipo (multi-serviço).
     const map = {};
-    leads.forEach((l) => { map[l.tipoServico] = (map[l.tipoServico] ?? 0) + 1; });
+    leads.forEach((l) => {
+      getTiposServico(l).forEach((t) => { map[t] = (map[t] ?? 0) + 1; });
+    });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [leads]);
+  }, [leads, getTiposServico]);
 
   const porEstagio = useMemo(() =>
     ESTAGIOS.map((e) => ({
@@ -436,12 +453,14 @@ export default function Dashboard({ onNavegar }) {
                   {followUpsAtrasados.map((l) => {
                     const dias = diasAtraso(l.proximoFollowUp);
                     const emReagendar = reagendando === l.id;
+                    const soLembrete = ehSoLembrete(l.followUpAssuntos);
                     return (
-                      <div key={l.id} className="followup-item followup-item--atraso">
+                      <div key={l.id} className={`followup-item followup-item--atraso ${soLembrete ? 'followup-item--lembrete' : 'followup-item--acao'}`}>
                         <div className="followup-item__info" onClick={() => handleLeadClick(l)} style={{ cursor: 'pointer' }}>
                           <div className="followup-item__topo">
                             <p className="followup-item__empresa">{l.empresa}</p>
                             <span className="followup-item__dias-atraso">{dias}d em atraso</span>
+                            {soLembrete && <span className="followup-item__tag-lembrete">🕐 Lembrete</span>}
                           </div>
                           <p className="followup-item__contato">{l.contato} · {l.bairro}</p>
                           {renderAssuntos(l.followUpAssuntos ?? [])}
@@ -491,19 +510,25 @@ export default function Dashboard({ onNavegar }) {
                 </button>
                 <div className={`dashboard__fu-conteudo ${hojeAberto ? 'dashboard__fu-conteudo--aberto' : ''}`}>
                   <div className="dashboard__fu-conteudo-inner dashboard__followups">
-                    {followUpsHoje.map((l) => (
-                      <div key={l.id} className="followup-item followup-item--clicavel" onClick={() => handleLeadClick(l)}>
-                        <div className="followup-item__info">
-                          <p className="followup-item__empresa">{l.empresa}</p>
-                          <p className="followup-item__contato">{l.contato} · {l.bairro}</p>
-                          {renderAssuntos(l.followUpAssuntos ?? [])}
-                          {l.followUpNota && <p className="followup-item__nota">"{l.followUpNota}"</p>}
+                    {followUpsHoje.map((l) => {
+                      const soLembrete = ehSoLembrete(l.followUpAssuntos);
+                      return (
+                        <div key={l.id} className={`followup-item followup-item--clicavel ${soLembrete ? 'followup-item--lembrete' : 'followup-item--acao'}`} onClick={() => handleLeadClick(l)}>
+                          <div className="followup-item__info">
+                            <div className="followup-item__topo">
+                              <p className="followup-item__empresa">{l.empresa}</p>
+                              {soLembrete && <span className="followup-item__tag-lembrete">🕐 Lembrete</span>}
+                            </div>
+                            <p className="followup-item__contato">{l.contato} · {l.bairro}</p>
+                            {renderAssuntos(l.followUpAssuntos ?? [])}
+                            {l.followUpNota && <p className="followup-item__nota">"{l.followUpNota}"</p>}
+                          </div>
+                          <span className="followup-item__estagio" style={{ '--est-cor': estagioColor(l.estagioId) }}>
+                            {estagioLabel(l.estagioId)}
+                          </span>
                         </div>
-                        <span className="followup-item__estagio" style={{ '--est-cor': estagioColor(l.estagioId) }}>
-                          {estagioLabel(l.estagioId)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -523,10 +548,14 @@ export default function Dashboard({ onNavegar }) {
                   <div className="dashboard__fu-conteudo-inner dashboard__followups">
                     {followUpsProximos.map((l) => {
                       const dataFmt = new Date(l.proximoFollowUp + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+                      const soLembrete = ehSoLembrete(l.followUpAssuntos);
                       return (
-                        <div key={l.id} className="followup-item followup-item--clicavel followup-item--proximo" onClick={() => handleLeadClick(l)}>
+                        <div key={l.id} className={`followup-item followup-item--clicavel followup-item--proximo ${soLembrete ? 'followup-item--lembrete' : 'followup-item--acao'}`} onClick={() => handleLeadClick(l)}>
                           <div className="followup-item__info">
-                            <p className="followup-item__empresa">{l.empresa}</p>
+                            <div className="followup-item__topo">
+                              <p className="followup-item__empresa">{l.empresa}</p>
+                              {soLembrete && <span className="followup-item__tag-lembrete">🕐 Lembrete</span>}
+                            </div>
                             <p className="followup-item__contato">{l.contato} · {l.bairro}</p>
                             {renderAssuntos(l.followUpAssuntos ?? [])}
                             {l.followUpNota && <p className="followup-item__nota">"{l.followUpNota}"</p>}
@@ -574,7 +603,9 @@ export default function Dashboard({ onNavegar }) {
               </thead>
               <tbody>
                 {recentes.map((l) => {
-                  const svc = TIPOS_SERVICO[l.tipoServico];
+                  const tipos = getTiposServico(l);
+                  const svcs  = tipos.map((t) => ({ id: t, ...TIPOS_SERVICO[t] })).filter((s) => s.label);
+                  const isRec = svcs.some((s) => s.faturamento === 'recorrente');
                   return (
                     <tr key={l.id} className="tabela__linha-clicavel" onClick={() => handleLeadClick(l)}>
                       <td>
@@ -582,14 +613,22 @@ export default function Dashboard({ onNavegar }) {
                         <div className="tabela__contato">{l.contato}</div>
                       </td>
                       <td>
-                        <span className="tabela__badge" style={{ '--badge-cor': svc?.cor ?? '#6B7280' }}>
-                          {svc?.label ?? l.tipoServico}
-                        </span>
+                        {svcs.length === 0 ? (
+                          <span className="tabela__badge" style={{ '--badge-cor': '#6B7280' }}>—</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {svcs.map((s) => (
+                              <span key={s.id} className="tabela__badge" style={{ '--badge-cor': s.cor }}>
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="tabela__bairro">{l.bairro}</td>
                       <td className="tabela__valor">
                         {fmt(l.valorEstimado ?? 0)}
-                        {svc?.faturamento === 'recorrente' && <span className="tabela__recorrencia">/mês</span>}
+                        {isRec && <span className="tabela__recorrencia">/mês</span>}
                       </td>
                       <td>
                         <span className="tabela__estagio" style={{ '--est-cor': estagioColor(l.estagioId) }}>
@@ -701,7 +740,7 @@ export default function Dashboard({ onNavegar }) {
       case 'receita': {
         const recorrentesAprovados = leads.filter((l) =>
           l.estagioId === 'orcamento_aprovado' &&
-          TIPOS_SERVICO[l.tipoServico]?.faturamento === 'recorrente'
+          getTiposServico(l).some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente')
         );
         const mrrAtual = recorrentesAprovados.reduce((s, l) => s + (l.valorEstimado ?? 0), 0);
 
@@ -765,15 +804,19 @@ export default function Dashboard({ onNavegar }) {
             {(() => {
               const CATEGORIAS_META = [
                 { id: 'carteira',          label: 'Contratos Recorrentes (Carteira)',
-                  filtro: (l) => (l.tipoServico === 'locacao') || (l.tipoServico === 'manutencao' && l.frequenciaVisita !== 'Pontual') },
+                  filtro: (l) => {
+                    const tipos = getTiposServico(l);
+                    return tipos.includes('locacao') ||
+                      (tipos.includes('manutencao') && l.frequenciaVisita !== 'Pontual');
+                  } },
                 { id: 'manutencaoPontual', label: 'Manutenção Pontual',
-                  filtro: (l) => l.tipoServico === 'manutencao' && l.frequenciaVisita === 'Pontual' },
+                  filtro: (l) => getTiposServico(l).includes('manutencao') && l.frequenciaVisita === 'Pontual' },
                 { id: 'vendas',            label: 'Vendas',
-                  filtro: (l) => l.tipoServico === 'venda' },
+                  filtro: (l) => getTiposServico(l).includes('venda') },
                 { id: 'reformas',          label: 'Reformas',
-                  filtro: (l) => l.tipoServico === 'reforma' },
+                  filtro: (l) => getTiposServico(l).includes('reforma') },
                 { id: 'eventos',           label: 'Eventos',
-                  filtro: (l) => l.tipoServico === 'locacao_evento' },
+                  filtro: (l) => getTiposServico(l).includes('locacao_evento') },
               ];
               const temMeta = CATEGORIAS_META.some((c) => Number(metas[c.id]) > 0);
               if (!temMeta) return null;

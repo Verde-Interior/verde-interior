@@ -1,6 +1,7 @@
 // src/components/ModalOrcamento/ModalOrcamento.jsx
 import { useState, useEffect } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { supabase } from '../../lib/supabase';
 import './ModalOrcamento.css';
 
 const ICONE_CANAL = { WhatsApp: '💬', 'E-mail': '✉️', Telefone: '📞', Indicação: '🤝' };
@@ -8,9 +9,9 @@ const INDICES_REAJUSTE = ['IPCA', 'IGPM', 'INPC', 'Fixo (sem reajuste)'];
 
 export default function ModalOrcamento() {
   const {
-    modalAberto, leadSelecionado, fecharModal, atualizarLead,
+    modalAberto, leadSelecionado, fecharModal, atualizarLead, removerLead,
     ESTAGIOS, TIPOS_SERVICO, MOTIVOS_PERDA, CANAIS_ORIGEM, FREQUENCIAS_VISITA,
-    modalFocoSecao,
+    modalFocoSecao, getTiposServico,
   } = useCRM();
 
   // Rola até a seção pedida quando o modal abre com foco
@@ -26,6 +27,32 @@ export default function ModalOrcamento() {
     }, 120);
     return () => clearTimeout(t);
   }, [modalAberto, modalFocoSecao]);
+
+  // Carrega funcionários (para o select de "agendar visita na Escala")
+  useEffect(() => {
+    if (!modalAberto) return;
+    (async () => {
+      const { data } = await supabase
+        .from('employees')
+        .select('id, name, cargo')
+        .order('name');
+      setFuncionarios(data ?? []);
+    })();
+  }, [modalAberto]);
+
+  // Carrega agendamentos deste lead (para listar/cancelar)
+  useEffect(() => {
+    if (!leadSelecionado?.id) { setAgendasDoLead([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from('agenda')
+        .select('id, data_agendada, hora_estimada_chegada, duracao_estimada_min, funcionario_id, status, observacoes_gestor')
+        .eq('lead_id', leadSelecionado.id)
+        .neq('status', 'cancelado')
+        .order('data_agendada');
+      setAgendasDoLead(data ?? []);
+    })();
+  }, [leadSelecionado]);
 
   // ── Campos editáveis do modal ──────────────────────────────────────────────
   const [estagioId, setEstagioId]         = useState('');
@@ -73,6 +100,15 @@ export default function ModalOrcamento() {
   const [mostrarEscolha, setMostrarEscolha] = useState(false);
   const [erroAnexo, setErroAnexo]     = useState('');
 
+  // ── Agendar visita na Escala (novo — usa lead_id em agenda) ───────────────
+  const [funcionarios, setFuncionarios]     = useState([]);
+  const [agendasDoLead, setAgendasDoLead]   = useState([]);
+  const [agendarForm, setAgendarForm]       = useState({
+    funcionarioId: '', dataAgendada: '', horaEstimada: '', duracaoMin: 60, observacoes: '',
+  });
+  const [agendarErro, setAgendarErro]       = useState('');
+  const [agendarSalvando, setAgendarSalvando] = useState(false);
+
   useEffect(() => {
     if (leadSelecionado) {
       setEstagioId(leadSelecionado.estagioId ?? '');
@@ -102,6 +138,8 @@ export default function ModalOrcamento() {
       setPendingFile(null);
       setMostrarEscolha(false);
       setErroAnexo('');
+      setAgendarForm({ funcionarioId: '', dataAgendada: '', horaEstimada: '', duracaoMin: 60, observacoes: '' });
+      setAgendarErro('');
       setErrMotivo(false);
       setSalvo(false);
       setEditando(false);
@@ -122,8 +160,10 @@ export default function ModalOrcamento() {
   if (!modalAberto || !leadSelecionado) return null;
 
   const lead   = leadSelecionado;
-  const servico = TIPOS_SERVICO[lead.tipoServico];
-  const isRecorrente          = servico?.faturamento === 'recorrente';
+  const tiposLead = getTiposServico(lead);
+  const servicosLead = tiposLead.map((t) => ({ id: t, ...TIPOS_SERVICO[t] })).filter((s) => s.label);
+  const isRecorrente          = servicosLead.some((s) => s.faturamento === 'recorrente');
+  const isEvento              = tiposLead.includes('locacao_evento');
   const isRecorrenteEfetivo   = isRecorrente && lead.frequenciaVisita !== 'Pontual';
   const mudouParaNaoAprovado  = estagioId === 'orcamento_nao_aprovado';
   const isAprovado            = estagioId === 'orcamento_aprovado';
@@ -135,7 +175,9 @@ export default function ModalOrcamento() {
 
   // ── Gerador de Mensagem ───────────────────────────────────────────────────
   function gerarMensagem() {
-    const svcLabel = servico?.label ?? lead.tipoServico;
+    const svcLabel = servicosLead.length > 0
+      ? servicosLead.map((s) => s.label).join(' + ')
+      : '(sem tipo definido)';
     const valor = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(lead.valorEstimado ?? 0);
     if (msgTipo === 'whatsapp') {
       return `Olá, *${lead.contato}*! 👋\n\nTudo bem? Sou da *Verde Interior Paisagismo Corporativo* e estou entrando em contato a respeito do projeto de *${svcLabel}* para a *${lead.empresa}*.\n\n` +
@@ -167,13 +209,21 @@ export default function ModalOrcamento() {
       email:            lead.email ?? '',
       bairro:           lead.bairro ?? '',
       endereco:         lead.endereco ?? '',
-      tipoServico:      lead.tipoServico ?? '',
+      tiposServico:     getTiposServico(lead),
       canalOrigem:      lead.canalOrigem ?? 'WhatsApp',
       quantidadeVasos:  lead.quantidadeVasos ?? '',
       valorEstimado:    lead.valorEstimado ?? '',
       frequenciaVisita: lead.frequenciaVisita ?? 'Mensal',
     });
     setEditando(true);
+  }
+
+  function toggleEditTipoServico(key) {
+    setEditForm((f) => {
+      const atuais = f.tiposServico ?? [];
+      const jaTem = atuais.includes(key);
+      return { ...f, tiposServico: jaTem ? atuais.filter((t) => t !== key) : [...atuais, key] };
+    });
   }
 
   function setEdit(campo, valor) {
@@ -248,6 +298,25 @@ export default function ModalOrcamento() {
     setErroAnexo('');
   }
 
+  // Abre a ferramenta HTML de geração de orçamento em nova aba, com dados do
+  // lead pré-preenchidos via query string. O tool lê os params no load.
+  function abrirGeradorOrcamento(lead) {
+    const params = new URLSearchParams();
+    if (lead.empresa)  params.set('empresa', lead.empresa);
+    if (lead.contato)  params.set('contato', lead.contato);
+    if (lead.endereco) params.set('endereco', lead.endereco);
+    if (lead.bairro)   params.set('bairro', lead.bairro);
+    if (lead.telefone) params.set('telefone', lead.telefone);
+    if (lead.email)    params.set('email', lead.email);
+    const primario = getTiposServico(lead)[0];
+    if (primario) params.set('servico', primario);
+    if (lead.quantidadeVasos) params.set('qtd_vasos', String(lead.quantidadeVasos));
+    if (lead.valorEstimado) params.set('valor', String(lead.valorEstimado));
+    if (lead.frequenciaVisita) params.set('frequencia', lead.frequenciaVisita);
+    const url = `/gerador-orcamento.html?${params.toString()}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   function iconeArquivo(tipo) {
     if (tipo === 'application/pdf') return '📄';
     if (tipo?.startsWith('image/')) return '🖼️';
@@ -309,7 +378,7 @@ export default function ModalOrcamento() {
         email:           editForm.email,
         bairro:          editForm.bairro,
         endereco:        editForm.endereco,
-        tipoServico:     editForm.tipoServico,
+        tiposServico:    editForm.tiposServico ?? [],
         canalOrigem:     editForm.canalOrigem,
         quantidadeVasos: editForm.quantidadeVasos ? Number(editForm.quantidadeVasos) : undefined,
         valorEstimado:   editForm.valorEstimado   ? Number(editForm.valorEstimado)   : undefined,
@@ -344,13 +413,13 @@ export default function ModalOrcamento() {
       `Canal:         ${lead.canalOrigem || '—'}`,
       ``,
       `SERVIÇO`,
-      `Tipo:          ${servico?.label ?? lead.tipoServico}`,
+      `Tipo:          ${servicosLead.length ? servicosLead.map((s) => s.label).join(' + ') : '—'}`,
       `Qtd. Vasos:    ${lead.quantidadeVasos ?? '—'}`,
       isRecorrente && lead.frequenciaVisita ? `Frequência:    ${lead.frequenciaVisita}` : null,
-      lead.tipoServico === 'locacao_evento' && lead.dataEntradaEvento
+      isEvento && lead.dataEntradaEvento
         ? `Data do Evento: ${new Date(lead.dataEntradaEvento + 'T12:00').toLocaleDateString('pt-BR')}`
         : null,
-      lead.tipoServico === 'locacao_evento' && lead.horarioEntrega
+      isEvento && lead.horarioEntrega
         ? `Entrega/Retirada: ${lead.horarioEntrega} – ${lead.horarioRetirada}`
         : null,
       ``,
@@ -375,16 +444,15 @@ export default function ModalOrcamento() {
   }
 
   // ── Follow-up ─────────────────────────────────────────────────────────────
+  // Enxuto para 4 ações reais do funil + "Só lembrete" (tipo=lembrete).
+  // Se precisar de algo fora dessas 4 ações, o usuário escreve na nota rápida.
+  // Labels e ids em sync com FU_ASSUNTO_LABEL em Dashboard.jsx.
   const FOLLOWUP_ASSUNTOS = [
-    { id: 'enviar_orcamento',    label: 'Enviar Orçamento',       icone: '📄' },
-    { id: 'confirmar_aprovacao', label: 'Confirmar Aprovação',    icone: '✅' },
-    { id: 'agendar_servico',     label: 'Agendar Serviço',        icone: '📅' },
-    { id: 'orientacao_rega',     label: 'Orientação de Rega',     icone: '💧' },
-    { id: 'responder_email',     label: 'Responder E-mail',       icone: '📧' },
-    { id: 'nota_fiscal',         label: 'Nota Fiscal / Faturamento', icone: '🧾' },
-    { id: 'renovacao_contrato',  label: 'Renovação de Contrato',  icone: '🔄' },
-    { id: 'retornar_ligacao',    label: 'Retornar Ligação',       icone: '📞' },
-    { id: 'feedback_cliente',    label: 'Feedback do Cliente',    icone: '💬' },
+    { id: 'enviar_orcamento',    label: 'Enviar orçamento',    icone: '📄', tipo: 'acao' },
+    { id: 'confirmar_aprovacao', label: 'Confirmar aprovação', icone: '✅', tipo: 'acao' },
+    { id: 'agendar_visita',      label: 'Agendar visita',      icone: '📅', tipo: 'acao' },
+    { id: 'retornar_contato',    label: 'Retornar contato',    icone: '📞', tipo: 'acao' },
+    { id: 'lembrete',            label: 'Só lembrete',         icone: '🕐', tipo: 'lembrete' },
   ];
 
   function toggleAssunto(id) {
@@ -403,6 +471,58 @@ export default function ModalOrcamento() {
   }
   function removerVisita(idx) {
     setVisitas((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // ── Agendar visita técnica na Escala (lead → agenda) ──────────────────────
+  // Cria row em `agenda` com lead_id (sem cliente_id — vira visita "lead" na Escala).
+  // Uma tarefa correspondente também é criada em `tarefas` para não perder rastro no CRM.
+  async function publicarAgendaLead() {
+    setAgendarErro('');
+    const { funcionarioId, dataAgendada, horaEstimada, duracaoMin, observacoes } = agendarForm;
+    if (!funcionarioId) { setAgendarErro('Selecione o funcionário responsável.'); return; }
+    if (!dataAgendada)  { setAgendarErro('Escolha a data da visita.'); return; }
+
+    setAgendarSalvando(true);
+    const payload = {
+      lead_id:                lead.id,
+      cliente_id:             null,
+      funcionario_id:         String(funcionarioId),
+      data_agendada:          dataAgendada,
+      hora_estimada_chegada:  horaEstimada || null,
+      duracao_estimada_min:   duracaoMin || 60,
+      status:                 'publicado',
+      publicado_em:           new Date().toISOString(),
+      observacoes_gestor:     observacoes || null,
+      ordem_rota:             0,
+    };
+    const { data, error } = await supabase.from('agenda').insert(payload).select().single();
+    setAgendarSalvando(false);
+
+    if (error) {
+      setAgendarErro(`Falha ao publicar: ${error.message}`);
+      return;
+    }
+
+    setAgendasDoLead((prev) => [...prev, data]);
+    setAgendarForm({ funcionarioId: '', dataAgendada: '', horaEstimada: '', duracaoMin: 60, observacoes: '' });
+    // Registra no histórico do lead
+    const hoje = new Date().toISOString().split('T')[0];
+    const funcNome = funcionarios.find((f) => String(f.id) === String(funcionarioId))?.name ?? 'colaborador';
+    atualizarLead(lead.id, {
+      historico: [...(lead.historico ?? []), {
+        id: `h-${Date.now()}`,
+        tipo: 'agenda',
+        descricao: `Visita técnica agendada para ${new Date(dataAgendada + 'T12:00').toLocaleDateString('pt-BR')} com ${funcNome}`,
+        data: hoje,
+      }],
+    });
+  }
+
+  async function cancelarAgendaLead(agendaId) {
+    if (!confirm('Cancelar essa visita técnica na Escala? O funcionário deixa de vê-la no App Ponto.')) return;
+    const { error } = await supabase.from('agenda').update({ status: 'cancelado' }).eq('id', agendaId);
+    if (error) { alert('Falha ao cancelar: ' + error.message); return; }
+    setAgendasDoLead((prev) => prev.filter((a) => a.id !== agendaId));
   }
 
   // ── Fluxo do Orçamento ────────────────────────────────────────────────────
@@ -551,6 +671,17 @@ export default function ModalOrcamento() {
             >
               {editando ? '✕ Cancelar Edição' : '✏ Editar'}
             </button>
+            <button
+              className="modal__btn-excluir"
+              onClick={() => {
+                if (!confirm(`Excluir o lead "${lead.empresa}"?\n\nEssa ação remove o lead do pipeline e não pode ser desfeita.`)) return;
+                removerLead(lead.id);
+                fecharModal();
+              }}
+              title="Excluir lead"
+            >
+              🗑 Excluir
+            </button>
             <button className="modal__fechar" onClick={fecharModal} aria-label="Fechar">✕</button>
           </div>
         </header>
@@ -634,12 +765,26 @@ export default function ModalOrcamento() {
             {editando ? (
               <div className="modal__grid">
                 <div className="modal__campo-editavel modal__campo-readonly--wide">
-                  <label className="modal__label">Tipo de Serviço</label>
-                  <select className="modal__select" value={editForm.tipoServico} onChange={(e) => setEdit('tipoServico', e.target.value)}>
-                    {Object.entries(TIPOS_SERVICO).map(([k, v]) => (
-                      <option key={k} value={k}>{v.label}</option>
-                    ))}
-                  </select>
+                  <label className="modal__label">Tipos de Serviço <span className="modal__label-opc">(marque um ou mais)</span></label>
+                  <div className="modal__tipos-servico-multi">
+                    {Object.entries(TIPOS_SERVICO).map(([k, v]) => {
+                      const ativo = (editForm.tiposServico ?? []).includes(k);
+                      return (
+                        <label
+                          key={k}
+                          className={`modal__tipo-servico-opcao ${ativo ? 'modal__tipo-servico-opcao--ativo' : ''}`}
+                          style={{ '--svc-cor': v.cor }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={ativo}
+                            onChange={() => toggleEditTipoServico(k)}
+                          />
+                          {v.label}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="modal__campo-editavel">
                   <label className="modal__label">Qtd. de Vasos</label>
@@ -649,12 +794,12 @@ export default function ModalOrcamento() {
                   <label className="modal__label">Valor Estimado (R$)</label>
                   <input className="modal__input" type="number" min={0} value={editForm.valorEstimado} onChange={(e) => setEdit('valorEstimado', e.target.value)} />
                 </div>
-                {TIPOS_SERVICO[editForm.tipoServico]?.faturamento === 'recorrente' && (
+                {(editForm.tiposServico ?? []).some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente') && (
                   <div className="modal__campo-editavel">
                     <label className="modal__label">Frequência de Visita</label>
                     <select className="modal__select" value={editForm.frequenciaVisita} onChange={(e) => setEdit('frequenciaVisita', e.target.value)}>
                       {(FREQUENCIAS_VISITA ?? ['Mensal', 'Quinzenal', 'Semanal'])
-                        .filter((f) => f !== 'Pontual' || editForm.tipoServico === 'manutencao')
+                        .filter((f) => f !== 'Pontual' || (editForm.tiposServico ?? []).includes('manutencao'))
                         .map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
@@ -665,10 +810,18 @@ export default function ModalOrcamento() {
             ) : (
               <div className="modal__grid">
                 <div className="modal__campo-readonly modal__campo-readonly--wide">
-                  <span className="modal__label">Tipo de Serviço</span>
-                  <span className="modal__badge" style={{ '--badge-cor': servico?.cor ?? '#6B7280' }}>
-                    {servico?.label ?? lead.tipoServico}
-                  </span>
+                  <span className="modal__label">Tipos de Serviço</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {servicosLead.length === 0 ? (
+                      <span className="modal__badge" style={{ '--badge-cor': '#6B7280' }}>—</span>
+                    ) : (
+                      servicosLead.map((s) => (
+                        <span key={s.id} className="modal__badge" style={{ '--badge-cor': s.cor }}>
+                          {s.label}
+                        </span>
+                      ))
+                    )}
+                  </div>
                 </div>
                 <div className="modal__campo-readonly">
                   <span className="modal__label">Qtd. de Vasos</span>
@@ -687,7 +840,7 @@ export default function ModalOrcamento() {
                     <span>{lead.frequenciaVisita}</span>
                   </div>
                 )}
-                {lead.tipoServico === 'locacao_evento' && lead.dataEntradaEvento && (
+                {isEvento && lead.dataEntradaEvento && (
                   <>
                     <div className="modal__campo-readonly">
                       <span className="modal__label">Data do Evento</span>
@@ -735,6 +888,112 @@ export default function ModalOrcamento() {
             )}
           </div>
 
+          {/* ── Publicar visita na Escala do Campo ────────────────────────── */}
+          <section className="modal__secao modal__secao--agenda-lead">
+            <h3 className="modal__secao-titulo">📅 Agendar visita técnica na Escala</h3>
+            <p className="modal__agenda-lead-hint">
+              Ao publicar, esta visita aparece na Escala do funcionário escolhido, sem precisar cadastrar como Cliente.
+              Ideal para visitas técnicas antes do orçamento fechar.
+            </p>
+
+            {/* Visitas já publicadas */}
+            {agendasDoLead.length > 0 && (
+              <ul className="modal__agenda-lead-lista">
+                {agendasDoLead.map((a) => {
+                  const func = funcionarios.find((f) => String(f.id) === String(a.funcionario_id));
+                  const dataFmt = new Date(a.data_agendada + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+                  return (
+                    <li key={a.id} className="modal__agenda-lead-item">
+                      <div className="modal__agenda-lead-item-info">
+                        <strong>{dataFmt}</strong>
+                        {a.hora_estimada_chegada && <span> · {a.hora_estimada_chegada.slice(0, 5)}</span>}
+                        <span> · {func?.name ?? 'colaborador'}</span>
+                        {a.observacoes_gestor && <span className="modal__agenda-lead-obs">"{a.observacoes_gestor}"</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="modal__agenda-lead-cancelar"
+                        onClick={() => cancelarAgendaLead(a.id)}
+                        title="Cancelar essa visita"
+                      >
+                        ✕ Cancelar
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* Formulário */}
+            <div className="modal__agenda-lead-form">
+              <div className="modal__campo-editavel">
+                <label className="modal__label">Funcionário responsável</label>
+                <select
+                  className="modal__select"
+                  value={agendarForm.funcionarioId}
+                  onChange={(e) => setAgendarForm((f) => ({ ...f, funcionarioId: e.target.value }))}
+                >
+                  <option value="">Selecione...</option>
+                  {funcionarios.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}{f.cargo ? ` · ${f.cargo}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal__campo-editavel">
+                <label className="modal__label">Data</label>
+                <input
+                  type="date"
+                  className="modal__input"
+                  value={agendarForm.dataAgendada}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setAgendarForm((f) => ({ ...f, dataAgendada: e.target.value }))}
+                />
+              </div>
+              <div className="modal__campo-editavel">
+                <label className="modal__label">Hora estimada <span className="modal__label-opc">(opcional)</span></label>
+                <input
+                  type="time"
+                  className="modal__input"
+                  value={agendarForm.horaEstimada}
+                  onChange={(e) => setAgendarForm((f) => ({ ...f, horaEstimada: e.target.value }))}
+                />
+              </div>
+              <div className="modal__campo-editavel">
+                <label className="modal__label">Duração (min)</label>
+                <input
+                  type="number"
+                  min={15} step={15}
+                  className="modal__input"
+                  value={agendarForm.duracaoMin}
+                  onChange={(e) => setAgendarForm((f) => ({ ...f, duracaoMin: Number(e.target.value) || 60 }))}
+                />
+              </div>
+              <div className="modal__campo-editavel modal__campo-readonly--wide">
+                <label className="modal__label">Observações para o funcionário <span className="modal__label-opc">(opcional)</span></label>
+                <textarea
+                  className="modal__textarea"
+                  rows={2}
+                  value={agendarForm.observacoes}
+                  placeholder="Ex: chegar pela recepção, subir 12º andar, falar com Maria..."
+                  onChange={(e) => setAgendarForm((f) => ({ ...f, observacoes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {agendarErro && <p className="modal__anexo-erro">{agendarErro}</p>}
+
+            <div className="modal__agenda-lead-acoes">
+              <button
+                type="button"
+                className="modal__btn-agendar-lead"
+                onClick={publicarAgendaLead}
+                disabled={agendarSalvando}
+              >
+                {agendarSalvando ? 'Publicando...' : '📅 Publicar na Escala'}
+              </button>
+            </div>
+          </section>
+
           {/* ── Orçamento (se existir) ── */}
           {lead.orcamento && (
             <section className="modal__secao">
@@ -769,9 +1028,9 @@ export default function ModalOrcamento() {
               )}
             </h3>
 
-            {/* Assuntos */}
+            {/* Assuntos — ações reais primeiro, "só lembrete" separado */}
             <div className="modal__followup-assuntos">
-              {FOLLOWUP_ASSUNTOS.map((a) => {
+              {FOLLOWUP_ASSUNTOS.filter((a) => a.tipo === 'acao').map((a) => {
                 const ativo = followUpAssuntos.includes(a.id);
                 return (
                   <button
@@ -779,6 +1038,21 @@ export default function ModalOrcamento() {
                     type="button"
                     className={`modal__followup-pill ${ativo ? 'modal__followup-pill--ativo' : ''}`}
                     onClick={() => toggleAssunto(a.id)}
+                  >
+                    <span>{a.icone}</span>
+                    {a.label}
+                  </button>
+                );
+              })}
+              {FOLLOWUP_ASSUNTOS.filter((a) => a.tipo === 'lembrete').map((a) => {
+                const ativo = followUpAssuntos.includes(a.id);
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={`modal__followup-pill modal__followup-pill--lembrete ${ativo ? 'modal__followup-pill--ativo' : ''}`}
+                    onClick={() => toggleAssunto(a.id)}
+                    title="Marque quando o follow-up é só um lembrete de data, sem ação pendente"
                   >
                     <span>{a.icone}</span>
                     {a.label}
@@ -1069,6 +1343,17 @@ export default function ModalOrcamento() {
           {(estagioId === 'contato_recebido' || estagioId === 'orcamento_pendente') && (
             <section className="modal__secao modal__secao--anexo" data-modal-secao="anexo">
               <h3 className="modal__secao-titulo">📎 Arquivo do Orçamento</h3>
+              <div className="modal__anexo-acoes-topo">
+                <button
+                  type="button"
+                  className="modal__btn-gerar-orc"
+                  onClick={() => abrirGeradorOrcamento(lead)}
+                  title="Abrir a ferramenta de geração de orçamento com os dados do lead pré-preenchidos"
+                >
+                  🛠 Gerar orçamento
+                </button>
+                <span className="modal__anexo-ou">ou</span>
+              </div>
               <label className="modal__anexo-drop">
                 <input
                   type="file"
@@ -1160,17 +1445,27 @@ export default function ModalOrcamento() {
                 </div>
               )}
 
-              {/* Botão para adicionar mais */}
+              {/* Botão para adicionar mais + gerar orçamento */}
               {!mostrarEscolha && (
-                <label className="modal__anexo-add-btn">
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                    onChange={handleAnexoAdicional}
-                    style={{ display: 'none' }}
-                  />
-                  {anexos.length === 0 ? '📎 Anexar orçamento' : '+ Adicionar outro orçamento'}
-                </label>
+                <div className="modal__anexo-acoes-linha">
+                  <button
+                    type="button"
+                    className="modal__btn-gerar-orc modal__btn-gerar-orc--secundario"
+                    onClick={() => abrirGeradorOrcamento(lead)}
+                    title="Abrir a ferramenta de geração de orçamento"
+                  >
+                    🛠 Gerar novo
+                  </button>
+                  <label className="modal__anexo-add-btn">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                      onChange={handleAnexoAdicional}
+                      style={{ display: 'none' }}
+                    />
+                    {anexos.length === 0 ? '📎 Anexar orçamento' : '+ Adicionar outro orçamento'}
+                  </label>
+                </div>
               )}
 
               {erroAnexo && <p className="modal__anexo-erro">{erroAnexo}</p>}

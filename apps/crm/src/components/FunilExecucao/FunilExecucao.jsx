@@ -18,7 +18,7 @@ function formatarData(iso) {
 }
 
 export default function FunilExecucao() {
-  const { leads, ESTAGIOS_EXECUCAO, TIPOS_SERVICO, moverFunilExecucao, abrirModal, dragLeadId, setDragLeadId, atualizarLead } = useCRM();
+  const { leads, ESTAGIOS_EXECUCAO, TIPOS_SERVICO, moverFunilExecucao, abrirModal, dragLeadId, setDragLeadId, atualizarLead, getTiposServico } = useCRM();
 
   const [saldos, setSaldos] = useState([]); // [{ material_id, nome, categoria, saldo_total, controla_posse }]
   const [employees, setEmployees] = useState([]);
@@ -118,7 +118,9 @@ export default function FunilExecucao() {
                   <div className="funil-exec__vazio">Nenhum projeto nesta etapa</div>
                 )}
                 {cards.map((lead) => {
-                  const servico = TIPOS_SERVICO[lead.tipoServico];
+                  const tipos = getTiposServico(lead);
+                  const svcs = tipos.map((t) => ({ id: t, ...TIPOS_SERVICO[t] })).filter((s) => s.label);
+                  const iconePrimario = ICONE_SERVICO[tipos[0]] ?? '🌿';
                   const isDragging = dragLeadId === lead.id;
                   const materiais = lead.funilExecucao?.materiais ?? [];
                   const faltas = etapa.id === 'materiais' ? faltantes(lead) : [];
@@ -135,13 +137,19 @@ export default function FunilExecucao() {
                     >
                       <header className="funil-exec__card-header">
                         <span className="funil-exec__card-empresa">{lead.empresa}</span>
-                        <span className="funil-exec__card-icone">{ICONE_SERVICO[lead.tipoServico] ?? '🌿'}</span>
+                        <span className="funil-exec__card-icone">{iconePrimario}</span>
                       </header>
                       <p className="funil-exec__card-contato">{lead.contato}</p>
-                      <div className="funil-exec__card-meta">
-                        <span className="funil-exec__card-badge" style={{ '--badge-cor': servico?.cor ?? '#6B7280' }}>
-                          {servico?.label ?? lead.tipoServico}
-                        </span>
+                      <div className="funil-exec__card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {svcs.length === 0 ? (
+                          <span className="funil-exec__card-badge" style={{ '--badge-cor': '#6B7280' }}>—</span>
+                        ) : (
+                          svcs.map((s) => (
+                            <span key={s.id} className="funil-exec__card-badge" style={{ '--badge-cor': s.cor }}>
+                              {s.label}
+                            </span>
+                          ))
+                        )}
                       </div>
                       <footer className="funil-exec__card-footer">
                         <span className="funil-exec__card-bairro">📍 {lead.bairro}</span>

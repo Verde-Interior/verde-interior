@@ -14,7 +14,7 @@ const ORDENACOES = [
 ];
 
 export default function KanbanBoard() {
-  const { ESTAGIOS, TIPOS_SERVICO, leads, metricas } = useCRM();
+  const { ESTAGIOS, TIPOS_SERVICO, leads, metricas, getTiposServico } = useCRM();
 
   const [busca, setBusca]                 = useState('');
   const [filtroServico, setFiltroServico] = useState('todos');
@@ -27,7 +27,7 @@ export default function KanbanBoard() {
     const q = busca.toLowerCase().trim();
     let lista = leads.filter((l) => {
       const okBusca   = !q || l.empresa?.toLowerCase().includes(q) || l.contato?.toLowerCase().includes(q) || l.bairro?.toLowerCase().includes(q);
-      const okServico = filtroServico === 'todos' || l.tipoServico === filtroServico;
+      const okServico = filtroServico === 'todos' || getTiposServico(l).includes(filtroServico);
       const okCanal   = filtroCanal   === 'todos' || l.canalOrigem === filtroCanal;
       return okBusca && okServico && okCanal;
     });
@@ -164,7 +164,9 @@ export default function KanbanBoard() {
                 <tr><td colSpan={8} className="kanban-board__lista-vazio">Nenhum lead encontrado</td></tr>
               ) : (
                 leadsFiltrados.map((lead) => {
-                  const svc    = TIPOS_SERVICO[lead.tipoServico];
+                  const tipos  = getTiposServico(lead);
+                  const svcs   = tipos.map((t) => ({ id: t, ...TIPOS_SERVICO[t] })).filter((s) => s.label);
+                  const isRec  = svcs.some((s) => s.faturamento === 'recorrente');
                   const estagio = ESTAGIOS.find((e) => e.id === lead.estagioId);
                   const hoje   = new Date().toISOString().split('T')[0];
                   const fuAtrasado = lead.proximoFollowUp && lead.proximoFollowUp < hoje;
@@ -176,14 +178,22 @@ export default function KanbanBoard() {
                       </td>
                       <td className="kanban-board__lista-contato">{lead.contato}</td>
                       <td>
-                        <span className="kanban-board__lista-badge" style={{ '--badge-cor': svc?.cor ?? '#6B7280' }}>
-                          {svc?.label ?? lead.tipoServico}
-                        </span>
+                        {svcs.length === 0 ? (
+                          <span className="kanban-board__lista-badge" style={{ '--badge-cor': '#6B7280' }}>—</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {svcs.map((s) => (
+                              <span key={s.id} className="kanban-board__lista-badge" style={{ '--badge-cor': s.cor }}>
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="kanban-board__lista-bairro">📍 {lead.bairro}</td>
                       <td className="kanban-board__lista-valor">
                         {fmt(lead.valorEstimado ?? 0)}
-                        {svc?.faturamento === 'recorrente' && <span className="kanban-board__lista-recorrencia">/mês</span>}
+                        {isRec && <span className="kanban-board__lista-recorrencia">/mês</span>}
                       </td>
                       <td>
                         <span className="kanban-board__lista-estagio" style={{ '--est-cor': estagio?.cor ?? '#6B7280' }}>

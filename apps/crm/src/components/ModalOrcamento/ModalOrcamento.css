@@ -115,6 +115,29 @@
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 }
 
+.modal__btn-excluir {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: transparent;
+  border: 1.5px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.modal__btn-excluir:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
 .modal__fechar {
   background: none;
   border: none;
@@ -567,6 +590,64 @@
   display: block;
 }
 
+/* Botão "Gerar orçamento" — abre o gerador HTML em nova aba */
+.modal__anexo-acoes-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.modal__anexo-ou {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal__anexo-acoes-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.modal__btn-gerar-orc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--forest-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  white-space: nowrap;
+}
+
+.modal__btn-gerar-orc:hover {
+  background: var(--forest-600);
+  transform: translateY(-1px);
+}
+
+.modal__btn-gerar-orc--secundario {
+  background: transparent;
+  color: var(--forest-700);
+  border: 1.5px solid var(--forest-300);
+}
+
+.modal__btn-gerar-orc--secundario:hover {
+  background: var(--forest-50);
+  border-color: var(--forest-500);
+  transform: none;
+}
+
 /* Botão discreto para adicionar mais */
 .modal__anexo-add-btn {
   display: inline-flex;
@@ -713,6 +794,153 @@
   background: color-mix(in srgb, var(--vinho-700) 10%, var(--surface-bg));
   color: var(--vinho-700);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--vinho-700) 10%, transparent);
+}
+
+/* ── Agendar visita técnica na Escala (a partir do lead) ── */
+.modal__secao--agenda-lead {
+  background: color-mix(in srgb, var(--forest-500) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--forest-500) 15%, transparent);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.modal__agenda-lead-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
+.modal__agenda-lead-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal__agenda-lead-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--forest-500);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.modal__agenda-lead-item-info { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.modal__agenda-lead-obs {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.modal__agenda-lead-cancelar {
+  background: transparent;
+  border: 1px solid var(--surface-border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+}
+
+.modal__agenda-lead-cancelar:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.modal__agenda-lead-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.modal__agenda-lead-acoes {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal__btn-agendar-lead {
+  padding: 8px 18px;
+  background: var(--forest-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast);
+}
+.modal__btn-agendar-lead:hover:not(:disabled) { background: var(--forest-600); }
+.modal__btn-agendar-lead:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Multi-select de tipos de serviço no edit form */
+.modal__tipos-servico-multi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal__tipo-servico-opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1.5px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+  background: var(--surface-bg);
+}
+
+.modal__tipo-servico-opcao:hover {
+  border-color: var(--svc-cor, var(--forest-500));
+  color: var(--svc-cor, var(--forest-700));
+}
+
+.modal__tipo-servico-opcao--ativo {
+  border-color: var(--svc-cor);
+  background: color-mix(in srgb, var(--svc-cor) 10%, var(--surface-bg));
+  color: var(--svc-cor);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--svc-cor) 10%, transparent);
+}
+
+.modal__tipo-servico-opcao input[type="checkbox"] {
+  margin: 0;
+}
+
+.modal__label-opc {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+/* "Só lembrete" — cor cinza pra deixar claro que não é ação pendente */
+.modal__followup-pill--lembrete {
+  border-style: dashed;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.modal__followup-pill--lembrete.modal__followup-pill--ativo {
+  border-color: var(--cream-500);
+  background: var(--cream-100);
+  color: var(--text-secondary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cream-500) 15%, transparent);
 }
 
 .modal__followup-data-row {

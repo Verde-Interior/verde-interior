@@ -11,8 +11,14 @@ function telefoneLimpo(tel) {
 }
 
 export default function LeadCard({ lead }) {
-  const { abrirModal, TIPOS_SERVICO, dragLeadId, setDragLeadId, ESTAGIOS_EXECUCAO, promoverParaCliente } = useCRM();
+  const { abrirModal, TIPOS_SERVICO, dragLeadId, setDragLeadId, ESTAGIOS_EXECUCAO, promoverParaCliente, removerLead, getTiposServico } = useCRM();
   const [promovendo, setPromovendo] = useState(false);
+
+  function handleExcluir(e) {
+    e.stopPropagation();
+    if (!confirm(`Excluir o lead "${lead.empresa}"?\n\nEssa ação remove o lead do pipeline e não pode ser desfeita. Tarefas vinculadas a ele deixam de ter referência.`)) return;
+    removerLead(lead.id);
+  }
 
   const jaEhCliente = !!lead.clienteSupabaseId;
   const podePromover = lead.estagioId === 'orcamento_aprovado' && !jaEhCliente;
@@ -33,8 +39,9 @@ export default function LeadCard({ lead }) {
     else alert('Erro: ' + res.error);
   }
 
-  const servico      = TIPOS_SERVICO[lead.tipoServico];
-  const isRecorrente = servico?.faturamento === 'recorrente';
+  const tiposLead    = getTiposServico(lead);
+  const servicosLead = tiposLead.map((t) => ({ id: t, ...TIPOS_SERVICO[t] })).filter((s) => s.label);
+  const isRecorrente = servicosLead.some((s) => s.faturamento === 'recorrente');
   const isDragging   = dragLeadId === lead.id;
 
   const hoje            = new Date().toISOString().split('T')[0];
@@ -120,14 +127,19 @@ export default function LeadCard({ lead }) {
         {lead.cargo && <span className="lead-card__cargo"> · {lead.cargo}</span>}
       </p>
 
-      {/* Badge de serviço */}
+      {/* Badges de serviço — 1 por tipo (multi-serviço) */}
       <div className="lead-card__badges">
-        <span
-          className="lead-card__badge"
-          style={{ '--badge-cor': servico?.cor ?? '#6B7280' }}
-        >
-          {servico?.label ?? lead.tipoServico}
-        </span>
+        {servicosLead.length === 0 ? (
+          <span className="lead-card__badge" style={{ '--badge-cor': '#6B7280' }}>
+            (sem tipo)
+          </span>
+        ) : (
+          servicosLead.map((s) => (
+            <span key={s.id} className="lead-card__badge" style={{ '--badge-cor': s.cor }}>
+              {s.label}
+            </span>
+          ))
+        )}
         {isRecorrente && lead.frequenciaVisita && (
           <span className="lead-card__badge lead-card__badge--freq">
             {LABEL_FREQ[lead.frequenciaVisita]}
@@ -211,6 +223,17 @@ export default function LeadCard({ lead }) {
       <div className="lead-card__drag-handle" title="Arraste para mover" onMouseDown={(e) => e.stopPropagation()}>
         ⠿
       </div>
+
+      {/* Excluir lead (aparece no hover, canto superior esquerdo) */}
+      <button
+        type="button"
+        className="lead-card__excluir"
+        onClick={handleExcluir}
+        title="Excluir lead"
+        aria-label="Excluir lead"
+      >
+        🗑
+      </button>
     </article>
   );
 }

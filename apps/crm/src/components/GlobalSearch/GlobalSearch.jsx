@@ -4,7 +4,7 @@ import { useCRM } from '../../context/CRMContext';
 import './GlobalSearch.css';
 
 export default function GlobalSearch({ onFechar, onNavegar }) {
-  const { leads, TIPOS_SERVICO, ESTAGIOS, abrirModal } = useCRM();
+  const { leads, TIPOS_SERVICO, ESTAGIOS, abrirModal, getTiposServico } = useCRM();
   const [query, setQuery]         = useState('');
   const [selecionado, setSel]     = useState(0);
   const inputRef = useRef(null);
@@ -61,7 +61,11 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
         {resultados.length > 0 && (
           <ul className="gsearch__lista">
             {resultados.map((lead, i) => {
-              const svc = TIPOS_SERVICO[lead.tipoServico];
+              const tipos = getTiposServico(lead);
+              const svcPrimario = tipos[0] ? TIPOS_SERVICO[tipos[0]] : null;
+              const labelSvc = tipos.length > 1
+                ? `${svcPrimario?.label ?? tipos[0]} +${tipos.length - 1}`
+                : (svcPrimario?.label ?? '—');
               return (
                 <li
                   key={lead.id}
@@ -76,9 +80,9 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
                   <div className="gsearch__item-dir">
                     <span
                       className="gsearch__badge-svc"
-                      style={{ '--cor': svc?.cor ?? '#6B7280' }}
+                      style={{ '--cor': svcPrimario?.cor ?? '#6B7280' }}
                     >
-                      {svc?.label ?? lead.tipoServico}
+                      {labelSvc}
                     </span>
                     <span
                       className="gsearch__badge-est"

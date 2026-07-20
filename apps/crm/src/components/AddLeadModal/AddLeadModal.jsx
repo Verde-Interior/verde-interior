@@ -5,7 +5,7 @@ import './AddLeadModal.css';
 
 const EMPTY = {
   empresa: '', contato: '', cargo: '', telefone: '', email: '',
-  bairro: '', endereco: '', tipoServico: 'locacao', canalOrigem: 'WhatsApp',
+  bairro: '', endereco: '', tiposServico: ['locacao'], canalOrigem: 'WhatsApp',
   quantidadeVasos: '', valorEstimado: '', frequenciaVisita: 'Mensal',
   observacoes: '',
 };
@@ -29,13 +29,15 @@ export default function AddLeadModal({ aberto, onFechar }) {
     if (!form.contato.trim())  e.contato   = 'Obrigatório';
     if (!form.telefone.trim()) e.telefone  = 'Obrigatório';
     if (!form.bairro.trim())   e.bairro    = 'Obrigatório';
-    if (!form.tipoServico)     e.tipoServico = 'Obrigatório';
+    if (!form.tiposServico || form.tiposServico.length === 0) e.tiposServico = 'Selecione ao menos um';
     if (!form.canalOrigem)     e.canalOrigem = 'Obrigatório';
     return e;
   }
 
   function salvar() {
-    const isRecorrente = TIPOS_SERVICO[form.tipoServico]?.faturamento === 'recorrente';
+    const isRecorrente = (form.tiposServico ?? []).some(
+      (t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente'
+    );
     adicionarLead({
       ...form,
       quantidadeVasos:  form.quantidadeVasos  ? Number(form.quantidadeVasos)  : undefined,
@@ -50,6 +52,19 @@ export default function AddLeadModal({ aberto, onFechar }) {
     setErros({});
     setAviso(null);
     onFechar();
+  }
+
+  function toggleTipoServico(key) {
+    setForm((f) => {
+      const atuais = f.tiposServico ?? [];
+      const jaTem = atuais.includes(key);
+      const novos = jaTem ? atuais.filter((t) => t !== key) : [...atuais, key];
+      // Se tirou o único tipo "manutenção", volta frequência para Mensal
+      const aindaTemManut = novos.includes('manutencao');
+      const freq = f.frequenciaVisita === 'Pontual' && !aindaTemManut ? 'Mensal' : f.frequenciaVisita;
+      return { ...f, tiposServico: novos, frequenciaVisita: freq };
+    });
+    setErros((e) => ({ ...e, tiposServico: undefined }));
   }
 
   function handleSalvar() {
@@ -72,10 +87,11 @@ export default function AddLeadModal({ aberto, onFechar }) {
     if (e.target === e.currentTarget) { setAviso(null); onFechar(); }
   }
 
-  const isRecorrente        = TIPOS_SERVICO[form.tipoServico]?.faturamento === 'recorrente';
+  const tiposSel            = form.tiposServico ?? [];
+  const isRecorrente        = tiposSel.some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente');
   const isRecorrenteEfetivo = isRecorrente && form.frequenciaVisita !== 'Pontual';
   const freqsDisponiveis    = FREQUENCIAS_VISITA.filter(
-    (f) => f !== 'Pontual' || form.tipoServico === 'manutencao'
+    (f) => f !== 'Pontual' || tiposSel.includes('manutencao')
   );
 
   return (
@@ -191,31 +207,31 @@ export default function AddLeadModal({ aberto, onFechar }) {
             />
           </div>
 
-          {/* Tipo de Serviço */}
+          {/* Tipos de Serviço — multi-select (checkbox) */}
           <div className="add-modal__grupo add-modal__grupo--wide">
-            <label className="add-modal__label">Tipo de Serviço <span className="add-modal__req">*</span></label>
+            <label className="add-modal__label">
+              Tipos de Serviço <span className="add-modal__req">*</span>
+              <span className="add-modal__label-hint"> (marque um ou mais)</span>
+            </label>
             <div className="add-modal__servicos">
-              {Object.entries(TIPOS_SERVICO).map(([key, svc]) => (
-                <label
-                  key={key}
-                  className={`add-modal__servico-opcao ${form.tipoServico === key ? 'add-modal__servico-opcao--ativo' : ''}`}
-                  style={{ '--svc-cor': svc.cor }}
-                >
-                  <input
-                    type="radio" name="tipoServico" value={key} checked={form.tipoServico === key}
-                    onChange={() => {
-                      setForm((f) => ({
-                        ...f,
-                        tipoServico: key,
-                        frequenciaVisita: f.frequenciaVisita === 'Pontual' && key !== 'manutencao' ? 'Mensal' : f.frequenciaVisita,
-                      }));
-                      setErros((e) => ({ ...e, tipoServico: undefined }));
-                    }}
-                  />
-                  {svc.label}
-                </label>
-              ))}
+              {Object.entries(TIPOS_SERVICO).map(([key, svc]) => {
+                const ativo = tiposSel.includes(key);
+                return (
+                  <label
+                    key={key}
+                    className={`add-modal__servico-opcao ${ativo ? 'add-modal__servico-opcao--ativo' : ''}`}
+                    style={{ '--svc-cor': svc.cor }}
+                  >
+                    <input
+                      type="checkbox" checked={ativo}
+                      onChange={() => toggleTipoServico(key)}
+                    />
+                    {svc.label}
+                  </label>
+                );
+              })}
             </div>
+            {erros.tiposServico && <span className="add-modal__erro">{erros.tiposServico}</span>}
           </div>
 
           {/* Qtd vasos + Valor */}

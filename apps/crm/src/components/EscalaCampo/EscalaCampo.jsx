@@ -585,7 +585,22 @@ function CartaoVisita({
       )}
 
       <div className="ec-cartao__info">
-        <span className="ec-cartao__nome">{visita.clientes?.nome_empresa ?? '—'}</span>
+        <span className="ec-cartao__nome">
+          {visita.clientes?.nome_empresa ?? '—'}
+          {visita.__isLead && (
+            <span
+              className="ec-cartao__lead-badge"
+              title="Visita técnica em um lead — ainda não é cliente cadastrado"
+              style={{
+                marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: '.04em',
+                color: '#7C3AED', background: '#F5F3FF', border: '1px solid #DDD6FE',
+                padding: '2px 6px', borderRadius: 999, textTransform: 'uppercase',
+              }}
+            >
+              🌱 lead
+            </span>
+          )}
+        </span>
         {visita.clientes?.bairro && (
           <span className="ec-cartao__bairro">{visita.clientes.bairro}</span>
         )}
@@ -919,15 +934,41 @@ export default function EscalaCampo() {
 
   async function carregarAgenda() {
     setLoading(true);
+    // Agora agenda pode vir vinculada a cliente OU a lead (migration 016).
+    // Fazemos left joins nas duas tabelas; a que estiver preenchida no row
+    // é a fonte de dados exibidos no cartão.
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia)')
+      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
       .neq('status', 'cancelado')
       .order('ordem_rota');
     setLoading(false);
-    if (!error) setAgenda(data ?? []);
+    if (!error) {
+      // Compat: cartões da Escala esperam sempre `v.clientes`. Quando a visita
+      // veio de um lead (lead_id != null e cliente_id == null), copiamos os
+      // campos essenciais do lead para dentro de `.clientes` e marcamos
+      // `__isLead` para o cartão distinguir visualmente.
+      const enriched = (data ?? []).map((v) => {
+        if (!v.clientes && v.leads) {
+          return {
+            ...v,
+            __isLead: true,
+            clientes: {
+              nome_empresa: v.leads.empresa,
+              bairro:       v.leads.bairro,
+              lat:          v.leads.lat,
+              lng:          v.leads.lng,
+              // dias_disponiveis, janela, frequencia_visita ficam ausentes ⇒
+              // o otimizador de rota trata como "sem restrição".
+            },
+          };
+        }
+        return v;
+      });
+      setAgenda(enriched);
+    }
   }
 
   useEffect(() => { carregarAgenda(); }, [semana]); // eslint-disable-line

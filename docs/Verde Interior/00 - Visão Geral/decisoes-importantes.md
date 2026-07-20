@@ -64,3 +64,15 @@ Log cronológico de decisões estruturais. **Nunca deletar — apenas adicionar.
 **Decisão:** Não criar hierarquia de roles no CRM por ora. RLS mantém padrão `_auth_all` (só authenticated).
 **Motivo:** hoje só gestores usam o CRM. Colaboradores de campo usam o App Ponto. Complexidade sem retorno imediato.
 **Reavaliar quando:** algum colaborador de campo precisar entrar no CRM (ex: visualizar próprias visitas na Escala).
+
+### Multi-tipo de serviço no lead
+**Data:** 20/07/2026
+**Decisão:** Trocar `leads.tipo_servico TEXT` por `leads.tipos_servico TEXT[]` (migration 016). Nas leituras usar helper `getTiposServico(lead)` do CRMContext, que aceita array novo, string legada ou vazio. Coluna antiga `tipo_servico` mantida como deprecated para não quebrar leads antigos.
+**Motivo:** Roberto pediu — a empresa vende combinações reais como "reforma + manutenção" (reforma inicial e manutenção contínua) e "locação + manutenção" (locação para não perder plantas). Modelo singular distorcia badges, filtros e a criação de contratos ao promover cliente.
+**Impacto:** cards do Kanban e da Escala mostram 1 badge por tipo; filtro do Kanban usa `includes`; `promoverParaCliente` cria N contratos (um por tipo recorrente/venda); "Mix de Serviços" do Dashboard conta cada tipo por lead. Alternativa "tabela relacional lead_tipos_servico" descartada por adicionar joins sem ganho.
+
+### Agenda vinculada a lead OU cliente
+**Data:** 20/07/2026
+**Decisão:** Tornar `agenda.cliente_id` nullable + adicionar `agenda.lead_id UUID FK leads(id) ON DELETE CASCADE` + CHECK `agenda_cliente_xor_lead` (exatamente um dos dois preenchido). Migration 016.
+**Motivo:** antes só clientes já cadastrados apareciam na Escala. Ao fazer visita técnica de prospecção (lead ainda), gestor precisava criar cliente "rascunho" só pra publicar — cria cliente-lixo e polui a base. Solução escolhida entre 3 opções.
+**Impacto:** EscalaCampo faz join com `leads` também; quando a visita veio de lead, os dados de endereço/nome vêm de `leads` (via enrichment que copia pra `.clientes` no client-side); cartão da Escala ganha badge "🌱 lead". ModalOrcamento tem nova seção "📅 Agendar visita técnica na Escala" com select de funcionário + data + hora + duração.

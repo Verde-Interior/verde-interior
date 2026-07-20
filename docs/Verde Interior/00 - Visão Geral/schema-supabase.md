@@ -2,7 +2,7 @@
 
 Referência técnica das tabelas, views, funções e políticas do banco.
 Fonte de verdade: `apps/ponto/supabase/migrations/`.
-Última atualização: 20/07/2026 (após migration 015).
+Última atualização: 20/07/2026 (após migration 016 — multi-tipo + agenda-para-lead).
 
 ---
 
@@ -49,9 +49,10 @@ Numeração: incrementar sempre a partir da última migration existente. As migr
 - RLS: `servicos_auth_all`
 
 **`agenda`** — visitas agendadas
-- `id uuid PK`, `funcionario_id text` (= `employees.id`, texto para compat com Ponto), `cliente_id FK`, `data_agendada`, `hora_estimada_chegada TIME`, `duracao_estimada_min`, `ordem_rota INTEGER`, `status` (`rascunho`/`publicado`/`em_execucao`/`concluido`/`cancelado`), `observacoes_gestor`, `publicado_em`, `tipos_tarefa TEXT[]` (014: multi-select `manutencao`/`troca`/`reforma`/`evento`/`outro`)
+- `id uuid PK`, `funcionario_id text` (= `employees.id`, texto para compat com Ponto), `cliente_id FK clientes` (**nullable** desde 016), **`lead_id UUID FK leads(id) ON DELETE CASCADE`** (016), `data_agendada`, `hora_estimada_chegada TIME`, `duracao_estimada_min`, `ordem_rota INTEGER`, `status` (`rascunho`/`publicado`/`em_execucao`/`concluido`/`cancelado`), `observacoes_gestor`, `publicado_em`, `tipos_tarefa TEXT[]` (014: multi-select `manutencao`/`troca`/`reforma`/`evento`/`outro`)
+- Constraint `agenda_cliente_xor_lead` (016): `(cliente_id IS NOT NULL AND lead_id IS NULL) OR (cliente_id IS NULL AND lead_id IS NOT NULL)`. Exatamente um dos dois preenchido.
 - RLS: `agendamentos_auth_all`
-- Índice: `idx_agend_funcionario`, `idx_agend_status`
+- Índice: `idx_agend_funcionario`, `idx_agend_status`, `idx_agenda_lead` (016)
 
 **`relatorios`** — relatório de execução da visita
 - `id uuid PK` (constraint `uq_relat_agendamento_id` unique em 012), `agendamento_id FK`, `funcionario_id text`, `checkin_at`, `checkin_lat/lng`, `checkout_at`, `checkout_lat/lng`, `status` (`em_andamento`/`concluido`), `relato`, `observacoes`, `assinatura_responsavel_nome`, `assinatura_responsavel_img`, `assinatura_storage_path` (008)
@@ -80,9 +81,11 @@ Numeração: incrementar sempre a partir da última migration existente. As migr
 ### CRM — Leads e Tarefas (015_crm_leads_tarefas.sql, migração desta sprint)
 
 **`leads`** — pipeline comercial
-- Colunas core: `id uuid PK`, `empresa`, `contato`, `cargo`, `telefone`, `email`, `bairro`, `endereco`, `lat`, `lng`, `estagio_id` (check em 5 valores), `tipo_servico` (check em 5 valores), `canal_origem` (`WhatsApp`/`E-mail`/`Telefone`), `quantidade_vasos`, `valor_estimado`, `frequencia_visita`, `data_entrada`, `ultimo_contato`, `proximo_follow_up`, `responsavel`, `observacoes`, `motivo_perda`, `cliente_supabase_id FK clientes`
+- Colunas core: `id uuid PK`, `empresa`, `contato`, `cargo`, `telefone`, `email`, `bairro`, `endereco`, `lat`, `lng`, `estagio_id` (check em 5 valores), **`tipos_servico TEXT[]`** (016 — array de valores válidos), `tipo_servico` (DEPRECATED, mantido para compat), `canal_origem` (`WhatsApp`/`E-mail`/`Telefone`), `quantidade_vasos`, `valor_estimado`, `frequencia_visita`, `data_entrada`, `ultimo_contato`, `proximo_follow_up`, `responsavel`, `observacoes`, `motivo_perda`, `cliente_supabase_id FK clientes`
 - Coluna JSONB: `dados` — armazena estado aninhado (`fluxoOrcamento`, `funilExecucao`, `historico`, `orcamentoAnexos`, `visitas`, `materiais`). Permite evolução sem migration por campo.
 - Trigger `leads_set_updated_at`: mantém `updated_at`
+- Constraint `leads_tipos_servico_valid`: `tipos_servico <@ ARRAY['venda','manutencao','reforma','locacao','locacao_evento']`
+- Índice GIN `idx_leads_tipos_servico` (para filtros do tipo `@>`)
 - RLS: `leads_auth_all`
 
 **`tarefas`** — to-do do CRM
