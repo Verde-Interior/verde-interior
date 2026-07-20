@@ -4,7 +4,7 @@ import { useCRM } from '../../context/CRMContext';
 import {
   getEventosPorData, TIPO_COR, TIPO_LABEL, TIPO_ICONE,
   MESES_PT, DIAS_SEMANA_CURTO, addMes, buildGrid,
-  formatarDataLonga, formatarDataCurta,
+  formatarDataLonga,
 } from '../../utils/calendarioUtils';
 import AddLeadModal from '../AddLeadModal/AddLeadModal';
 import './Agenda.css';

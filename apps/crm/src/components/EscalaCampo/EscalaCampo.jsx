@@ -1,5 +1,5 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { addDias, diasEntre, dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
 import { distanciaKm } from '../../utils/geoUtils';
@@ -8,7 +8,7 @@ import './EscalaCampo.css';
 
 // ── Constantes e helpers ──────────────────────────────────────────────────────
 
-const DIA_ID_MAP = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+const _DIA_ID_MAP = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
 const DIAS_LABEL = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb' };
 const DIAS_NOME  = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado' };
 
@@ -280,7 +280,7 @@ function* permutacoes(arr) {
 //    tem penalidade DOMINANTE — só isso justifica sair da rota mais curta
 //  - hora_estimada_chegada NÃO entra no score — é só valor default sem
 //    significado operacional real
-function simularOrdem(ordem, opts = {}) {
+function simularOrdem(ordem, _opts = {}) {
   const km_totais = [];
   const timeline = [];
   let penalidadeEspera = 0;
@@ -306,10 +306,9 @@ function simularOrdem(ordem, opts = {}) {
 
   for (let i = 0; i < ordem.length; i++) {
     const v = ordem[i];
-    let kmParaCa = 0;
     if (i > 0) {
       const prev = ordem[i - 1];
-      kmParaCa = distanciaKm(prev.clientes?.lat, prev.clientes?.lng, v.clientes?.lat, v.clientes?.lng);
+      let kmParaCa = distanciaKm(prev.clientes?.lat, prev.clientes?.lng, v.clientes?.lat, v.clientes?.lng);
       if (!isFinite(kmParaCa)) kmParaCa = 0;
       km_totais.push(kmParaCa);
       const minDeslocamento = Math.round((kmParaCa / VEL_MEDIA_KMH) * 60) + SETUP_MIN_ENTRE_VISITAS;
@@ -376,7 +375,6 @@ function otimizarRotaComRestricoes(visitas) {
 
   // Detecção de desvio: comparar posições da mesma visita nas 2 ordens
   const posGeo = new Map(ordemGeo.map((v, i) => [v.id, i]));
-  const posMel = new Map(melhor.ordem.map((v, i) => [v.id, i]));
   const iguais = melhor.ordem.every((v, i) => ordemGeo[i]?.id === v.id);
 
   // Motivos: quais visitas foram deslocadas E têm janela definida (foram "responsáveis" pelo desvio)
@@ -1952,7 +1950,7 @@ function ModalPreviewRota({ resultado, onAplicar, onFechar, aplicando }) {
   );
 }
 
-function ModalRedistribuir({ visitas, employees, agendaOrg, bloqueios, clientes, onFechar, onMudou }) {
+function ModalRedistribuir({ visitas, employees, agendaOrg, bloqueios, onFechar, onMudou }) {
   const [salvando, setSalvando] = useState(false);
   const [escolhas, setEscolhas] = useState({}); // visitaId -> empIdNovo
 

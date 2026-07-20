@@ -56,7 +56,6 @@ export default function Tarefas() {
     removerTarefa,
     toggleConcluirTarefa,
     leads,
-    TIPOS_SERVICO,
     abrirModal,
   } = useCRM();
 

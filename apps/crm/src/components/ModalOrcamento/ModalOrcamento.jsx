@@ -284,7 +284,7 @@ export default function ModalOrcamento() {
   }
 
   function visualizarAnexo(arq) {
-    const [header, base64] = arq.dados.split(',');
+    const [, base64] = arq.dados.split(',');
     const byteChars = atob(base64);
     const byteArr = new Uint8Array(byteChars.length);
     for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);

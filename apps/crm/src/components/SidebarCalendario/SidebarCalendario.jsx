@@ -4,7 +4,7 @@ import { useCRM } from '../../context/CRMContext';
 import {
   getEventosPorData, TIPO_COR, TIPO_ICONE,
   MESES_PT, addMes, buildGrid,
-  formatarDataCurta, formatarDataLonga,
+  formatarDataCurta,
 } from '../../utils/calendarioUtils';
 import AddLeadModal from '../AddLeadModal/AddLeadModal';
 import './SidebarCalendario.css';
@@ -30,9 +30,10 @@ export default function SidebarCalendario() {
 
   // ── Próximos 7 dias ───────────────────────────────────────────────────────
   const proximos = useMemo(() => {
+    const base = new Date(hojeIso + 'T00:00:00');
     const resultado = [];
     for (let d = 0; d <= 7; d++) {
-      const dt = new Date(hoje);
+      const dt = new Date(base);
       dt.setDate(dt.getDate() + d);
       const iso = dt.toISOString().split('T')[0];
       (eventosPorData[iso] ?? []).forEach((ev) => resultado.push({ iso, ...ev }));

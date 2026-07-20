@@ -1,5 +1,5 @@
 // src/components/Dashboard/Dashboard.jsx
-import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import './Dashboard.css';
@@ -1113,7 +1113,6 @@ function DashboardOperacional({ onNavegar }) {
   const empMap = useMemo(() => new Map((dados.employees ?? []).map(e => [String(e.id), e.name])), [dados.employees]);
 
   const kpis = useMemo(() => {
-    const hj = new Date().toISOString().split('T')[0];
     const visitasHoje = dados.agendaHoje.length;
     const publicadasHoje = dados.agendaHoje.filter(v => v.status === 'publicado' || v.status === 'em_execucao' || v.status === 'concluido').length;
     const concluidasHoje = dados.agendaHoje.filter(v => v.status === 'concluido').length;

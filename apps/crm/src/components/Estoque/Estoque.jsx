@@ -4,7 +4,6 @@
 // Etapa 3 adiciona: sub-aba Ferramentas (matriz colaboradores × posse)
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useToast } from '../Toast/Toast';
 import ModalMaterial from './ModalMaterial';
 import ModalMovimento from './ModalMovimento';
 import './Estoque.css';
@@ -38,7 +37,6 @@ const UNIDADE_LABEL = {
 // ── Componente principal ──────────────────────────────────────
 
 export default function Estoque() {
-  const toast = useToast();
   const [aba, setAba] = useState('materiais'); // materiais | ferramentas
   const [saldos, setSaldos] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -511,3 +511,37 @@
 }
 .fe-linha { display: flex; gap: 10px; }
 .fe-linha .fe-campo { flex: 1; min-width: 0; }
+
+/* ── Link OS (compartilhar com colaborador em campo) ───────────────────── */
+.funil-exec__card-os {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--surface-border);
+}
+.funil-exec__btn-os {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border: 1px solid #2d5a1b;
+  border-radius: 6px;
+  background: transparent;
+  color: #2d5a1b;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  font-family: var(--font-body, inherit);
+  transition: background 0.15s, color 0.15s;
+}
+.funil-exec__btn-os:hover {
+  background: #2d5a1b;
+  color: #fff;
+}
+.funil-exec__btn-os--open {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  font-size: 13px;
+  line-height: 1;
+}

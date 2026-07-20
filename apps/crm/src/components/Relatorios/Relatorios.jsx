@@ -92,6 +92,8 @@ export default function Relatorios() {
     setLoading(false);
   }
 
+  // carregar é definida no escopo do componente e depende só de dataInicio/dataFim
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [dataInicio, dataFim]);
 
   const empMap = useMemo(() => {

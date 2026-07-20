@@ -47,6 +47,8 @@ export default function KanbanBoard() {
     });
 
     return lista;
+    // getTiposServico é helper estável do CRMContext — não muda entre renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, busca, filtroServico, filtroCanal, ordenacao]);
 
   const temFiltro = busca || filtroServico !== 'todos' || filtroCanal !== 'todos';

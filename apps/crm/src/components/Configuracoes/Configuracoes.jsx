@@ -123,13 +123,43 @@ export default function Configuracoes() {
   // ── Dados ──────────────────────────────────────────────────────────────────
   const [confirmLimpar, setConfirmLimpar] = useState(false);
 
-  function exportarDados() {
+  function exportarJSON() {
     const dados = { exportadoEm: new Date().toISOString(), versao: '1.0', leads, tarefas };
     const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
     a.download = `crm-verde-interior-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportarCSV() {
+    const cols = ['ID','Empresa','Contato','Canal','Estágio','Tipos de Serviço','Valor Estimado','Bairro','Data de Entrada','Próximo Follow-up','Frequência'];
+    const rows = leads.map((l) => [
+      l.id,
+      l.empresa ?? '',
+      l.contato ?? '',
+      l.canalOrigem ?? '',
+      l.estagioId ?? '',
+      Array.isArray(l.tiposServico) ? l.tiposServico.join('; ') : (l.tipoServico ?? ''),
+      l.valorEstimado ?? '',
+      l.bairro ?? '',
+      l.dataEntrada ? new Date(l.dataEntrada).toLocaleDateString('pt-BR') : '',
+      l.proximoFollowUp ?? '',
+      l.frequencia ?? '',
+    ]);
+
+    const csv = [cols, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    // BOM UTF-8 para o Excel abrir com acentos corretos
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `crm-leads-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -346,11 +376,21 @@ export default function Configuracoes() {
 
               <div className="config__linha">
                 <div className="config__linha-info">
-                  <span className="config__linha-label">Exportar backup</span>
-                  <span className="config__linha-desc">Todos os leads e tarefas em formato JSON</span>
+                  <span className="config__linha-label">Exportar leads (CSV)</span>
+                  <span className="config__linha-desc">Planilha compatível com Excel/Sheets (abre com acentos)</span>
                 </div>
-                <button className="config__btn config__btn--primary" onClick={exportarDados}>
-                  ↓ Exportar
+                <button className="config__btn config__btn--primary" onClick={exportarCSV}>
+                  ↓ CSV
+                </button>
+              </div>
+
+              <div className="config__linha">
+                <div className="config__linha-info">
+                  <span className="config__linha-label">Backup completo (JSON)</span>
+                  <span className="config__linha-desc">Todos os leads e tarefas em formato JSON — usar para arquivar</span>
+                </div>
+                <button className="config__btn" onClick={exportarJSON}>
+                  ↓ JSON
                 </button>
               </div>
 

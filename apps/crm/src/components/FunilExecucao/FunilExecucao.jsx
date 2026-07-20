@@ -24,6 +24,7 @@ export default function FunilExecucao() {
   const [employees, setEmployees] = useState([]);
   const [modalMateriais, setModalMateriais] = useState(null); // lead
   const [modalAgendar, setModalAgendar] = useState(null);     // lead
+  const [copiadoId, setCopiadoId] = useState(null);           // lead.id com feedback "copiado"
 
   useEffect(() => {
     (async () => {
@@ -64,6 +65,28 @@ export default function FunilExecucao() {
 
   function handleDragEnd() {
     setDragLeadId(null);
+  }
+
+  // ── Link da OS pré-preenchido com dados do lead ──────────────────────────
+  function gerarLinkOS(lead) {
+    const params = new URLSearchParams({
+      cliente:  lead.empresa ?? '',
+      os:       `OS-${String(lead.id).slice(0, 8).toUpperCase()}`,
+      bairro:   lead.bairro ?? '',
+      contato:  lead.contato ?? '',
+      telefone: lead.telefone ?? '',
+      modo:     'execucao',
+    });
+    return `/os.html?${params.toString()}`;
+  }
+
+  function copiarLinkOS(lead, e) {
+    e.stopPropagation();
+    const url = window.location.origin + gerarLinkOS(lead);
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiadoId(lead.id);
+      setTimeout(() => setCopiadoId(null), 2000);
+    });
   }
 
   // ── Materiais faltantes de um lead ────────────────────────────────────────
@@ -231,6 +254,27 @@ export default function FunilExecucao() {
                           Iniciou execução: {formatarData(lead.funilExecucao.dataInicio)}
                         </p>
                       )}
+
+                      {/* ── Link/QR da OS (útil para compartilhar com colaborador em campo) ── */}
+                      <div className="funil-exec__card-os" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="funil-exec__btn-os"
+                          onClick={(e) => copiarLinkOS(lead, e)}
+                          title="Copiar link da OS para o clipboard"
+                        >
+                          {copiadoId === lead.id ? '✅ Copiado!' : '🔗 Link OS'}
+                        </button>
+                        <a
+                          className="funil-exec__btn-os funil-exec__btn-os--open"
+                          href={gerarLinkOS(lead)}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Abrir OS em nova aba"
+                        >
+                          ↗
+                        </a>
+                      </div>
 
                       {/* Ações rápidas de avanço */}
                       <div className="funil-exec__card-acoes" onClick={(e) => e.stopPropagation()}>
