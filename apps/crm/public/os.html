@@ -614,9 +614,14 @@ let ESTADO = null;
 function render() {
   const app = document.getElementById('app');
 
-  // Tela vazia
-  if (!CFG.os || !CFG.cliente || CFG.plantasBase.length === 0) {
+  // Só cai na tela vazia se realmente não temos identificação da OS.
+  // Sem plantas, mostramos o header + botão pra adicionar plantas no local.
+  if (!CFG.os || !CFG.cliente) {
     app.innerHTML = renderVazio();
+    return;
+  }
+  if (ESTADO.plantas.length === 0) {
+    app.innerHTML = renderSemPlantas();
     return;
   }
 
@@ -797,6 +802,69 @@ function renderVazio() {
       </div>
     </div>
   `;
+}
+
+/* Header com identificacao + form pra adicionar plantas em campo.
+   Usado quando a OS vem sem o parametro `plantas` (fluxo Funil de Execucao). */
+function renderSemPlantas() {
+  return `
+    <div class="doc-header">
+      <div class="header-top">
+        <div class="header-brand">
+          <div class="brand-mark"></div>
+          <div class="brand-text">
+            <div class="brand-name">Verde Interior</div>
+            <div class="brand-sub">Ordem de Servico</div>
+          </div>
+        </div>
+        <span class="mode-badge ${ESTADO.modo}">${ESTADO.modo === 'execucao' ? 'Execucao' : 'Conclusao'}</span>
+      </div>
+      <div class="header-info">
+        <div><strong>${escapar(CFG.cliente)}</strong></div>
+        <div style="font-size:12px;opacity:.85">${escapar(CFG.os)}</div>
+        ${CFG.bairro   ? `<div style="font-size:12px;opacity:.75">${escapar(CFG.bairro)}</div>`   : ''}
+        ${CFG.contato  ? `<div style="font-size:12px;opacity:.75">${escapar(CFG.contato)}${CFG.telefone ? ' · ' + escapar(CFG.telefone) : ''}</div>` : ''}
+      </div>
+    </div>
+    <div style="max-width:520px;margin:0 auto;padding:24px 18px">
+      <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 6px rgba(0,0,0,.06);margin-bottom:16px">
+        <h2 style="font-size:16px;margin-bottom:6px">Nenhuma planta cadastrada</h2>
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">
+          Adicione as plantas desta OS abaixo. Depois voce fotografa cada uma antes e depois do servico.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" id="np-nome"  placeholder="Nome (ex: Ficus)"
+                 style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          <input type="text" id="np-local" placeholder="Local (ex: Sala de reunioes)"
+                 style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          <input type="text" id="np-obs"   placeholder="Observacao (opcional)"
+                 style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          <button onclick="adicionarPlanta()"
+                  style="margin-top:6px;padding:11px;background:var(--green-mid);color:#fff;border:0;border-radius:8px;font-weight:600;cursor:pointer">
+            + Adicionar planta
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function escapar(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[c]);
+}
+
+function adicionarPlanta() {
+  const nome  = (document.getElementById('np-nome').value  || '').trim();
+  const local = (document.getElementById('np-local').value || '').trim();
+  const obs   = (document.getElementById('np-obs').value   || '').trim();
+  if (!nome) { toast('Informe pelo menos o nome da planta.'); return; }
+  const id = 'p' + Date.now();
+  ESTADO.plantas.push({ id, nome, local, obs, antesUrl: null, depoisUrl: null, obsAntes: '', obsDepois: '' });
+  CFG.plantasBase.push({ id, nome, local, obs });
+  salvarEstado(CFG.os, ESTADO);
+  render();
 }
 
 /* ---------- 6. Acoes ---------- */

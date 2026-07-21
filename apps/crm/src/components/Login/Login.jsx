@@ -10,6 +10,7 @@ export default function Login() {
   const [senha, setSenha]     = useState('');
   const [erro, setErro]       = useState(null);
   const [ent,  setEnt]        = useState(false);
+  const [peek, setPeek]       = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -19,6 +20,10 @@ export default function Login() {
     setEnt(false);
     if (!res.ok) setErro('Usuário ou senha incorretos');
   }
+
+  // Handlers que revelam a senha enquanto o botão estiver pressionado
+  const mostrar = (e) => { e.preventDefault(); setPeek(true); };
+  const esconder = () => setPeek(false);
 
   return (
     <div className="login">
@@ -45,13 +50,29 @@ export default function Login() {
           </div>
           <div className="login__campo">
             <label>Senha</label>
-            <input
-              type="password"
-              value={senha}
-              onChange={e => setSenha(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
+            <div className="login__pwd-wrap">
+              <input
+                type={peek ? 'text' : 'password'}
+                value={senha}
+                onChange={e => setSenha(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className={`login__peek ${peek ? 'login__peek--on' : ''}`}
+                aria-label="Mostrar senha enquanto pressionar"
+                title="Segure para mostrar a senha"
+                onMouseDown={mostrar}
+                onMouseUp={esconder}
+                onMouseLeave={esconder}
+                onTouchStart={mostrar}
+                onTouchEnd={esconder}
+                onTouchCancel={esconder}
+              >
+                {peek ? '🙈' : '👁'}
+              </button>
+            </div>
           </div>
 
           {erro && <div className="login__erro">✕ {erro}</div>}

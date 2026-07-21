@@ -1001,7 +1001,25 @@ function gerarProposta() {
   // Atribui número da proposta (só na 1ª geração deste rascunho)
   atribuirNumeroSeNovo();
   salvarRascunho();
-  showToast('✓ Proposta '+formatarNumeroOrc(orcAtribuido||lerContador())+' validada! Abrindo impressão...',false);
+  const numeroOrc = formatarNumeroOrc(orcAtribuido||lerContador());
+  showToast('✓ Proposta '+numeroOrc+' validada! Abrindo impressão...',false);
+
+  // Se o gerador foi aberto pelo CRM (via ModalOrcamento), envia snapshot
+  // da proposta de volta para o lead ser anexado automaticamente.
+  try {
+    const params  = new URLSearchParams(window.location.search);
+    const leadId  = params.get('lead_id');
+    if (window.opener && leadId) {
+      const snapshotHtml = '<!doctype html>' + document.documentElement.outerHTML;
+      window.opener.postMessage({
+        type:    'verde-proposta-gerada',
+        leadId,
+        orcNum:  numeroOrc,
+        html:    snapshotHtml,
+      }, '*');
+    }
+  } catch (e) { /* opener bloqueado ou tab fechada — ignora silenciosamente */ }
+
   setTimeout(()=>window.print(),600);
 }
 

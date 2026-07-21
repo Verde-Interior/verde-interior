@@ -47,9 +47,16 @@
     </div>
     <div class="lfield">
       <label>Senha</label>
-      <input type="password" id="lp" placeholder="••••••••"
-        autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')AUTH.login()">
+      <div class="lpwd-wrap">
+        <input type="password" id="lp" placeholder="••••••••"
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')AUTH.login()">
+        <button type="button" class="lpwd-peek" id="lpwd-peek"
+          aria-label="Mostrar senha enquanto pressionar"
+          title="Segure para mostrar a senha">
+          <i class="fa-regular fa-eye"></i>
+        </button>
+      </div>
     </div>
     <div class="lerrmsg" id="lerrmsg">
       <i class="fa-solid fa-circle-xmark"></i>

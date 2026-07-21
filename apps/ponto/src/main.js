@@ -132,6 +132,25 @@ window.agendaDescartaPending = agDescartaPending;
 tick();
 setInterval(tick, 1000);
 
+// ── "Show while pressing" no campo senha do login ──────────────
+function setupPeekSenha() {
+  const btn = document.getElementById('lpwd-peek');
+  const inp = document.getElementById('lp');
+  if (!btn || !inp) return;
+
+  const show = () => { inp.type = 'text';     btn.classList.add('on'); };
+  const hide = () => { inp.type = 'password'; btn.classList.remove('on'); };
+
+  ['mousedown', 'touchstart', 'pointerdown'].forEach(ev =>
+    btn.addEventListener(ev, (e) => { e.preventDefault(); show(); })
+  );
+  ['mouseup', 'mouseleave', 'touchend', 'touchcancel', 'pointerup', 'pointerleave', 'blur']
+    .forEach(ev => btn.addEventListener(ev, hide));
+  // Se o usuário sair do botão pressionado, esconde
+  document.addEventListener('pointerup', hide);
+}
+setupPeekSenha();
+
 // ── Banner de status de conexão ─────────────────────────────────
 function setupOfflineBanner() {
   const el = document.createElement('div');

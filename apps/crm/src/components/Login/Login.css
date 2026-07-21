@@ -84,6 +84,35 @@
   font-weight: 600;
   border: 1px solid #FCA5A5;
 }
+.login__pwd-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.login__pwd-wrap input {
+  flex: 1;
+  padding-right: 42px;
+}
+.login__peek {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  color: var(--text-muted);
+}
+.login__peek:hover { background: rgba(0,0,0,.05); }
+.login__peek:active,
+.login__peek--on { background: rgba(45,90,27,.10); }
 
 .login__btn {
   background: var(--color-primary);

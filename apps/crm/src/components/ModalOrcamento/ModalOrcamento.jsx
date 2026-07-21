@@ -42,6 +42,35 @@ export default function ModalOrcamento() {
   }, [modalAberto]);
 
   // Carrega agendamentos deste lead (para listar/cancelar)
+  // Recebe do gerador-orcamento (aberto em outra aba) o HTML snapshot
+  // da proposta gerada. Adiciona como anexo do lead atual automaticamente.
+  useEffect(() => {
+    if (!leadSelecionado?.id) return;
+    function onMsg(ev) {
+      const msg = ev.data;
+      if (!msg || msg.type !== 'verde-proposta-gerada') return;
+      if (String(msg.leadId) !== String(leadSelecionado.id)) return;
+      if (!msg.html || !msg.orcNum) return;
+
+      // Data URL em base64 (btoa exige latin1, então converto UTF-8 antes)
+      const b64 = btoa(unescape(encodeURIComponent(msg.html)));
+      const novoAnexo = {
+        nome:    `Proposta ${msg.orcNum}.html`,
+        tipo:    'text/html',
+        tamanho: msg.html.length,
+        dados:   `data:text/html;charset=utf-8;base64,${b64}`,
+        origem:  'gerador',
+      };
+      setAnexos((prev) => {
+        // Evita duplicar se o usuário clicar "Gerar" várias vezes
+        if (prev.some((a) => a.nome === novoAnexo.nome)) return prev;
+        return [...prev, novoAnexo];
+      });
+    }
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [leadSelecionado?.id]);
+
   useEffect(() => {
     if (!leadSelecionado?.id) { setAgendasDoLead([]); return; }
     (async () => {
@@ -301,8 +330,11 @@ export default function ModalOrcamento() {
 
   // Abre a ferramenta HTML de geração de orçamento em nova aba, com dados do
   // lead pré-preenchidos via query string. O tool lê os params no load.
+  // Passamos lead_id pra que ao gerar a proposta o gerador possa postMessage
+  // de volta e a gente anexe automaticamente no lead (sem noopener!).
   function abrirGeradorOrcamento(lead) {
     const params = new URLSearchParams();
+    if (lead.id)       params.set('lead_id', String(lead.id));
     if (lead.empresa)  params.set('empresa', lead.empresa);
     if (lead.contato)  params.set('contato', lead.contato);
     if (lead.endereco) params.set('endereco', lead.endereco);
@@ -315,7 +347,7 @@ export default function ModalOrcamento() {
     if (lead.valorEstimado) params.set('valor', String(lead.valorEstimado));
     if (lead.frequenciaVisita) params.set('frequencia', lead.frequenciaVisita);
     const url = `/gerador-orcamento.html?${params.toString()}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(url, '_blank');
   }
 
   function iconeArquivo(tipo) {
