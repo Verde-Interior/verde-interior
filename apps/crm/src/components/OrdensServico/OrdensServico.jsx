@@ -41,7 +41,7 @@ export default function OrdensServico() {
         lead_id,
         cliente_id,
         leads ( empresa, contato, bairro, estagio_id ),
-        clientes ( nome_empresa, contato_principal )
+        clientes ( nome_empresa, contato_nome )
       `)
       .order('criada_em', { ascending: false });
 
@@ -84,7 +84,7 @@ export default function OrdensServico() {
     return '—';
   };
 
-  const contato = (os) => os.clientes?.contato_principal || os.leads?.contato || '—';
+  const contato = (os) => os.clientes?.contato_nome || os.leads?.contato || '—';
 
   return (
     <div className="os-page">
@@ -205,7 +205,7 @@ function ModalDetalhesOS({ os, onFechar }) {
   const st = STATUS_LABEL[os.status] ?? { label: os.status, cor: '#6B7280' };
   const nomeCliente = os.clientes?.nome_empresa || os.leads?.empresa || '—';
   const bairro = os.leads?.bairro || '';
-  const contato = os.clientes?.contato_principal || os.leads?.contato || '';
+  const contato = os.clientes?.contato_nome || os.leads?.contato || '';
 
   const linkOS = `/os.html?${new URLSearchParams({
     os: os.os_id,

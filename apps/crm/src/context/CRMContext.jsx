@@ -220,9 +220,13 @@ export function CRMProvider({ children }) {
   // Listener global: recebe do gerador-orcamento (aberto em outra aba) o
   // snapshot HTML da proposta gerada. Anexa direto no lead correspondente,
   // funcionando mesmo se o ModalOrcamento estiver fechado.
+  //
+  // 3 canais de entrega (redundantes de propósito):
+  //   1. BroadcastChannel — moderno, entre abas do mesmo origin
+  //   2. window.message (postMessage) — fallback pra aba filha
+  //   3. localStorage 'verde-pend-anexos' — drenado no mount
   useEffect(() => {
-    function onMsg(ev) {
-      const msg = ev.data;
+    function processarPayload(msg) {
       if (!msg || msg.type !== 'verde-proposta-gerada') return;
       if (!msg.leadId || !msg.html || !msg.orcNum) return;
 
@@ -241,19 +245,68 @@ export function CRMProvider({ children }) {
         const anexos = prev[idx].orcamentoAnexos ?? [];
         if (anexos.some((a) => a.nome === novoAnexo.nome)) return prev;
         const atualizado = { ...prev[idx], orcamentoAnexos: [...anexos, novoAnexo] };
-        // Persiste no Supabase
         persistLead(atualizado.id, atualizado);
-        // Se o modal está aberto no mesmo lead, atualiza a referência selecionada
-        // pra o ModalOrcamento renderizar o anexo novo imediatamente.
         setLeadSelecionado((cur) => (cur && String(cur.id) === String(msg.leadId) ? atualizado : cur));
         const copy = [...prev];
         copy[idx] = atualizado;
         return copy;
       });
     }
+
+    const onMsg = (ev) => processarPayload(ev.data);
+
+    // Canal 1: BroadcastChannel
+    let bc = null;
+    try {
+      bc = new BroadcastChannel('verde-interior-crm');
+      bc.addEventListener('message', onMsg);
+    } catch { /* nav antigo */ }
+
+    // Canal 2: window.postMessage (aba filha)
     window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
+
+    return () => {
+      window.removeEventListener('message', onMsg);
+      if (bc) bc.close();
+    };
   }, []);
+
+  // Canal 3: drena pendências do localStorage sempre que a lista de leads
+  // muda de tamanho (cobre o caso do gerador ter salvo o payload antes do
+  // CRM terminar de carregar os leads do Supabase). Idempotente — checa
+  // se o anexo já existe antes de adicionar.
+  useEffect(() => {
+    if (leads.length === 0) return;
+    let pend;
+    try {
+      pend = JSON.parse(localStorage.getItem('verde-pend-anexos') || '[]');
+    } catch { return; }
+    if (!pend.length) return;
+
+    const restante = [];
+    pend.forEach((msg) => {
+      if (!msg || msg.type !== 'verde-proposta-gerada') return;
+      const lead = leads.find((l) => String(l.id) === String(msg.leadId));
+      if (!lead) { restante.push(msg); return; } // lead ainda não carregou — manter pendente
+
+      const nome = `Proposta ${msg.orcNum}.html`;
+      const jaTem = (lead.orcamentoAnexos ?? []).some((a) => a.nome === nome);
+      if (jaTem) return; // já anexado antes
+
+      const b64 = btoa(unescape(encodeURIComponent(msg.html)));
+      const novoAnexo = { nome, tipo: 'text/html', tamanho: msg.html.length,
+        dados: `data:text/html;charset=utf-8;base64,${b64}`, origem: 'gerador' };
+      const atualizado = { ...lead, orcamentoAnexos: [...(lead.orcamentoAnexos ?? []), novoAnexo] };
+      persistLead(atualizado.id, atualizado);
+      setLeads((prev) => prev.map((l) => (l.id === atualizado.id ? atualizado : l)));
+      setLeadSelecionado((cur) => (cur && String(cur.id) === String(atualizado.id) ? atualizado : cur));
+    });
+
+    try {
+      if (restante.length === 0) localStorage.removeItem('verde-pend-anexos');
+      else localStorage.setItem('verde-pend-anexos', JSON.stringify(restante));
+    } catch { /* ignora */ }
+  }, [leads.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_TAREFAS, JSON.stringify(tarefas));

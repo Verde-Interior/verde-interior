@@ -1004,21 +1004,42 @@ function gerarProposta() {
   const numeroOrc = formatarNumeroOrc(orcAtribuido||lerContador());
   showToast('✓ Proposta '+numeroOrc+' validada! Abrindo impressão...',false);
 
-  // Se o gerador foi aberto pelo CRM (via ModalOrcamento), envia snapshot
-  // da proposta de volta para o lead ser anexado automaticamente.
+  // Envia snapshot da proposta de volta pro CRM (mesma origem) via 3 canais:
+  //   1. BroadcastChannel — funciona entre quaisquer abas do mesmo origin
+  //   2. window.opener.postMessage — fallback pra abas antigas
+  //   3. localStorage — última rede: CRM consome no próximo mount se offline
   try {
     const params  = new URLSearchParams(window.location.search);
     const leadId  = params.get('lead_id');
-    if (window.opener && leadId) {
+    if (leadId) {
       const snapshotHtml = '<!doctype html>' + document.documentElement.outerHTML;
-      window.opener.postMessage({
+      const payload = {
         type:    'verde-proposta-gerada',
         leadId,
         orcNum:  numeroOrc,
         html:    snapshotHtml,
-      }, '*');
+        ts:      Date.now(),
+      };
+      // Canal 1: BroadcastChannel (moderno, funciona entre abas)
+      try {
+        const bc = new BroadcastChannel('verde-interior-crm');
+        bc.postMessage(payload);
+        bc.close();
+      } catch (e) { /* nav muito antigo */ }
+      // Canal 2: window.opener (aba filha aberta pelo botão do CRM)
+      try {
+        if (window.opener) window.opener.postMessage(payload, '*');
+      } catch (e) { /* opener bloqueado */ }
+      // Canal 3: localStorage (fallback offline). CRM consome no mount.
+      try {
+        const pend = JSON.parse(localStorage.getItem('verde-pend-anexos') || '[]');
+        // Só guarda os últimos 20 (evita crescer sem controle)
+        pend.push(payload); if (pend.length > 20) pend.splice(0, pend.length - 20);
+        localStorage.setItem('verde-pend-anexos', JSON.stringify(pend));
+      } catch (e) { /* quota / privado */ }
+      showToast('✓ Proposta anexada ao lead no CRM', false);
     }
-  } catch (e) { /* opener bloqueado ou tab fechada — ignora silenciosamente */ }
+  } catch (e) { /* nada crítico — impressão continua */ }
 
   setTimeout(()=>window.print(),600);
 }
