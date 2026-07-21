@@ -129,35 +129,35 @@ function changePassword() {
 }
 
 // Reset de senha (Fase 5) — colaborador esqueceu a senha.
-// Requer:
-//   1. Coluna `email_recuperacao` em profiles (migration 018)
-//   2. SMTP customizado configurado no Supabase Auth (senão o e-mail nunca chega)
-//   3. Rota /reset.html publicada (essa página lê o token da hash e chama
-//      supabase.auth.updateUser({ password }))
 //
-// Usuário digita o e-mail real dele. Se bater com o email_recuperacao de
-// algum profile, o Supabase manda o link. Se não bater, silêncio (não
-// vaza qual e-mail está cadastrado).
+// Como nossos auth users têm e-mail interno fake (`beto@vi.app`),
+// o supabase.auth.resetPasswordForEmail entregaria numa caixa que não existe.
+// Por isso delegamos para a Edge Function `send-reset-email`, que:
+//   1. Busca o profile pelo email_recuperacao (com service_role, ignora RLS)
+//   2. Gera o link de recovery via admin.generateLink
+//   3. Envia direto para o e-mail real via API HTTP do Resend
+//
+// Requer:
+//   - Migration 018 (coluna email_recuperacao em profiles)
+//   - Edge Function `send-reset-email` deployada
+//   - Secret RESEND_API_KEY configurada no projeto Supabase
+//   - Domínio verificado no Resend (ou usar onboarding@resend.dev pra teste)
+//
+// Silêncio se e-mail não achado — não vaza quais estão cadastrados.
 export async function solicitarResetSenha(emailReal) {
   if (!emailReal || !emailReal.includes('@')) {
     return { error: { message: 'E-mail inválido' } };
   }
-  // Descobre o auth email interno ({username}@vi.app) a partir do email_recuperacao
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, username')
-    .eq('email_recuperacao', emailReal.trim().toLowerCase())
-    .maybeSingle();
-
-  // Silêncio se não achou — não vaza qual email está cadastrado
-  if (!profile) return { error: null, sent: false };
-
-  const authEmail = `${profile.username}@vi.app`;
   const redirectTo = new URL('/reset.html', window.location.origin).toString();
-  const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
-    redirectTo,
+  const { data, error } = await supabase.functions.invoke('send-reset-email', {
+    body: {
+      email_recuperacao: emailReal.trim().toLowerCase(),
+      redirect_to: redirectTo,
+    },
   });
-  return { error, sent: !error };
+  if (error) return { error, sent: false };
+  if (data?.error) return { error: { message: data.error }, sent: false };
+  return { error: null, sent: !!data?.sent };
 }
 
 export const AUTH = {
