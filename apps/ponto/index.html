@@ -60,6 +60,20 @@
       <div class="lspinner" id="lspinner"></div>
     </button>
     <div class="lfooter">Ponto &amp; Banco de Horas — Verde Interior</div>
+    <button class="lforgot" onclick="toggleEsqueci()" type="button">Esqueci minha senha</button>
+    <div id="esqueci-panel" style="display:none;margin-top:14px">
+      <div class="lfield">
+        <label>Seu e-mail de recuperação</label>
+        <input type="email" id="esqueci-email" placeholder="email@exemplo.com"
+          autocomplete="email" autocapitalize="none" spellcheck="false"
+          onkeydown="if(event.key==='Enter')enviarResetSenha()">
+      </div>
+      <div id="esqueci-msg" style="display:none;margin-top:8px;padding:9px 11px;border-radius:7px;font-size:12px"></div>
+      <button class="lbtn" style="margin-top:10px" onclick="enviarResetSenha()" id="esqueci-btn">
+        <span id="esqueci-btntxt"><i class="fa-solid fa-envelope"></i>&nbsp;Enviar link de redefinição</span>
+        <div class="lspinner" id="esqueci-spinner" style="display:none"></div>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -378,6 +392,21 @@
   </div>
 </div>
 </div><!-- /app -->
+
+<!-- Modal redefinir senha (admin) -->
+<div id="reset-pwd-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:min(400px,100%);max-height:90vh;overflow-y:auto">
+    <div class="sl" style="margin-bottom:.5rem">Redefinir senha</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem">Colaborador: <strong id="reset-pwd-empnome">—</strong></p>
+    <input type="hidden" id="reset-pwd-empidx">
+    <div class="fr"><label>Nova senha (mínimo 6 caracteres)</label><input type="password" id="reset-pwd-nova" placeholder="••••••••" autocomplete="new-password"></div>
+    <div id="reset-pwd-msg" style="display:none;margin-top:8px;padding:9px 11px;border-radius:7px;font-size:12px"></div>
+    <div style="display:flex;gap:8px;margin-top:1rem">
+      <button class="bg" onclick="confirmarAdminResetSenha()"><i class="fa-solid fa-key"></i> Redefinir</button>
+      <button class="bsm" onclick="fecharModalResetPwd()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal editar colaborador -->
 <div id="edit-emp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem">

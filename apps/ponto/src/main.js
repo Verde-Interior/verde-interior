@@ -8,7 +8,7 @@ import { renderMirror, printMirror } from './mirror.js';
 import { handleFiles, removeFile, handleDrag, handleDrop } from './upload.js';
 import { sendJust } from './justs.js';
 import { resolveJ, renderEdit, delER, openAdd, closeAdd, saveAdd, expCSV, expXLSX } from './admin.js';
-import { addEmp, removeEmp, resetAll, editEmp, closeEditEmp, saveEditEmp } from './config.js';
+import { addEmp, removeEmp, resetAll, editEmp, closeEditEmp, saveEditEmp, adminResetSenha, fecharModalResetPwd, confirmarAdminResetSenha } from './config.js';
 import { buildBars, selU, selEU, setV, setSv, setAs } from './nav.js';
 import { installPWA, dismissInstall, applyUpdate } from './pwa.js';
 import { requestNotifyPermission, startNotifyChecker } from './notify.js';
@@ -48,18 +48,61 @@ window.closeAdd       = closeAdd;
 window.saveAdd        = saveAdd;
 window.expCSV         = expCSV;
 window.expXLSX        = expXLSX;
-window.addEmp         = addEmp;
-window.removeEmp      = removeEmp;
-window.resetAll       = resetAll;
-window.editEmp        = editEmp;
-window.closeEditEmp   = closeEditEmp;
-window.saveEditEmp    = saveEditEmp;
+window.addEmp                   = addEmp;
+window.removeEmp                = removeEmp;
+window.resetAll                 = resetAll;
+window.editEmp                  = editEmp;
+window.closeEditEmp             = closeEditEmp;
+window.saveEditEmp              = saveEditEmp;
+window.adminResetSenha          = adminResetSenha;
+window.fecharModalResetPwd      = fecharModalResetPwd;
+window.confirmarAdminResetSenha = confirmarAdminResetSenha;
 window.setV           = setV;
 window.setSv          = setSv;
 window.setAs          = setAs;
 window.selU           = selU;
 window.selEU          = selEU;
 window.buildBars      = buildBars;
+// ── Esqueci minha senha ──────────────────────────────────────────
+window.toggleEsqueci = function() {
+  const panel = document.getElementById('esqueci-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block') document.getElementById('esqueci-email').focus();
+};
+
+window.enviarResetSenha = async function() {
+  const email  = (document.getElementById('esqueci-email').value || '').trim();
+  const msgEl  = document.getElementById('esqueci-msg');
+  const btn    = document.getElementById('esqueci-btn');
+  const btntxt = document.getElementById('esqueci-btntxt');
+  const spin   = document.getElementById('esqueci-spinner');
+
+  function showMsg(txt, ok) {
+    msgEl.textContent   = txt;
+    msgEl.style.display = 'block';
+    msgEl.style.background = ok ? '#ecfdf5' : '#fef2f2';
+    msgEl.style.color      = ok ? '#065f46' : '#991b1b';
+    msgEl.style.border     = ok ? '1px solid #a7f3d0' : '1px solid #fecaca';
+  }
+
+  if (!email || !email.includes('@')) { showMsg('Informe um e-mail válido.', false); return; }
+
+  btn.disabled = true;
+  btntxt.style.display = 'none';
+  spin.style.display   = 'block';
+
+  const { error } = await AUTH.solicitarResetSenha(email);
+
+  btn.disabled = false;
+  btntxt.style.display = '';
+  spin.style.display   = 'none';
+
+  if (error) { showMsg('Erro: ' + error.message, false); return; }
+  // Always show success (don't leak which emails are registered)
+  showMsg('Se esse e-mail estiver cadastrado, você receberá o link em instantes.', true);
+  document.getElementById('esqueci-email').value = '';
+};
+
 window.requestNotifyPermission = requestNotifyPermission;
 window.startNotifyChecker      = startNotifyChecker;
 window.installPWA              = installPWA;

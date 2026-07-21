@@ -1,0 +1,279 @@
+/* OrdensServico.css */
+.os-page {
+  padding: 1.5rem;
+  max-width: 1200px;
+}
+
+.os-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.os-page__titulo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text, #111827);
+  margin-bottom: 3px;
+}
+
+.os-page__sub {
+  font-size: 13px;
+  color: var(--text2, #6B7280);
+}
+
+/* Filtros */
+.os-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 1.25rem;
+}
+
+.os-filtro {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.os-filtro:hover { border-color: #9CA3AF; color: #374151; }
+
+.os-filtro--ativo {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.os-filtro__count {
+  background: rgba(255,255,255,.25);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.os-filtro--ativo .os-filtro__count { background: rgba(255,255,255,.2); }
+
+/* Badge */
+.os-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--os-cor) 15%, white);
+  color: var(--os-cor);
+}
+
+/* Tabela */
+.os-tabela-wrap { overflow-x: auto; }
+
+.os-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.os-tabela th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 8px 10px;
+  border-bottom: 1px solid #E5E7EB;
+  white-space: nowrap;
+}
+
+.os-tabela td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #F3F4F6;
+  vertical-align: middle;
+}
+
+.os-tabela__tr:hover td { background: #F9FAFB; }
+.os-tabela__tr--cancelada td { opacity: .55; }
+.os-tabela__tr--concluida td { background: #F0FDF4; }
+
+.os-tabela__empresa { font-weight: 600; color: #111827; max-width: 180px; }
+.os-tabela__origem  { font-size: 11px; color: #9CA3AF; }
+
+.os-id-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #2563EB;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.os-id-btn:hover { color: #1D4ED8; }
+
+/* Ações */
+.os-acoes {
+  display: flex;
+  gap: 5px;
+}
+
+.os-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all .15s;
+}
+
+.os-btn--prim {
+  background: #2d5a1b;
+  color: #fff;
+  border-color: #2d5a1b;
+}
+.os-btn--prim:hover { background: #234510; }
+
+.os-btn--sec {
+  background: #fff;
+  color: #374151;
+  border-color: #D1D5DB;
+}
+.os-btn--sec:hover { background: #F3F4F6; }
+
+.os-btn--danger {
+  background: #fff;
+  color: #EF4444;
+  border-color: #FCA5A5;
+}
+.os-btn--danger:hover { background: #FEF2F2; }
+
+.os-btn--copy {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #BFDBFE;
+}
+.os-btn--copy:hover { background: #DBEAFE; }
+
+.os-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Loading / vazio */
+.os-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+.os-vazio {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+.os-vazio__hint {
+  font-size: 12px;
+  margin-top: 6px;
+  color: #D1D5DB;
+}
+
+/* Overlay / Modal */
+.os-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.os-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: min(480px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.os-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem .75rem;
+  border-bottom: 1px solid #F3F4F6;
+  gap: .75rem;
+}
+
+.os-modal__titulo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #111827;
+  margin-bottom: 5px;
+}
+
+.os-modal__fechar {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #9CA3AF;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.os-modal__fechar:hover { color: #374151; }
+
+.os-modal__corpo { padding: 1rem 1.25rem; flex: 1; }
+
+.os-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.os-dl dt {
+  font-weight: 600;
+  color: #6B7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.os-dl dd { color: #111827; margin: 0; }
+
+.os-modal__footer {
+  display: flex;
+  gap: 8px;
+  padding: .875rem 1.25rem;
+  border-top: 1px solid #F3F4F6;
+  flex-wrap: wrap;
+}

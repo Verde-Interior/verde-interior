@@ -18,6 +18,7 @@ import Clientes from './components/Clientes/Clientes';
 import EscalaCampo from './components/EscalaCampo/EscalaCampo';
 import Relatorios from './components/Relatorios/Relatorios';
 import Estoque from './components/Estoque/Estoque';
+import OrdensServico from './components/OrdensServico/OrdensServico';
 import './App.css';
 
 const IconDashboard = () => (
@@ -111,10 +112,20 @@ const IconEstoque = () => (
   </svg>
 );
 
+const IconOS = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="1.5" width="10" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M5 5h6M5 7.5h6M5 10h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <circle cx="13" cy="12" r="2.5" fill="currentColor"/>
+    <path d="M12.2 12l.6.7 1.2-1.2" stroke="white" strokeWidth=".9" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const NAV_ITEMS_TOP = [
   { id: 'dashboard',  Icon: IconDashboard, label: 'Dashboard' },
   { id: 'kanban',     Icon: IconPipeline,  label: 'Pipeline'  },
   { id: 'execucao',   Icon: IconExecucao,  label: 'Execução'  },
+  { id: 'os',         Icon: IconOS,        label: 'Ordens OS' },
   { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
   { id: 'escala',     Icon: IconEscala,    label: 'Escala'    },
   { id: 'relatorios', Icon: IconRelatorios,label: 'Relatórios'},
@@ -215,6 +226,7 @@ function AppLayout() {
         {tela === 'dashboard'     && <Dashboard onNavegar={setTela} />}
         {tela === 'kanban'        && <KanbanBoard />}
         {tela === 'execucao'      && <FunilExecucao />}
+        {tela === 'os'            && <OrdensServico />}
         {tela === 'clientes'      && <Clientes />}
         {tela === 'escala'        && <EscalaCampo />}
         {tela === 'relatorios'    && <Relatorios />}

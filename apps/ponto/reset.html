@@ -24,24 +24,9 @@
       width: 100%;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
     }
-    h1 {
-      font-size: 20px;
-      color: #2d5a1b;
-      margin-bottom: 8px;
-    }
-    p.sub {
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 22px;
-      line-height: 1.4;
-    }
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      color: #333;
-      margin: 12px 0 6px;
-    }
+    h1 { font-size: 20px; color: #2d5a1b; margin-bottom: 8px; }
+    p.sub { font-size: 13px; color: #666; margin-bottom: 22px; line-height: 1.4; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #333; margin: 12px 0 6px; }
     input {
       width: 100%;
       padding: 11px 12px;
@@ -50,11 +35,7 @@
       font-size: 15px;
       font-family: inherit;
     }
-    input:focus {
-      outline: none;
-      border-color: #2d5a1b;
-      box-shadow: 0 0 0 3px rgba(45,90,27,0.12);
-    }
+    input:focus { outline: none; border-color: #2d5a1b; box-shadow: 0 0 0 3px rgba(45,90,27,0.12); }
     button {
       width: 100%;
       margin-top: 22px;
@@ -70,25 +51,12 @@
     }
     button:hover:not(:disabled) { background: #234510; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .msg {
-      margin-top: 14px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      display: none;
-    }
-    .msg--ok    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-    .msg--erro  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .msg--info  { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-    .msg.show   { display: block; }
-    .voltar {
-      display: block;
-      text-align: center;
-      margin-top: 20px;
-      font-size: 13px;
-      color: #666;
-      text-decoration: none;
-    }
+    .msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
+    .msg--ok   { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .msg--erro { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .msg--info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .msg.show  { display: block; }
+    .voltar { display: block; text-align: center; margin-top: 20px; font-size: 13px; color: #666; text-decoration: none; }
     .voltar:hover { color: #2d5a1b; }
   </style>
 </head>
@@ -116,29 +84,25 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-    // ⚠ IMPORTANTE: as credenciais precisam bater com o app principal.
-    // Se rodar em produção, considerar injetar essas vars via build step
-    // (import.meta.env) em vez de hardcode. Por ora, hardcode pra simplicidade.
-    const SUPABASE_URL = window.__SUPA_URL__;
-    const SUPABASE_KEY = window.__SUPA_KEY__;
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const loading = document.getElementById('loading');
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      document.getElementById('loading').textContent = '⚠ Configuração ausente. Configure window.__SUPA_URL__ e window.__SUPA_KEY__ antes de servir esta página (por exemplo via um <script> injetado pelo Vite ou pelo servidor).';
-      document.getElementById('loading').className = 'msg msg--erro show';
+      loading.textContent = '⚠ Configuração ausente. Variáveis VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY não definidas.';
+      loading.className = 'msg msg--erro show';
     } else {
       const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // O Supabase manda link com #access_token=...&type=recovery na hash.
-      // Ao criar o client, ele processa a hash automaticamente e cria uma sessão temp.
+      // Supabase appends #access_token=...&type=recovery to the URL.
+      // Creating the client processes the hash automatically and sets a temp session.
       (async () => {
-        // Pequena espera para o Supabase parsear a hash
         await new Promise(r => setTimeout(r, 300));
         const { data } = await supabase.auth.getSession();
-        const loading = document.getElementById('loading');
-        const form    = document.getElementById('formulario');
         if (data?.session) {
           loading.style.display = 'none';
-          form.style.display = 'block';
+          document.getElementById('formulario').style.display = 'block';
           document.getElementById('p1').focus();
         } else {
           loading.textContent = '⚠ Link inválido ou expirado. Solicite um novo link na tela de login.';

@@ -12,6 +12,9 @@ export function renderConfig() {
         <div class="cfg-info">${esc(e.cargo)} · ${esc(e.c)} · ${e.j}h/dia · Banco: <strong style="color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</strong></div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="adminResetSenha(${i})" class="bsm" style="padding:5px 10px" title="Redefinir senha de ${esc(e.name)}">
+          <i class="fa-solid fa-key" style="font-size:12px"></i>
+        </button>
         <button onclick="editEmp(${i})" class="bsm" style="padding:5px 10px" title="Editar ${esc(e.name)}">
           <i class="fa-solid fa-pen" style="font-size:12px"></i>
         </button>
@@ -129,6 +132,67 @@ export function removeEmp(i) {
     renderConfig();
     toast(`${name} removido(a)`);
   })();
+}
+
+export function adminResetSenha(empIdx) {
+  const emp = state.EMP[empIdx];
+  if (!emp) return;
+  document.getElementById('reset-pwd-empnome').textContent = emp.name;
+  document.getElementById('reset-pwd-empidx').value = empIdx;
+  document.getElementById('reset-pwd-nova').value = '';
+  const msgEl = document.getElementById('reset-pwd-msg');
+  msgEl.style.display = 'none';
+  document.getElementById('reset-pwd-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('reset-pwd-nova').focus(), 100);
+}
+
+export function fecharModalResetPwd() {
+  document.getElementById('reset-pwd-modal').style.display = 'none';
+}
+
+export async function confirmarAdminResetSenha() {
+  const empIdx   = parseInt(document.getElementById('reset-pwd-empidx').value);
+  const novaSenha = document.getElementById('reset-pwd-nova').value.trim();
+  const msgEl    = document.getElementById('reset-pwd-msg');
+
+  function showMsg(txt, ok) {
+    msgEl.textContent = txt;
+    msgEl.style.display = 'block';
+    msgEl.style.background  = ok ? '#ecfdf5' : '#fef2f2';
+    msgEl.style.color       = ok ? '#065f46' : '#991b1b';
+    msgEl.style.border      = ok ? '1px solid #a7f3d0' : '1px solid #fecaca';
+  }
+
+  if (novaSenha.length < 6) { showMsg('Mínimo 6 caracteres.', false); return; }
+
+  const emp = state.EMP[empIdx];
+  if (!emp) { showMsg('Colaborador não encontrado.', false); return; }
+
+  // Look up auth user UUID via profiles.employee_id
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('employee_id', emp.id)
+    .maybeSingle();
+
+  if (!profile) {
+    showMsg('Perfil não encontrado. O colaborador precisa ter feito login ao menos uma vez.', false);
+    return;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await supabase.functions.invoke('admin-reset-password', {
+    body: { user_id: profile.id, nova_senha: novaSenha },
+    headers: { Authorization: `Bearer ${session?.access_token}` },
+  });
+
+  if (res.error || res.data?.error) {
+    showMsg('Erro: ' + (res.data?.error || res.error?.message), false);
+    return;
+  }
+
+  fecharModalResetPwd();
+  toast(`✓ Senha de ${emp.name} redefinida com sucesso`);
 }
 
 export function resetAll() {

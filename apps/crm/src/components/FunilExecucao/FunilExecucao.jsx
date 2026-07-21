@@ -22,6 +22,7 @@ export default function FunilExecucao() {
 
   const [saldos, setSaldos] = useState([]); // [{ material_id, nome, categoria, saldo_total, controla_posse }]
   const [employees, setEmployees] = useState([]);
+  const [osMap, setOsMap] = useState(new Map()); // Map<lead_id, os_id>
   const [modalMateriais, setModalMateriais] = useState(null); // lead
   const [modalAgendar, setModalAgendar] = useState(null);     // lead
   const [copiadoId, setCopiadoId] = useState(null);           // lead.id com feedback "copiado"
@@ -41,6 +42,20 @@ export default function FunilExecucao() {
     () => leads.filter((l) => l.estagioId === 'orcamento_aprovado'),
     [leads]
   );
+
+  // Fetch os_id from ordens_servico whenever approved leads change
+  useEffect(() => {
+    if (!leadsAprovados.length) return;
+    const ids = leadsAprovados.map(l => l.id);
+    supabase
+      .from('ordens_servico')
+      .select('lead_id, os_id')
+      .in('lead_id', ids)
+      .then(({ data }) => {
+        if (!data) return;
+        setOsMap(new Map(data.map(r => [r.lead_id, r.os_id])));
+      });
+  }, [leadsAprovados]);
 
   const total = leadsAprovados.length;
   const valorTotal = leadsAprovados.reduce((s, l) => s + (l.valorEstimado ?? 0), 0);
@@ -69,9 +84,10 @@ export default function FunilExecucao() {
 
   // ── Link da OS pré-preenchido com dados do lead ──────────────────────────
   function gerarLinkOS(lead) {
+    const osId = osMap.get(lead.id) ?? `OS-${String(lead.id).slice(0, 8).toUpperCase()}`;
     const params = new URLSearchParams({
       cliente:  lead.empresa ?? '',
-      os:       `OS-${String(lead.id).slice(0, 8).toUpperCase()}`,
+      os:       osId,
       bairro:   lead.bairro ?? '',
       contato:  lead.contato ?? '',
       telefone: lead.telefone ?? '',
