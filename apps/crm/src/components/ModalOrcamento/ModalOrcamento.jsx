@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
+import SecaoHistorico from './sections/SecaoHistorico';
 import './ModalOrcamento.css';
 
 const ICONE_CANAL = { WhatsApp: '💬', 'E-mail': '✉️', Telefone: '📞', Indicação: '🤝' };
@@ -1549,24 +1550,7 @@ export default function ModalOrcamento() {
           </section>
 
           {/* ── Histórico de Atividades ── */}
-          {(lead.historico?.length > 0) && (
-            <section className="modal__secao modal__secao--historico">
-              <h3 className="modal__secao-titulo">📋 Histórico de Atividades</h3>
-              <div className="modal__historico-lista">
-                {[...(lead.historico)].reverse().map((entry) => {
-                  const ICONE = { estagio: '🔄', followup: '📅', orcamento: '📎', visita: '🗺️' };
-                  const dataFmt = new Date(entry.data + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
-                  return (
-                    <div key={entry.id} className={`modal__historico-item modal__historico-item--${entry.tipo}`}>
-                      <span className="modal__historico-icone">{ICONE[entry.tipo] ?? '📌'}</span>
-                      <span className="modal__historico-desc">{entry.descricao}</span>
-                      <span className="modal__historico-data">{dataFmt}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+          <SecaoHistorico historico={lead.historico} />
 
         </div>
 
