@@ -42,34 +42,10 @@ export default function ModalOrcamento() {
   }, [modalAberto]);
 
   // Carrega agendamentos deste lead (para listar/cancelar)
-  // Recebe do gerador-orcamento (aberto em outra aba) o HTML snapshot
-  // da proposta gerada. Adiciona como anexo do lead atual automaticamente.
-  useEffect(() => {
-    if (!leadSelecionado?.id) return;
-    function onMsg(ev) {
-      const msg = ev.data;
-      if (!msg || msg.type !== 'verde-proposta-gerada') return;
-      if (String(msg.leadId) !== String(leadSelecionado.id)) return;
-      if (!msg.html || !msg.orcNum) return;
-
-      // Data URL em base64 (btoa exige latin1, então converto UTF-8 antes)
-      const b64 = btoa(unescape(encodeURIComponent(msg.html)));
-      const novoAnexo = {
-        nome:    `Proposta ${msg.orcNum}.html`,
-        tipo:    'text/html',
-        tamanho: msg.html.length,
-        dados:   `data:text/html;charset=utf-8;base64,${b64}`,
-        origem:  'gerador',
-      };
-      setAnexos((prev) => {
-        // Evita duplicar se o usuário clicar "Gerar" várias vezes
-        if (prev.some((a) => a.nome === novoAnexo.nome)) return prev;
-        return [...prev, novoAnexo];
-      });
-    }
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, [leadSelecionado?.id]);
+  // Nota: o listener de proposta-gerada agora vive no CRMProvider (global),
+  // pra funcionar mesmo se o modal for fechado antes do usuário confirmar
+  // a impressão do PDF. Quando o lead é atualizado no context, o modal
+  // detecta via `leadSelecionado` e re-renderiza a lista de anexos.
 
   useEffect(() => {
     if (!leadSelecionado?.id) { setAgendasDoLead([]); return; }
@@ -341,8 +317,10 @@ export default function ModalOrcamento() {
     if (lead.bairro)   params.set('bairro', lead.bairro);
     if (lead.telefone) params.set('telefone', lead.telefone);
     if (lead.email)    params.set('email', lead.email);
-    const primario = getTiposServico(lead)[0];
-    if (primario) params.set('servico', primario);
+    // Envia TODOS os tipos de serviço (separados por vírgula), pra que o
+    // gerador ative os checkboxes corretos e não fique com "venda" default.
+    const tipos = getTiposServico(lead);
+    if (tipos.length) params.set('servico', tipos.join(','));
     if (lead.quantidadeVasos) params.set('qtd_vasos', String(lead.quantidadeVasos));
     if (lead.valorEstimado) params.set('valor', String(lead.valorEstimado));
     if (lead.frequenciaVisita) params.set('frequencia', lead.frequenciaVisita);
@@ -494,18 +472,6 @@ export default function ModalOrcamento() {
     );
   }
 
-  // ── Visitas ───────────────────────────────────────────────────────────────
-  function adicionarVisita() {
-    if (visitas.length >= 2) return;
-    setVisitas((prev) => [...prev, { id: `v-${Date.now()}`, data: '', obs: '' }]);
-  }
-  function atualizarVisita(idx, campo, valor) {
-    setVisitas((prev) => prev.map((v, i) => i === idx ? { ...v, [campo]: valor } : v));
-  }
-  function removerVisita(idx) {
-    setVisitas((prev) => prev.filter((_, i) => i !== idx));
-  }
-
   // ── Agendar visita técnica na Escala (lead → agenda) ──────────────────────
   // Cria row em `agenda` com lead_id (sem cliente_id — vira visita "lead" na Escala).
   // Uma tarefa correspondente também é criada em `tarefas` para não perder rastro no CRM.
@@ -538,6 +504,14 @@ export default function ModalOrcamento() {
 
     setAgendasDoLead((prev) => [...prev, data]);
     setAgendarForm({ funcionarioId: '', dataAgendada: '', horaEstimada: '', duracaoMin: 60, observacoes: '' });
+
+    // Também alimenta o state `visitas` (usado por criarFluxoOrcamento pra
+    // aplicar o prazo estendido de 6 dias na Tarefa 1)
+    setVisitas((prev) => {
+      if (prev.some((v) => v.data === dataAgendada)) return prev;
+      return [...prev, { id: `v-${Date.now()}`, data: dataAgendada, obs: (observacoes || '').slice(0, 80) }];
+    });
+
     // Registra no histórico do lead
     const hoje = new Date().toISOString().split('T')[0];
     const funcNome = funcionarios.find((f) => String(f.id) === String(funcionarioId))?.name ?? 'colaborador';
@@ -888,38 +862,6 @@ export default function ModalOrcamento() {
               </div>
             )}
           </section>
-
-          {/* ── Visitas técnicas (sempre editável) ── */}
-          <div className="modal__visitas-bloco">
-            <span className="modal__label">🗓 Visita Técnica</span>
-            {visitas.map((v, idx) => (
-              <div key={v.id} className="modal__visita-item">
-                <span className="modal__visita-num">Visita {idx + 1}</span>
-                <input
-                  type="date"
-                  className="modal__input modal__visita-input"
-                  value={v.data}
-                  onChange={(e) => atualizarVisita(idx, 'data', e.target.value)}
-                />
-                <input
-                  type="text"
-                  className="modal__input modal__visita-obs"
-                  value={v.obs}
-                  placeholder="Obs. (opcional)"
-                  onChange={(e) => atualizarVisita(idx, 'obs', e.target.value)}
-                />
-                <button className="modal__visita-remover" onClick={() => removerVisita(idx)} title="Remover visita">✕</button>
-              </div>
-            ))}
-            {visitas.length < 2 && (
-              <button className="modal__visita-add" onClick={adicionarVisita}>
-                + Agendar visita técnica
-              </button>
-            )}
-            {visitas.length > 0 && fluxo?.t1?.status === 'pendente' && (
-              <p className="modal__visita-hint">📌 Com visita agendada, o prazo da Tarefa 1 é de 6 dias.</p>
-            )}
-          </div>
 
           {/* ── Publicar visita na Escala do Campo ────────────────────────── */}
           <section className="modal__secao modal__secao--agenda-lead">

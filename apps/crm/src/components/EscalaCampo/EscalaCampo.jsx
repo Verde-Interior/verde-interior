@@ -99,7 +99,7 @@ export default function EscalaCampo() {
     // é a fonte de dados exibidos no cartão.
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng)')
+      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
       .neq('status', 'cancelado')
@@ -112,17 +112,28 @@ export default function EscalaCampo() {
       // `__isLead` para o cartão distinguir visualmente.
       const enriched = (data ?? []).map((v) => {
         if (!v.clientes && v.leads) {
+          const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
+            ? v.leads.tipos_servico[0]
+            : null;
           return {
             ...v,
             __isLead: true,
             clientes: {
-              nome_empresa: v.leads.empresa,
-              bairro:       v.leads.bairro,
-              lat:          v.leads.lat,
-              lng:          v.leads.lng,
-              // dias_disponiveis, janela, frequencia_visita ficam ausentes ⇒
-              // o otimizador de rota trata como "sem restrição".
+              nome_empresa:      v.leads.empresa,
+              bairro:            v.leads.bairro,
+              lat:               v.leads.lat,
+              lng:               v.leads.lng,
+              frequencia_visita: v.leads.frequencia_visita,
+              contato:           v.leads.contato,
+              telefone:          v.leads.telefone,
+              endereco:          v.leads.endereco,
+              // dias_disponiveis, janela ficam ausentes ⇒ sem restrição pro otimizador.
             },
+            // Se o lead tem tipos_servico, fabricamos um cliente_servicos
+            // pra o cartão exibir a cor/tag correta (venda/manutencao/etc).
+            cliente_servicos: v.cliente_servicos ?? (
+              tipoPrimario ? { tipo_servico: tipoPrimario, frequencia: v.leads.frequencia_visita ?? null } : null
+            ),
           };
         }
         return v;

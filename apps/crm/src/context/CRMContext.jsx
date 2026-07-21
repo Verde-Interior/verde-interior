@@ -217,6 +217,44 @@ export function CRMProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
   }, [leads]);
 
+  // Listener global: recebe do gerador-orcamento (aberto em outra aba) o
+  // snapshot HTML da proposta gerada. Anexa direto no lead correspondente,
+  // funcionando mesmo se o ModalOrcamento estiver fechado.
+  useEffect(() => {
+    function onMsg(ev) {
+      const msg = ev.data;
+      if (!msg || msg.type !== 'verde-proposta-gerada') return;
+      if (!msg.leadId || !msg.html || !msg.orcNum) return;
+
+      const b64 = btoa(unescape(encodeURIComponent(msg.html)));
+      const novoAnexo = {
+        nome:    `Proposta ${msg.orcNum}.html`,
+        tipo:    'text/html',
+        tamanho: msg.html.length,
+        dados:   `data:text/html;charset=utf-8;base64,${b64}`,
+        origem:  'gerador',
+      };
+
+      setLeads((prev) => {
+        const idx = prev.findIndex((l) => String(l.id) === String(msg.leadId));
+        if (idx < 0) return prev;
+        const anexos = prev[idx].orcamentoAnexos ?? [];
+        if (anexos.some((a) => a.nome === novoAnexo.nome)) return prev;
+        const atualizado = { ...prev[idx], orcamentoAnexos: [...anexos, novoAnexo] };
+        // Persiste no Supabase
+        persistLead(atualizado.id, atualizado);
+        // Se o modal está aberto no mesmo lead, atualiza a referência selecionada
+        // pra o ModalOrcamento renderizar o anexo novo imediatamente.
+        setLeadSelecionado((cur) => (cur && String(cur.id) === String(msg.leadId) ? atualizado : cur));
+        const copy = [...prev];
+        copy[idx] = atualizado;
+        return copy;
+      });
+    }
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_TAREFAS, JSON.stringify(tarefas));
   }, [tarefas]);

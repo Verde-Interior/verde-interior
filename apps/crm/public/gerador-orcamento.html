@@ -1143,16 +1143,34 @@ document.addEventListener('DOMContentLoaded',()=>{
     const temQS=qs.toString().length>0;
     // Rascunho tem prioridade menor que query string
     if(!temQS){ restaurarRascunho(); }
+
     if(qs.get('empresa'))   document.getElementById('cli-empresa').value=qs.get('empresa');
     if(qs.get('contato'))   document.getElementById('cli-nome').value=qs.get('contato');
     if(qs.get('email'))     document.getElementById('cli-email').value=qs.get('email');
     if(qs.get('telefone'))  document.getElementById('cli-telefone').value=qs.get('telefone');
     if(qs.get('bairro'))    document.getElementById('cli-local').value=qs.get('bairro');
     else if(qs.get('endereco')) document.getElementById('cli-local').value=qs.get('endereco');
-    // Mapeamento do tipoServico do CRM → checkbox do gerador
+
+    // Quantidade de plantas por mês (usada em locação/manut recorrente)
+    if(qs.get('qtd_vasos')){
+      const el=document.getElementById('rep-qtd');
+      if(el){ el.value = qs.get('qtd_vasos'); }
+    }
+
+    // Mapeamento do tipo de serviço do CRM → checkbox do gerador.
+    // Aceita `servico` único ou lista separada por vírgula (múltiplos serviços).
     const svcMap={venda:'venda',reforma:'reforma',locacao:'locacao',locacao_evento:'eventos',manutencao:'manut-rec'};
-    const svcKey=svcMap[qs.get('servico')];
-    if(svcKey && typeof toggleM==='function' && !M[svcKey]){ toggleM(svcKey); }
+    const servicosCrm = (qs.get('servico') || '').split(',').map(s => s.trim()).filter(Boolean);
+    if(servicosCrm.length && typeof toggleM==='function'){
+      // Zera tudo antes (caso rascunho tenha deixado algo ativo) e ativa
+      // apenas os que vieram do CRM.
+      Object.keys(M).forEach(k => { if(M[k]) toggleM(k); });
+      servicosCrm.forEach(tipo => {
+        const svcKey = svcMap[tipo];
+        if(svcKey && !M[svcKey]) toggleM(svcKey);
+      });
+    }
+
     renderNumeroOrc();
     atualizar();
   }catch(e){ console.warn('Falha ao ler query params:',e); }
