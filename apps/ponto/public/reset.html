@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Redefinir senha — Verde Interior Ponto</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #2d5a1b 0%, #1a3d10 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 28px;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      font-size: 20px;
+      color: #2d5a1b;
+      margin-bottom: 8px;
+    }
+    p.sub {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 22px;
+      line-height: 1.4;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      margin: 12px 0 6px;
+    }
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2d5a1b;
+      box-shadow: 0 0 0 3px rgba(45,90,27,0.12);
+    }
+    button {
+      width: 100%;
+      margin-top: 22px;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #2d5a1b;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button:hover:not(:disabled) { background: #234510; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    .msg--ok    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .msg--erro  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .msg--info  { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .msg.show   { display: block; }
+    .voltar {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #666;
+      text-decoration: none;
+    }
+    .voltar:hover { color: #2d5a1b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔐 Redefinir senha</h1>
+    <p class="sub">Digite sua nova senha abaixo. Mínimo 6 caracteres.</p>
+
+    <div id="loading" class="msg msg--info show">⏳ Verificando link...</div>
+
+    <div id="formulario" style="display:none">
+      <label for="p1">Nova senha</label>
+      <input type="password" id="p1" minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+
+      <label for="p2">Confirme a nova senha</label>
+      <input type="password" id="p2" minlength="6" autocomplete="new-password" placeholder="Repita a senha">
+
+      <button id="btn" onclick="salvar()">Salvar nova senha</button>
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <a href="/" class="voltar">← Voltar para o login</a>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    // ⚠ IMPORTANTE: as credenciais precisam bater com o app principal.
+    // Se rodar em produção, considerar injetar essas vars via build step
+    // (import.meta.env) em vez de hardcode. Por ora, hardcode pra simplicidade.
+    const SUPABASE_URL = window.__SUPA_URL__;
+    const SUPABASE_KEY = window.__SUPA_KEY__;
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      document.getElementById('loading').textContent = '⚠ Configuração ausente. Configure window.__SUPA_URL__ e window.__SUPA_KEY__ antes de servir esta página (por exemplo via um <script> injetado pelo Vite ou pelo servidor).';
+      document.getElementById('loading').className = 'msg msg--erro show';
+    } else {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // O Supabase manda link com #access_token=...&type=recovery na hash.
+      // Ao criar o client, ele processa a hash automaticamente e cria uma sessão temp.
+      (async () => {
+        // Pequena espera para o Supabase parsear a hash
+        await new Promise(r => setTimeout(r, 300));
+        const { data } = await supabase.auth.getSession();
+        const loading = document.getElementById('loading');
+        const form    = document.getElementById('formulario');
+        if (data?.session) {
+          loading.style.display = 'none';
+          form.style.display = 'block';
+          document.getElementById('p1').focus();
+        } else {
+          loading.textContent = '⚠ Link inválido ou expirado. Solicite um novo link na tela de login.';
+          loading.className = 'msg msg--erro show';
+        }
+      })();
+
+      window.salvar = async function() {
+        const p1  = document.getElementById('p1').value;
+        const p2  = document.getElementById('p2').value;
+        const msg = document.getElementById('msg');
+        const btn = document.getElementById('btn');
+        msg.className = 'msg';
+
+        if (p1.length < 6) {
+          msg.textContent = 'Mínimo 6 caracteres.';
+          msg.className = 'msg msg--erro show';
+          return;
+        }
+        if (p1 !== p2) {
+          msg.textContent = 'As senhas não coincidem.';
+          msg.className = 'msg msg--erro show';
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Salvando...';
+        const { error } = await supabase.auth.updateUser({ password: p1 });
+
+        if (error) {
+          msg.textContent = 'Erro: ' + error.message;
+          msg.className = 'msg msg--erro show';
+          btn.disabled = false;
+          btn.textContent = 'Salvar nova senha';
+          return;
+        }
+        msg.textContent = '✓ Senha alterada. Redirecionando...';
+        msg.className = 'msg msg--ok show';
+        setTimeout(() => { window.location.href = '/'; }, 1600);
+      };
+    }
+  </script>
+</body>
+</html>

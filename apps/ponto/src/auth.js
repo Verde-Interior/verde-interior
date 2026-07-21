@@ -128,8 +128,40 @@ function changePassword() {
   });
 }
 
+// Reset de senha (Fase 5) — colaborador esqueceu a senha.
+// Requer:
+//   1. Coluna `email_recuperacao` em profiles (migration 018)
+//   2. SMTP customizado configurado no Supabase Auth (senão o e-mail nunca chega)
+//   3. Rota /reset.html publicada (essa página lê o token da hash e chama
+//      supabase.auth.updateUser({ password }))
+//
+// Usuário digita o e-mail real dele. Se bater com o email_recuperacao de
+// algum profile, o Supabase manda o link. Se não bater, silêncio (não
+// vaza qual e-mail está cadastrado).
+export async function solicitarResetSenha(emailReal) {
+  if (!emailReal || !emailReal.includes('@')) {
+    return { error: { message: 'E-mail inválido' } };
+  }
+  // Descobre o auth email interno ({username}@vi.app) a partir do email_recuperacao
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .eq('email_recuperacao', emailReal.trim().toLowerCase())
+    .maybeSingle();
+
+  // Silêncio se não achou — não vaza qual email está cadastrado
+  if (!profile) return { error: null, sent: false };
+
+  const authEmail = `${profile.username}@vi.app`;
+  const redirectTo = new URL('/reset.html', window.location.origin).toString();
+  const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+    redirectTo,
+  });
+  return { error, sent: !error };
+}
+
 export const AUTH = {
-  login, logout, applySession, initSession, changePassword,
+  login, logout, applySession, initSession, changePassword, solicitarResetSenha,
   getSession: () => _session,
   loaded: true,
 };

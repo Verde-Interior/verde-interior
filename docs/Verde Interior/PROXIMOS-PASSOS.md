@@ -1,7 +1,58 @@
 # Verde Interior — Próximos Passos
 
 > Documento de trabalho da equipe. Marcar conforme concluir.
-> Última atualização: 20/07/2026 (Fase 1 fechada)
+> Última atualização: 21/07/2026 (Fases 3, 4.1, 5 e 6 executadas)
+
+---
+
+## ✅ Concluído em 21/07/2026 (Sessão de refactor + infra)
+
+### Fase 3 — Refactor EscalaCampo (2456 → 879 linhas, -64%)
+- [x] Utils extraídos: `src/utils/otimizadorRota.js` + `src/utils/escalaHelpers.js`
+- [x] 11 testes novos (`otimizadorRota.test.js`)
+- [x] Componentes extraídos: `CartaoVisita`, `ModalAddVisita`, `ModalEditVisita`,
+      `ModalPreviewRota`, `ModalRedistribuir`, `ModalBloqueios`, `PainelAtrasados`,
+      `ModalCopiarAgenda`
+
+### Fase 4.1 — Refactor ModalOrcamento (parcial)
+- [x] `SecaoHistorico.jsx` extraída em componente presentacional puro
+- [ ] SecaoAnexos, SecaoAgendaLead, SecaoFluxo, SecaoLead — pendentes
+      (têm estado profundamente compartilhado, exigem sessão dedicada)
+
+### Fase 5 — Reset de senha (código pronto, falta configurar SMTP)
+- [x] Migration `018_email_recuperacao.sql` — coluna `profiles.email_recuperacao`
+- [x] `solicitarResetSenha(emailReal)` em `auth.js` — resolve o auth email pelo email real
+- [x] `apps/ponto/public/reset.html` — página que recebe o link do Supabase
+- [x] `apps/ponto/supabase/functions/admin-reset-password/index.ts` — Edge Function
+      para gestor redefinir senha (SERVICE_ROLE_KEY)
+
+**Falta para ativar:**
+- [ ] Aplicar migration 018 no Supabase (SQL Editor)
+- [ ] Configurar SMTP customizado no Supabase Dashboard → Auth → Emails → SMTP Settings
+- [ ] Popular `profiles.email_recuperacao` com o e-mail real de cada colaborador
+- [ ] Adicionar UI de "Esqueci minha senha" na tela de login do Ponto
+      (`apps/ponto/index.html`)
+- [ ] Configurar as variáveis `window.__SUPA_URL__` e `window.__SUPA_KEY__` em
+      `reset.html` (via script injetado por Vite ou hardcode)
+- [ ] `supabase functions deploy admin-reset-password`
+- [ ] Adicionar UI no admin para gestor redefinir senha
+
+### Fase 6 — Plataforma Unificada (base)
+- [x] Migration `019_ids_unicos_e_ordens_servico.sql`:
+  - Sequências `seq_cliente_id`, `seq_orcamento_id`, `seq_os_id`
+  - Coluna `clientes.cli_id` (CLI-NNN) com backfill + default
+  - Coluna `leads.orc_id` (ORC-NNN) via trigger
+  - Tabela `ordens_servico` (os_id, lead_id, cliente_id, origem, status)
+  - Trigger `gerar_os_de_lead_aprovado` — cria OS automaticamente quando lead
+    vira `orcamento_aprovado` (idempotente, não duplica)
+
+**Falta para ativar:**
+- [ ] Aplicar migration 019 no Supabase
+- [ ] UI no CRM para listar/editar ordens_servico
+- [ ] Botão "🔗 Link OS" no Funil já existe (Fase 2) — atualizar para usar `os_id` real
+      em vez de gerar a partir do `lead.id`
+
+---
 
 ---
 
