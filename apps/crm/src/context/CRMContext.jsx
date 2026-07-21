@@ -186,7 +186,15 @@ function rowToTarefa(row) {
 function carregarCache(key) {
   try {
     const salvo = localStorage.getItem(key);
-    if (salvo) return JSON.parse(salvo);
+    if (!salvo) return [];
+    // Se o cache antigo passou de 2MB (anexos base64 gigantes salvos por
+    // engano em versões anteriores), descarta — Supabase é a fonte de verdade.
+    if (salvo.length > 2_000_000) {
+      console.warn(`[CRM] Cache "${key}" muito grande (${(salvo.length/1024/1024).toFixed(1)}MB), descartando.`);
+      try { localStorage.removeItem(key); } catch {}
+      return [];
+    }
+    return JSON.parse(salvo);
   } catch {}
   return [];
 }
@@ -214,7 +222,24 @@ export function CRMProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    // Cache local sem os `dados` base64 dos anexos (podem ser MB cada e
+    // estouram a cota de ~5MB do localStorage). Os anexos completos vivem
+    // no Supabase — o cache é só metadata pra listar/contar rapidamente.
+    try {
+      const leve = leads.map((l) => {
+        if (!l.orcamentoAnexos?.length) return l;
+        return {
+          ...l,
+          orcamentoAnexos: l.orcamentoAnexos.map((a) => ({
+            nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, origem: a.origem,
+            // `dados` (base64) omitido — recarregado do Supabase quando abrir o modal
+          })),
+        };
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(leve));
+    } catch (e) {
+      console.warn('[CRM] Cache local não persistido (quota excedida):', e.message);
+    }
   }, [leads]);
 
   // Listener global: recebe do gerador-orcamento (aberto em outra aba) o
@@ -309,7 +334,11 @@ export function CRMProvider({ children }) {
   }, [leads.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_TAREFAS, JSON.stringify(tarefas));
+    try {
+      localStorage.setItem(STORAGE_KEY_TAREFAS, JSON.stringify(tarefas));
+    } catch (e) {
+      console.warn('[CRM] Cache de tarefas não persistido:', e.message);
+    }
   }, [tarefas]);
 
   // Helper: persiste no Supabase em background. Loga erros mas não reverte o
