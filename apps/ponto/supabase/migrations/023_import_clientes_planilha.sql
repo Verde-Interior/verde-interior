@@ -155,10 +155,12 @@ UPDATE public.clientes c
  WHERE UPPER(TRIM(c.nome_empresa)) = UPPER(TRIM(p.nome_empresa));
 
 -- 2. Insere os que NÃO existem no CRM
+--    (endereco é NOT NULL na tabela — deixamos '' pro usuário preencher depois)
 INSERT INTO public.clientes (
-  nome_empresa, grupo_servico, tem_orquidea, observacoes_internas, ativo, lat, lng
+  nome_empresa, grupo_servico, tem_orquidea, observacoes_internas,
+  ativo, lat, lng, endereco
 )
-SELECT p.nome_empresa, p.grupo_servico, p.tem_orquidea, p.obs, TRUE, 0, 0
+SELECT p.nome_empresa, p.grupo_servico, p.tem_orquidea, p.obs, TRUE, 0, 0, ''
   FROM _planilha p
  WHERE NOT EXISTS (
    SELECT 1 FROM public.clientes c
