@@ -31,11 +31,11 @@ const FREQ_LABEL = {
 };
 
 const GRUPO_OPTIONS = [
-  { value: '',                          label: '— Selecionar —'              },
-  { value: 'Grupo 1 - troca + orquidea', label: 'Grupo 1 - troca + orquídea' },
-  { value: 'Grupo 2 - troca',            label: 'Grupo 2 - troca'             },
-  { value: 'Grupo 3 - sem troca',        label: 'Grupo 3 - sem troca'         },
-  { value: 'Grupo 4 - Flores',           label: 'Grupo 4 - Flores'            },
+  { value: '',                      label: '— Selecionar —'      },
+  { value: 'Locação',               label: 'Locação'             },
+  { value: 'Manutenção',            label: 'Manutenção'          },
+  { value: 'Manutenção com troca',  label: 'Manutenção com troca'},
+  { value: 'Somente orquídea',      label: 'Somente orquídea'    },
 ];
 
 const FREQ_VISITA_OPTIONS = [
@@ -93,6 +93,7 @@ const FORM_VAZIO = {
   janela_entrada_fim: '',
   duracao_estimada_min: '',
   grupo_servico: '',
+  tem_orquidea: false,
   frequencia_visita: '',
   observacoes: '',
   observacoes_internas: '',
@@ -115,6 +116,7 @@ export default function Clientes() {
   const [busca,       setBusca]       = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
+  const [filtroOrquidea, setFiltroOrquidea] = useState('todos'); // 'todos' | 'com' | 'sem'
 
   const [modal,         setModal]         = useState(null); // null | { modo: 'editar'|'novo', cliente?: obj }
   const [form,          setForm]          = useState(null);
@@ -145,10 +147,12 @@ export default function Clientes() {
       if (filtroAtivo === 'ativos'   &&  !c.ativo) return false;
       if (filtroAtivo === 'inativos' &&   c.ativo) return false;
       if (filtroGrupo !== 'todos'    && c.grupo_servico !== filtroGrupo) return false;
+      if (filtroOrquidea === 'com'   && !c.tem_orquidea) return false;
+      if (filtroOrquidea === 'sem'   &&  c.tem_orquidea) return false;
       if (q && !c.nome_empresa.toLowerCase().includes(q) && !(c.bairro?.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [clientes, busca, filtroAtivo, filtroGrupo]);
+  }, [clientes, busca, filtroAtivo, filtroGrupo, filtroOrquidea]);
 
   const metricas = useMemo(() => ({
     total:       clientes.length,
@@ -177,6 +181,7 @@ export default function Clientes() {
       janela_entrada_fim:    c.janela_entrada_fim    ?? '',
       duracao_estimada_min:  c.duracao_estimada_min  ?? '',
       grupo_servico:         c.grupo_servico         ?? '',
+      tem_orquidea:          c.tem_orquidea          ?? false,
       frequencia_visita:     c.frequencia_visita     ?? '',
       observacoes:           c.observacoes           ?? '',
       observacoes_internas:  c.observacoes_internas  ?? '',
@@ -228,6 +233,7 @@ export default function Clientes() {
         data_inicio_contrato:  dados.data_inicio_contrato   || null,
         cnpj:                  dados.cnpj                   || null,
         grupo_servico:         dados.grupo_servico          || null,
+        tem_orquidea:          !!dados.tem_orquidea,
         frequencia_visita:     dados.frequencia_visita      || null,
       };
 
@@ -354,6 +360,17 @@ export default function Clientes() {
           ))}
         </select>
 
+        <select
+          className="clientes__select"
+          value={filtroOrquidea}
+          onChange={e => setFiltroOrquidea(e.target.value)}
+          title="Filtrar clientes que têm orquídea"
+        >
+          <option value="todos">Orquídea: todos</option>
+          <option value="com">🌸 Com orquídea</option>
+          <option value="sem">Sem orquídea</option>
+        </select>
+
         <span className="clientes__count">
           {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
         </span>
@@ -373,11 +390,11 @@ export default function Clientes() {
       ) : clientesFiltrados.length === 0 ? (
         <div className="clientes__estado">
           <p className="clientes__estado-msg">
-            {busca || filtroAtivo !== 'todos' || filtroGrupo !== 'todos'
+            {busca || filtroAtivo !== 'todos' || filtroGrupo !== 'todos' || filtroOrquidea !== 'todos'
               ? 'Nenhum cliente encontrado com esse filtro.'
               : 'Nenhum cliente cadastrado.'}
           </p>
-          {!busca && filtroAtivo === 'todos' && filtroGrupo === 'todos' && (
+          {!busca && filtroAtivo === 'todos' && filtroGrupo === 'todos' && filtroOrquidea === 'todos' && (
             <button className="clientes__btn-novo clientes__btn-novo--outline" onClick={abrirNovo}>
               + Cadastrar primeiro cliente
             </button>
@@ -417,9 +434,19 @@ export default function Clientes() {
                       {c.bairro && <span className="clientes__row-bairro">{c.bairro}</span>}
                     </td>
                     <td>
-                      {c.grupo_servico
-                        ? <span className="clientes__badge clientes__badge--grupo">{c.grupo_servico}</span>
-                        : <span className="clientes__dash">—</span>}
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+                        {c.grupo_servico
+                          ? <span className="clientes__badge clientes__badge--grupo">{c.grupo_servico}</span>
+                          : <span className="clientes__dash">—</span>}
+                        {c.tem_orquidea && (
+                          <span
+                            title="Cliente tem orquídea"
+                            style={{ fontSize:11, padding:'2px 7px', borderRadius:999, background:'#fdf4ff', color:'#86198f', border:'1px solid #f5d0fe', fontWeight:600 }}
+                          >
+                            🌸 orquídea
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       {diasLabel
@@ -522,6 +549,20 @@ export default function Clientes() {
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className="cl-campo">
+                    <label>Orquídea</label>
+                    <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'8px 10px', border:'1px solid var(--border,#ddd)', borderRadius:8, background: form.tem_orquidea ? '#fdf4ff' : '#fff', minHeight:38 }}>
+                      <input
+                        type="checkbox"
+                        checked={!!form.tem_orquidea}
+                        onChange={e => setF('tem_orquidea', e.target.checked)}
+                        style={{ margin:0 }}
+                      />
+                      <span style={{ fontSize:13 }}>
+                        {form.tem_orquidea ? '🌸 Tem orquídea' : 'Não tem'}
+                      </span>
+                    </label>
                   </div>
                   <div className="cl-campo">
                     <label>Status</label>
