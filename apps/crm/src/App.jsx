@@ -19,6 +19,7 @@ import EscalaCampo from './components/EscalaCampo/EscalaCampo';
 import Relatorios from './components/Relatorios/Relatorios';
 import Estoque from './components/Estoque/Estoque';
 import OrdensServico from './components/OrdensServico/OrdensServico';
+import ModalAtribuirQR from './components/Estoque/qr/ModalAtribuirQR';
 import './App.css';
 
 const IconDashboard = () => (
@@ -139,6 +140,10 @@ const NAV_ITEM_CONFIG = { id: 'configuracoes', Icon: IconConfig, label: 'Configu
 function AppLayout() {
   const [tela, setTela]               = useState('dashboard');
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [qrScan,      setQrScan]      = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('patrimonio') ?? null;
+  });
   const { leads, tarefas } = useCRM();
   const { usuario, sair } = useAuth();
 
@@ -235,6 +240,16 @@ function AppLayout() {
         {tela === 'tarefas'       && <Tarefas />}
         {tela === 'configuracoes' && <Configuracoes />}
       </main>
+
+      {qrScan && (
+        <ModalAtribuirQR
+          codigoQR={qrScan}
+          onFechar={() => {
+            setQrScan(null);
+            window.history.replaceState({}, '', window.location.pathname);
+          }}
+        />
+      )}
 
       <ModalOrcamento />
       {buscaAberta && (

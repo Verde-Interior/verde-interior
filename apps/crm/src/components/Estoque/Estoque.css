@@ -506,6 +506,91 @@
 /* modal largo (histórico) */
 .modal--largo { max-width: 600px; width: 96%; }
 
+/* ── Espécie card (Plantas tab) ─────────────────────── */
+.ep-especie-card {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.ep-cnt {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ep-cnt--verde   { background: var(--forest-100); color: var(--forest-800); }
+.ep-cnt--azul    { background: #DBEAFE; color: #1E40AF; }
+.ep-cnt--amarelo { background: #FEF3C7; color: #92600A; }
+.ep-cnt--cinza   { background: var(--cream-100); color: var(--text-muted); }
+
+/* ── QR card ─────────────────────────────────────────── */
+.qr-card {
+  display: grid;
+  grid-template-columns: 100px 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.qr-card--sem-especie { border-left-color: #F59E0B !important; }
+
+.qr-card__codigo {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.qr-card__info { min-width: 0; }
+
+.qr-card__especie {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.qr-card__status {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.qr-card__qr {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.es-card__editar--pri {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  font-size: 12px;
+  padding: 6px 12px;
+}
+.es-card__editar--pri:hover { background: var(--color-primary-dark); }
+
+/* modal atribuir QR - centralizado no QR gerado */
+.qr-atribuir__qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+}
+.qr-atribuir__url {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+  text-align: center;
+}
+
 /* ── Responsivo mobile ──────────────────────────────── */
 @media (max-width: 720px) {
   .es__header { padding: 12px 14px 0; }

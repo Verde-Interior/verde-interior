@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import PlantasTab  from './plantas/PlantasTab';
 import ItensTab    from './itens/ItensTab';
+import QRTab       from './qr/QRTab';
 import './Estoque.css';
 
 const ABAS = [
@@ -9,6 +10,7 @@ const ABAS = [
   { id: 'insumos',   label: 'Insumos',   icon: '🧪' },
   { id: 'vasos',     label: 'Vasos',     icon: '📦' },
   { id: 'materiais', label: 'Materiais', icon: '🔧' },
+  { id: 'qr',        label: 'QR Codes',  icon: '⬛' },
 ];
 
 export default function Estoque() {
@@ -41,6 +43,7 @@ export default function Estoque() {
         {aba === 'insumos'   && <ItensTab categoria="insumo"   titulo="Insumos"   />}
         {aba === 'vasos'     && <ItensTab categoria="vaso"     titulo="Vasos"     />}
         {aba === 'materiais' && <ItensTab categoria="material" titulo="Materiais" />}
+        {aba === 'qr'        && <QRTab />}
       </div>
     </div>
   );
