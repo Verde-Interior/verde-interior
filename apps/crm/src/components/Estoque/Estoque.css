@@ -99,7 +99,7 @@
 .es__kpis {
   display: flex;
   gap: 10px;
-  padding-bottom: 14px;
+  padding: 12px 28px 0;
 }
 
 .es__kpi {
@@ -351,6 +351,160 @@
   color: var(--forest-700);
   background: color-mix(in srgb, var(--forest-500) 6%, transparent);
 }
+
+/* ── Conteúdo das abas (scroll independente) ────────── */
+.es__conteudo {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Remove KPIs do header (cada aba gerencia os próprios) */
+.es__kpis--plantas { padding: 12px 28px 0; }
+
+/* ── Cartão de Patrimônio (Plantas) ─────────────────── */
+.ep-card {
+  display: grid;
+  grid-template-columns: 90px 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.ep-card--descartado { opacity: 0.5; }
+
+.ep-card__qr {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-family: monospace;
+  letter-spacing: 0.04em;
+  background: var(--cream-50);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.ep-card__info { min-width: 0; }
+
+.ep-card__especie {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ep-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ep-card__cliente  { font-weight: 600; color: var(--forest-700); }
+.ep-card__dias     { color: var(--text-muted); }
+.ep-card__loc      { color: var(--text-muted); font-style: italic; }
+.ep-card__manut-aviso { color: #B45309; font-weight: 600; }
+
+.ep-card__acoes { display: flex; gap: 6px; }
+
+/* ── Badges de status ───────────────────────────────── */
+.ep-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ep-badge--verde   { background: var(--forest-100); color: var(--forest-800); }
+.ep-badge--azul    { background: #DBEAFE; color: #1E40AF; }
+.ep-badge--amarelo { background: #FEF3C7; color: #92600A; }
+.ep-badge--cinza   { background: var(--cream-100); color: var(--text-muted); }
+
+/* ── Timeline de histórico ──────────────────────────── */
+.ep-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ep-timeline__item {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--surface-border);
+  position: relative;
+}
+.ep-timeline__item:last-child { border-bottom: none; }
+
+.ep-timeline__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--cream-50);
+  border: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.ep-timeline__corpo { flex: 1; min-width: 0; }
+
+.ep-timeline__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ep-timeline__tipo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ep-timeline__data {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ep-timeline__detalhe {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.ep-timeline__obs {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  font-style: italic;
+}
+
+.ep-timeline__func {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Alert no modal ─────────────────────────────────── */
+.modal__alerta {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.modal__alerta--perigo { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+
+/* modal largo (histórico) */
+.modal--largo { max-width: 600px; width: 96%; }
 
 /* ── Responsivo mobile ──────────────────────────────── */
 @media (max-width: 720px) {
