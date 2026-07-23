@@ -185,6 +185,13 @@ function elapsedFrom(iso) {
   const m = Math.floor((s % 3600) / 60);
   return h ? `${h}h${F(m)}m` : `${m}min`;
 }
+// Retorna "HH:MM" no timezone local a partir de um ISO ou string ("2026-07-23T08:15:00Z")
+function formatarHora(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return `${F(d.getHours())}:${F(d.getMinutes())}`;
+}
 function statusLabel(s) {
   return ({
     publicado:   { txt: 'Aguardando',   cls: 'ag-badge--wait' },
@@ -375,7 +382,7 @@ function cardVisitaLista(v, idx) {
 
   return `
     <div class="ag-card ag-card--${v.status}" onclick="agendaOpenDetail('${v.id}')">
-      <div class="ag-card__ord">${v.ordem_rota ?? (idx + 1)}</div>
+      <div class="ag-card__ord">${(v.ordem_rota ?? idx) + 1}</div>
       <div class="ag-card__info">
         <div class="ag-card__nome">${esc(c?.nome_empresa) || '—'}</div>
         <div class="ag-card__end">
@@ -498,7 +505,7 @@ function viewExec() {
       <button class="ag-back" onclick="agendaBackToList()"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
         <div class="ag-title">${esc(v.cliente?.nome_empresa) || '—'}</div>
-        <div class="ag-sub"><span class="ag-badge ag-badge--exec">Em execução</span> · desde ${elapsedFrom(r.checkin_at)}</div>
+        <div class="ag-sub"><span class="ag-badge ag-badge--exec">Em execução</span> · desde ${formatarHora(r.checkin_at)}</div>
       </div>
     </div>
 
@@ -892,7 +899,11 @@ function viewReview() {
           <i class="fa-solid fa-circle-check"></i>
           <div>
             <div class="ag-review__done-title">Visita concluída</div>
-            ${r.checkout_at ? `<div class="ag-review__done-sub">Check-out: ${new Date(r.checkout_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>` : ''}
+            ${(r.checkin_at || r.checkout_at) ? `<div class="ag-review__done-sub">
+              ${r.checkin_at  ? `Check-in: ${formatarHora(r.checkin_at)}`  : ''}
+              ${(r.checkin_at && r.checkout_at) ? ' · ' : ''}
+              ${r.checkout_at ? `Check-out: ${formatarHora(r.checkout_at)}` : ''}
+            </div>` : ''}
           </div>
         </div>
       ` : ''}

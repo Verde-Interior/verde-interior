@@ -349,7 +349,7 @@
   background: white;
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
-  padding: 8px 8px 8px 5px;
+  padding: 8px 96px 8px 5px; /* padding-right pra dar espaço ao badge grande de status */
   position: relative;
   transition: box-shadow var(--transition-fast);
 }
@@ -375,13 +375,24 @@
    restrição-dia > conflito-sobreposição > conflito-fim > prioridade
    ═══════════════════════════════════════════════════════════════ */
 
-/* Status = ícone no canto (sem afetar fundo) — declarado em .ec-cartao__pub */
+/* Status = badge grande no canto + border-left espesso pra distinguir de longe */
 .ec-cartao--publicado,
 .ec-cartao--em_execucao,
-.ec-cartao--concluido { border-left: 3px solid transparent; }
-.ec-cartao--publicado  { border-left-color: var(--color-success); }
-.ec-cartao--em_execucao { border-left-color: var(--color-warning); }
-.ec-cartao--concluido  { border-left-color: var(--color-accent); opacity: 0.75; }
+.ec-cartao--concluido,
+.ec-cartao--cancelado { border-left: 5px solid transparent; }
+.ec-cartao--publicado   { border-left-color: #10b981; background: #ecfdf5; }
+.ec-cartao--em_execucao {
+  border-left-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .25);
+}
+.ec-cartao--concluido   { border-left-color: #059669; background: #d1fae5; }
+.ec-cartao--cancelado   { border-left-color: #ef4444; background: #fef2f2; opacity: 0.6; }
+.ec-cartao--concluido .ec-cartao__nome,
+.ec-cartao--concluido .ec-cartao__bairro {
+  text-decoration: line-through;
+  color: #4b5563;
+}
 
 /* Conflitos de horário — fundo sólido, sem gradientes */
 .ec-cartao--conflito-sob {
@@ -895,13 +906,88 @@
 }
 .ec-cartao__del:hover { background: #FEE2E2; color: var(--color-danger); }
 
+/* ═══════════════════════════════════════════
+   MODAL RELATÓRIO
+   ═══════════════════════════════════════════ */
+.ec-modal--relatorio { max-width: 720px; }
+.ec-relatorio__loading, .ec-relatorio__vazio { padding: 32px 16px; text-align: center; color: #6b7280; }
+.ec-relatorio__cabecalho {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.ec-relatorio__badge {
+  padding: 4px 12px; border-radius: 12px;
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+}
+.ec-relatorio__badge--em_execucao { color: #fff; background: #2563eb; }
+.ec-relatorio__badge--concluido    { color: #fff; background: #059669; }
+.ec-relatorio__horas {
+  display: flex; gap: 18px; font-size: 13px; color: #374151;
+}
+.ec-relatorio__sec { margin: 18px 0; }
+.ec-relatorio__sec h4 {
+  font-size: 13px; margin-bottom: 8px; color: #111827;
+  border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;
+}
+.ec-relatorio__grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.ec-relatorio__foto {
+  display: block; position: relative; border: 1px solid #e5e7eb; border-radius: 8px;
+  overflow: hidden; text-decoration: none;
+}
+.ec-relatorio__foto img { width: 100%; height: 120px; object-fit: cover; display: block; }
+.ec-relatorio__foto-obs {
+  display: block; padding: 5px 7px; font-size: 11px; color: #4b5563; background: #f9fafb;
+}
+.ec-relatorio__relato {
+  white-space: pre-wrap; font-size: 13px; color: #374151; background: #f9fafb;
+  padding: 10px 12px; border-radius: 6px; border: 1px solid #e5e7eb;
+}
+.ec-relatorio__assinatura {
+  max-width: 260px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff;
+}
+
+/* Badge grande de status — sempre visível, top-right do cartão */
 .ec-cartao__pub {
-  font-size: 12px;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   flex-shrink: 0;
 }
-.ec-cartao__pub--publicado  { color: var(--color-success); }
-.ec-cartao__pub--em_execucao { color: var(--color-warning); }
-.ec-cartao__pub--concluido  { color: var(--color-accent); }
+.ec-cartao__pub--publicado {
+  color: #065f46;
+  background: #a7f3d0;
+  border: 1px solid #6ee7b7;
+}
+.ec-cartao__pub--em_execucao {
+  color: #fff;
+  background: #2563eb;
+  animation: ec-pulsa 1.6s ease-in-out infinite;
+}
+.ec-cartao__pub--concluido {
+  color: #fff;
+  background: #059669;
+  border: 1px solid #047857;
+}
+.ec-cartao__pub--cancelado {
+  color: #fff;
+  background: #ef4444;
+}
+@keyframes ec-pulsa {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .55); }
+  50%      { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+}
 
 /* ═══════════════════════════════════════════
    MODAL DE ADICIONAR VISITA
@@ -1301,6 +1387,20 @@
   transition: background var(--transition-fast);
 }
 .ec__bulk-btn--sec:hover { background: rgba(255,255,255,0.22); }
+
+.ec__bulk-btn--perigo {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fff;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+.ec__bulk-btn--perigo:hover:not(:disabled) { background: rgba(239, 68, 68, 0.35); }
+.ec__bulk-btn--perigo:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── Botões extras no header ── */
 .ec__btn-atras {

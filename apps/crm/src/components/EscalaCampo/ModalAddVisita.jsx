@@ -7,17 +7,27 @@ import {
 } from '../../utils/escalaHelpers';
 
 export default function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInicial, clienteIdPre, onSalvar, onFechar, salvando }) {
+  const idInicial = funcionarioIdInicial ?? (funcionarios[0]?.id?.toString() ?? '');
   const [form, setForm] = useState({
-    clienteId:     clienteIdPre ?? '',
-    funcionarioId: funcionarioIdInicial ?? (funcionarios[0]?.id?.toString() ?? ''),
-    data:          dataInicial,
-    hora:          '07:00',
-    duracao:       '',
-    servicoId:     '',
-    tipos:         [],
-    obs:           '',
-    obsManual:     false,
+    clienteId:       clienteIdPre ?? '',
+    funcionariosIds: idInicial ? [String(idInicial)] : [],
+    data:            dataInicial,
+    hora:            '07:00',
+    duracao:         '',
+    servicoId:       '',
+    tipos:           [],
+    obs:             '',
+    obsManual:       false,
   });
+
+  function toggleFuncionario(id) {
+    setForm(f => {
+      const s = String(id);
+      const has = f.funcionariosIds.includes(s);
+      const novos = has ? f.funcionariosIds.filter(x => x !== s) : [...f.funcionariosIds, s];
+      return { ...f, funcionariosIds: novos };
+    });
+  }
 
   function toggleTipo(id) {
     setForm(f => {
@@ -81,7 +91,7 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
     setF('servicoId', servAtivos.length === 1 ? servAtivos[0].id : '');
   }
 
-  const camposMinimos = form.clienteId && form.funcionarioId && form.data;
+  const camposMinimos = form.clienteId && form.funcionariosIds.length > 0 && form.data;
   const semErros = erros.length === 0;
   const podeSubmit = camposMinimos && semErros;
   const podeForcarSubmit = camposMinimos && !semErros;
@@ -97,10 +107,22 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
         <div className="ec-modal__corpo">
           <div className="ec-grid2">
             <div className="ec-campo">
-              <label>Funcionário <span className="ec-req">*</span></label>
-              <select value={form.funcionarioId} onChange={e => setF('funcionarioId', e.target.value)}>
-                {funcionarios.map(emp => <option key={emp.id} value={String(emp.id)}>{emp.name}</option>)}
-              </select>
+              <label>
+                Funcionário(s) <span className="ec-req">*</span>
+                <span className="ec-hint" style={{ marginLeft: 6 }}>(marque um ou mais — cria uma visita para cada)</span>
+              </label>
+              <div className="ec-chips">
+                {funcionarios.map(emp => (
+                  <button
+                    key={emp.id}
+                    type="button"
+                    className={`ec-chip ${form.funcionariosIds.includes(String(emp.id)) ? 'ec-chip--ativo' : ''}`}
+                    onClick={() => toggleFuncionario(emp.id)}
+                  >
+                    {emp.name}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="ec-campo">
               <label>Data <span className="ec-req">*</span></label>

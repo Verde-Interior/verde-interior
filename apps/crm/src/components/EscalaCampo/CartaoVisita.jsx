@@ -18,12 +18,16 @@ export default function CartaoVisita({
   restricao,
   // edição
   onEditar,
+  // relatório (em_execucao / concluido)
+  onVerRelatorio,
 }) {
   const tipo   = visita.cliente_servicos?.tipo_servico;
   const status = visita.status;
   const editavel = status === 'rascunho';
   const editavelComAviso = status === 'publicado';
+  const temRelatorio = status === 'em_execucao' || status === 'concluido';
   const abrirModal = editavel || editavelComAviso;
+  const clicavelPorStatus = abrirModal || temRelatorio;
 
   const temRestricao = restricao?.restricaoDia || restricao?.restricaoHora;
 
@@ -45,22 +49,24 @@ export default function CartaoVisita({
   const tooltipPadrao =
     editavel ? 'Clique para editar · arraste para mover' :
     editavelComAviso ? 'Publicada — clique para alterar ou cancelar' :
+    temRelatorio ? 'Clique para ver o relatório' :
     undefined;
 
   return (
     <div
-      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''} ${classesConf} ${abrirModal && !modoSelecao ? 'ec-cartao--clicavel' : ''}`}
+      className={`ec-cartao ec-cartao--${status} ${isDragging ? 'ec-cartao--dragging' : ''} ${selecionada ? 'ec-cartao--sel' : ''} ${classesConf} ${clicavelPorStatus && !modoSelecao ? 'ec-cartao--clicavel' : ''}`}
       title={tooltipConf || tooltipPadrao}
       draggable={editavel && !modoSelecao}
       onDragStart={editavel && !modoSelecao ? onDragStart : undefined}
       onDragEnd={onDragEnd}
       onClick={
-        modoSelecao && editavel
+        modoSelecao && (editavel || editavelComAviso)
           ? onToggleSel
-          : (abrirModal && onEditar ? onEditar : undefined)
+          : (abrirModal && onEditar ? onEditar
+              : (temRelatorio && onVerRelatorio ? () => onVerRelatorio(visita) : undefined))
       }
     >
-      {modoSelecao && editavel && (
+      {modoSelecao && (editavel || editavelComAviso) && (
         <button
           className={`ec-cartao__check ${selecionada ? 'ec-cartao__check--on' : ''}`}
           onClick={e => { e.stopPropagation(); onToggleSel(); }}
@@ -133,11 +139,11 @@ export default function CartaoVisita({
         <button className="ec-cartao__del" onClick={e => { e.stopPropagation(); onDeletar(); }} title="Remover">✕</button>
       )}
       {!editavel && (
-        <span
-          className={`ec-cartao__pub ec-cartao__pub--${status}`}
-          title={{ publicado: 'Publicado', em_execucao: 'Em execução', concluido: 'Concluído' }[status]}
-        >
-          {{ publicado: '●', em_execucao: '▶', concluido: '✓' }[status]}
+        <span className={`ec-cartao__pub ec-cartao__pub--${status}`}>
+          {status === 'publicado'   && <>● Aguardando</>}
+          {status === 'em_execucao' && <>▶ Em execução</>}
+          {status === 'concluido'   && <>✓ Concluída</>}
+          {status === 'cancelado'   && <>✕ Cancelada</>}
         </span>
       )}
     </div>

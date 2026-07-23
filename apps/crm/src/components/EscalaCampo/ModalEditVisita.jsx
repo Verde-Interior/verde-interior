@@ -1,9 +1,9 @@
 // src/components/EscalaCampo/ModalEditVisita.jsx
 // Modal de editar visita — extraído de EscalaCampo.jsx (Fase 3.2)
 import { useState, useMemo } from 'react';
-import { TIPO_LABEL, verificarHorario } from '../../utils/escalaHelpers';
+import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario } from '../../utils/escalaHelpers';
 
-export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar }) {
+export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onDuplicarFuncionario }) {
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
   // se é visita de lead (cliente_id null), usa o `visita.clientes` sintético
   // já enriquecido pela EscalaCampo — traz cliente_servicos como array de 1 item
@@ -18,15 +18,39 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
     [clienteCompleto]
   );
 
+  const tiposIniciais = Array.isArray(visita.tipos_tarefa) ? visita.tipos_tarefa : [];
+
   const [form, setForm] = useState({
     funcionarioId: String(visita.funcionario_id ?? ''),
     hora:          (visita.hora_estimada_chegada ?? '').slice(0, 5),
     duracao:       visita.duracao_estimada_min ? String(visita.duracao_estimada_min) : '',
     servicoId:     visita.cliente_servico_id ?? '',
+    tipos:         tiposIniciais,
     obs:           visita.observacoes_gestor ?? '',
+    obsManual:     (visita.observacoes_gestor ?? '').trim() !== textoObsDeTipos(tiposIniciais).trim(),
   });
 
   function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  function toggleTipo(id) {
+    setForm(f => {
+      const has = f.tipos.includes(id);
+      const novos = has ? f.tipos.filter(t => t !== id) : [...f.tipos, id];
+      const textoAntigo = textoObsDeTipos(f.tipos);
+      const textoNovo   = textoObsDeTipos(novos);
+      const podeSobrescrever = !f.obsManual || f.obs.trim() === textoAntigo.trim() || !f.obs.trim();
+      return {
+        ...f,
+        tipos: novos,
+        obs:   podeSobrescrever ? textoNovo : f.obs,
+        obsManual: podeSobrescrever ? false : f.obsManual,
+      };
+    });
+  }
+
+  function onObsChange(v) {
+    setForm(f => ({ ...f, obs: v, obsManual: v.trim() !== textoObsDeTipos(f.tipos).trim() }));
+  }
 
   const avisos = useMemo(() => {
     if (!clienteCompleto) return [];
@@ -92,11 +116,27 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
           </div>
 
           <div className="ec-campo">
+            <label>Tipo de tarefa <span className="ec-hint">(marque um ou mais — atualiza a observação abaixo)</span></label>
+            <div className="ec-chips">
+              {TIPOS_TAREFA.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`ec-chip ${form.tipos.includes(t.id) ? 'ec-chip--ativo' : ''}`}
+                  onClick={() => toggleTipo(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ec-campo">
             <label>Observação do gestor <span className="ec-hint">(aparece para o funcionário no celular)</span></label>
             <textarea
               rows={3}
               value={form.obs}
-              onChange={e => setF('obs', e.target.value)}
+              onChange={e => onObsChange(e.target.value)}
               placeholder="Instruções específicas para esta visita..."
             />
           </div>
@@ -127,9 +167,19 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
               >
                 ↩ Voltar para rascunho
               </button>
-              <span style={{ flex: 1 }} />
             </>
           )}
+          {onDuplicarFuncionario && (
+            <button
+              className="ec-btn ec-btn--sec"
+              onClick={() => onDuplicarFuncionario(form)}
+              disabled={salvando}
+              title="Cria uma cópia desta visita atribuída a outro funcionário (mesma hora, tarefa e observações)"
+            >
+              👥 + Funcionário
+            </button>
+          )}
+          <span style={{ flex: 1 }} />
           <button className="ec-btn ec-btn--sec" onClick={onFechar}>Fechar</button>
           <button
             className="ec-btn ec-btn--pri"

@@ -12,6 +12,7 @@ import { minutosParaHora, otimizarRotaComRestricoes } from '../../utils/otimizad
 import CartaoVisita from './CartaoVisita';
 import ModalAddVisita from './ModalAddVisita';
 import ModalEditVisita from './ModalEditVisita';
+import ModalRelatorioVisita from './ModalRelatorioVisita';
 import ModalPreviewRota from './ModalPreviewRota';
 import ModalRedistribuir from './ModalRedistribuir';
 import ModalBloqueios from './ModalBloqueios';
@@ -57,6 +58,7 @@ export default function EscalaCampo() {
 
   // ── Edição de visita ────────────────────────────────────────────────────────
   const [modalEdit,     setModalEdit]     = useState(null); // visita sendo editada
+  const [modalRel,      setModalRel]      = useState(null); // visita cujo relatório está aberto
   const [salvandoEdit,  setSalvandoEdit]  = useState(false);
 
   // ── Tooltip global (para escapar overflow das colunas) ─────────────────────
@@ -249,6 +251,42 @@ export default function EscalaCampo() {
     setMovParaEmp(employees[0]?.id?.toString() ?? '');
   }
 
+  // Volta em bloco várias visitas selecionadas para rascunho. Útil quando
+  // um funcionário adoece e o gestor precisa realocar tudo pra outra pessoa.
+  async function voltarSelecionadasParaRascunho() {
+    if (!selecionadas.size) return;
+    const ids = [...selecionadas];
+    if (!confirm(`Voltar ${ids.length} visita${ids.length !== 1 ? 's' : ''} para rascunho? O funcionário não vê mais elas até você republicar.`)) return;
+    setSalvando(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'rascunho' }).in('id', ids);
+      if (error) throw error;
+      cancelarSelecao();
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao voltar para rascunho: ' + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function cancelarSelecionadasVisitas() {
+    if (!selecionadas.size) return;
+    const ids = [...selecionadas];
+    if (!confirm(`Cancelar ${ids.length} visita${ids.length !== 1 ? 's' : ''}? Elas somem da agenda do funcionário.`)) return;
+    setSalvando(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'cancelado' }).in('id', ids);
+      if (error) throw error;
+      cancelarSelecao();
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao cancelar: ' + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   async function moverSelecionadasPara(novoEmpId) {
     if (!novoEmpId || !selecionadas.size) return;
     setSalvando(true);
@@ -310,24 +348,35 @@ export default function EscalaCampo() {
   // ── Ações na agenda ───────────────────────────────────────────────────────
 
   async function adicionarVisita(form) {
+    // Multi-funcionário (2B): se vier `funcionariosIds` (array), cria uma
+    // linha por funcionário. Fallback pra `funcionarioId` (formato antigo)
+    // pra não quebrar chamadas legadas.
+    const funcs = Array.isArray(form.funcionariosIds) && form.funcionariosIds.length
+      ? form.funcionariosIds
+      : (form.funcionarioId ? [String(form.funcionarioId)] : []);
+    if (funcs.length === 0) return;
+
     setSalvando(true);
     try {
-      const visitasEmpDia = agendaOrg[form.data]?.[form.funcionarioId] ?? [];
-      const proximaOrdem = visitasEmpDia.length > 0
-        ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
-        : 0;
-      const { error } = await supabase.from('agenda').insert({
-        cliente_id:            form.clienteId,
-        funcionario_id:        String(form.funcionarioId),
-        cliente_servico_id:    idServicoParaBanco(form.servicoId),
-        data_agendada:         form.data,
-        hora_estimada_chegada: form.hora || null,
-        duracao_estimada_min:  form.duracao ? Number(form.duracao) : null,
-        tipos_tarefa:          form.tipos?.length ? form.tipos : null,
-        observacoes_gestor:    form.obs || null,
-        ordem_rota:            proximaOrdem,
-        status:                'rascunho',
+      const rows = funcs.map(funcId => {
+        const visitasEmpDia = agendaOrg[form.data]?.[funcId] ?? [];
+        const proximaOrdem = visitasEmpDia.length > 0
+          ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
+          : 0;
+        return {
+          cliente_id:            form.clienteId,
+          funcionario_id:        String(funcId),
+          cliente_servico_id:    idServicoParaBanco(form.servicoId),
+          data_agendada:         form.data,
+          hora_estimada_chegada: form.hora || null,
+          duracao_estimada_min:  form.duracao ? Number(form.duracao) : null,
+          tipos_tarefa:          form.tipos?.length ? form.tipos : null,
+          observacoes_gestor:    form.obs || null,
+          ordem_rota:            proximaOrdem,
+          status:                'rascunho',
+        };
       });
+      const { error } = await supabase.from('agenda').insert(rows);
       if (error) throw error;
       setModal(null);
       await carregarAgenda();
@@ -485,6 +534,7 @@ export default function EscalaCampo() {
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         hora_estimada_chegada: campos.hora || null,
         duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
+        tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
         observacoes_gestor:    campos.obs || null,
       };
       const { error } = await supabase.from('agenda').update(payload).eq('id', modalEdit.id);
@@ -493,6 +543,62 @@ export default function EscalaCampo() {
       await carregarAgenda();
     } catch (e) {
       alert('Erro ao salvar: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
+  // ── Duplicar visita para outro funcionário (2A) ────────────────────────────
+  // Chamado pelo botão "+ Funcionário" no ModalEditVisita. Abre um picker
+  // simples e replica a visita atribuída a outro funcionário no mesmo dia.
+  async function duplicarParaOutroFuncionario(campos) {
+    if (!modalEdit) return;
+    const idsExistentes = new Set(
+      (agenda ?? [])
+        .filter(v => v.cliente_id === modalEdit.cliente_id
+                  && v.lead_id === modalEdit.lead_id
+                  && v.data_agendada === modalEdit.data_agendada)
+        .map(v => String(v.funcionario_id))
+    );
+    const disponiveis = employees.filter(e => !idsExistentes.has(String(e.id)));
+    if (disponiveis.length === 0) {
+      alert('Todos os funcionários já têm essa visita nesse dia.');
+      return;
+    }
+    const nome = prompt(
+      'Duplicar essa visita para qual funcionário?\n\n' +
+      disponiveis.map((e, i) => `${i + 1}. ${e.name}`).join('\n') +
+      '\n\nDigite o número:'
+    );
+    if (!nome) return;
+    const idx = parseInt(nome, 10) - 1;
+    const alvo = disponiveis[idx];
+    if (!alvo) { alert('Funcionário inválido.'); return; }
+
+    setSalvandoEdit(true);
+    try {
+      const visitasEmpDia = agendaOrg[modalEdit.data_agendada]?.[alvo.id] ?? [];
+      const proximaOrdem = visitasEmpDia.length > 0
+        ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
+        : 0;
+      const { error } = await supabase.from('agenda').insert({
+        cliente_id:            modalEdit.cliente_id,
+        lead_id:               modalEdit.lead_id,
+        funcionario_id:        String(alvo.id),
+        cliente_servico_id:    idServicoParaBanco(campos.servicoId),
+        data_agendada:         modalEdit.data_agendada,
+        hora_estimada_chegada: campos.hora || null,
+        duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
+        tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
+        observacoes_gestor:    campos.obs || null,
+        ordem_rota:            proximaOrdem,
+        status:                'rascunho',
+      });
+      if (error) throw error;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao duplicar: ' + e.message);
     } finally {
       setSalvandoEdit(false);
     }
@@ -738,6 +844,7 @@ export default function EscalaCampo() {
                         mostrarPrioridade={mostrarPrioridade}
                         restricao={checarRestricoes(v.clientes, v.data_agendada, v.hora_estimada_chegada)}
                         onEditar={() => setModalEdit(v)}
+                        onVerRelatorio={(vis) => setModalRel(vis)}
                       />
                     ))
                   )}
@@ -757,12 +864,12 @@ export default function EscalaCampo() {
         </div>
       )}
 
-      {/* ── Barra de ação: mover selecionadas ── */}
+      {/* ── Barra de ação: mover/reverter/cancelar selecionadas ── */}
       {modoSelecao && (
         <div className="ec__bulk-bar">
           <span className="ec__bulk-info">
             {qtdSel === 0
-              ? 'Clique nas visitas para selecioná-las'
+              ? 'Clique em rascunhos e/ou publicadas para selecioná-las'
               : `${qtdSel} visita${qtdSel !== 1 ? 's' : ''} selecionada${qtdSel !== 1 ? 's' : ''}`}
           </span>
           <div className="ec__bulk-acoes">
@@ -783,7 +890,23 @@ export default function EscalaCampo() {
             >
               {salvando ? 'Movendo...' : 'Mover'}
             </button>
-            <button className="ec__bulk-btn ec__bulk-btn--sec" onClick={cancelarSelecao}>Cancelar</button>
+            <button
+              className="ec__bulk-btn ec__bulk-btn--sec"
+              disabled={qtdSel === 0 || salvando}
+              onClick={voltarSelecionadasParaRascunho}
+              title="Volta as visitas selecionadas para rascunho (útil quando alguém falta e você precisa realocar)"
+            >
+              ↩ Para rascunho
+            </button>
+            <button
+              className="ec__bulk-btn ec__bulk-btn--perigo"
+              disabled={qtdSel === 0 || salvando}
+              onClick={cancelarSelecionadasVisitas}
+              title="Cancela as visitas — desaparecem do App Ponto"
+            >
+              ✕ Cancelar
+            </button>
+            <button className="ec__bulk-btn ec__bulk-btn--sec" onClick={cancelarSelecao}>Fechar</button>
           </div>
         </div>
       )}
@@ -821,7 +944,16 @@ export default function EscalaCampo() {
           onFechar={() => setModalEdit(null)}
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
+          onDuplicarFuncionario={duplicarParaOutroFuncionario}
           salvando={salvandoEdit}
+        />
+      )}
+
+      {/* ── Modal de relatório (visita em_execução ou concluída) ── */}
+      {modalRel && (
+        <ModalRelatorioVisita
+          visita={modalRel}
+          onFechar={() => setModalRel(null)}
         />
       )}
 
