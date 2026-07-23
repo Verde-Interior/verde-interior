@@ -231,6 +231,10 @@
   background: var(--surface-bg);
 }
 
+/* ── Topbar mobile (hidden no desktop) ── */
+.app__topbar { display: none; }
+.app__drawer-backdrop { display: none; }
+
 /* ── Responsivo ── */
 @media (max-width: 1200px) {
   .app__sidebar { width: 200px; }
@@ -243,68 +247,88 @@
 }
 
 @media (max-width: 720px) {
-  /* Sidebar vira barra inferior compacta */
   .app {
     flex-direction: column;
-    height: 100dvh; /* dynamic viewport height para mobile */
+    height: 100dvh;
   }
+
+  /* Topbar fixa no topo */
+  .app__topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 52px;
+    padding: 0 12px;
+    background: var(--surface-sidebar);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    z-index: 30;
+  }
+  .app__hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    margin-left: -8px;
+  }
+  .app__hamburger span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+  }
+  .app__topbar-titulo {
+    flex: 1;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .app__topbar-busca {
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* Sidebar vira drawer deslizante */
   .app__sidebar {
-    width: 100%;
-    flex-direction: row;
-    overflow: hidden;
-    border-right: none;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100dvh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+  }
+  .app--drawer-aberto .app__sidebar { transform: translateX(0); }
+
+  .app__drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 40;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Busca da sidebar oculta (fica no topbar) */
+  .app__sidebar-busca { display: none; }
+
+  /* Main ocupa espaço restante */
+  .app__main {
+    flex: 1;
+    min-height: 0;
     order: 2;
-    flex-shrink: 0;
-    height: 64px;
   }
-  .app__sidebar-scroll {
-    flex-direction: row;
-    flex: 1;
-    overflow: hidden;
-  }
-  /* Ocultar elementos não necessários no mobile */
-  .app__sidebar-logo,
-  .app__sidebar-busca,
-  .sidebar-cal { display: none; }
-
-  .app__nav {
-    flex-direction: row;
-    padding: 0 4px;
-    gap: 0;
-    flex: 1;
-    height: 64px;
-    align-items: center;
-    justify-content: space-around;
-  }
-  .app__nav-section { display: none; }
-  .app__nav-item {
-    flex-direction: column;
-    gap: 3px;
-    font-size: 10px;
-    padding: 6px 8px;
-    flex: 1;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-  }
-  .app__nav-item--ativo::before { display: none; }
-  .app__nav-badge { position: absolute; top: 4px; right: 4px; min-width: 14px; padding: 0 4px; font-size: 9px; }
-  .app__nav-item { position: relative; }
-
-  .app__sidebar-footer {
-    border-top: none;
-    border-left: 1px solid rgba(255,255,255,0.06);
-    padding: 0 6px;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 64px;
-    width: 64px;
-    flex-shrink: 0;
-  }
-  .app__sidebar-empresa { display: none; }
-
-  /* Main ocupa todo espaço restante */
-  .app__main { order: 1; flex: 1; min-height: 0; }
 }

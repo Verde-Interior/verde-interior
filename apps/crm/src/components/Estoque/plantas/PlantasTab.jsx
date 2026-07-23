@@ -2,14 +2,27 @@
 // Lista de espécies com quantidade derivada dos patrimônios
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useToast } from '../../Toast/Toast';
 import ModalEspecie from './ModalEspecie';
 
+const LAYOUT_KEY = 'estoque-plantas-layout';
+const FILTRO_KEY = 'estoque-plantas-filtro';
+
 export default function PlantasTab() {
+  const toast = useToast();
   const [resumo,  setResumo]  = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro,    setErro]    = useState(null);
   const [busca,   setBusca]   = useState('');
   const [modalEspecie, setModalEspecie] = useState(null); // null | {} (nova) | obj (editar)
+  const [ajustando, setAjustando] = useState(null); // id da espécie sendo ajustada
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [layout, setLayout] = useState(() => localStorage.getItem(LAYOUT_KEY) ?? 'lista');
+  const [filtro, setFiltro] = useState(() => localStorage.getItem(FILTRO_KEY) ?? 'todos');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('todas');
+
+  useEffect(() => { localStorage.setItem(LAYOUT_KEY, layout); }, [layout]);
+  useEffect(() => { localStorage.setItem(FILTRO_KEY, filtro); }, [filtro]);
 
   async function carregar() {
     setLoading(true);
@@ -25,10 +38,66 @@ export default function PlantasTab() {
 
   useEffect(() => { carregar(); }, []);
 
+  async function adicionarPlanta(especie) {
+    setAjustando(especie.especie_id);
+    const { data: qr, error: eQr } = await supabase.rpc('gerar_qr_codigo_patrimonio');
+    if (eQr) { toast.erro('Erro ao gerar QR: ' + eQr.message); setAjustando(null); return; }
+    const id = crypto.randomUUID();
+    const { error: ePat } = await supabase.from('estoque_patrimonios').insert({
+      id, qr_codigo: qr, especie_id: especie.especie_id, status: 'disponivel',
+    });
+    if (ePat) { toast.erro('Erro: ' + ePat.message); setAjustando(null); return; }
+    await supabase.from('estoque_eventos').insert({
+      patrimonio_id: id,
+      tipo: 'cadastro',
+      especie_nova_id: especie.especie_id,
+      observacoes: `Adicionado via aba Plantas — ${qr}`,
+    });
+    toast.ok(`+1 ${especie.nome} (${qr})`);
+    setAjustando(null);
+    carregar();
+  }
+
+  async function removerPlanta(especie) {
+    if (especie.disponiveis <= 0) {
+      toast.erro('Sem plantas disponíveis para remover.');
+      return;
+    }
+    if (!window.confirm(`Descartar 1 planta de ${especie.nome}? Isso marca o patrimônio mais recente como descartado.`)) return;
+    setAjustando(especie.especie_id);
+    // pega o patrimônio disponível mais recente
+    const { data: pats } = await supabase
+      .from('estoque_patrimonios')
+      .select('id, qr_codigo')
+      .eq('especie_id', especie.especie_id)
+      .eq('status', 'disponivel')
+      .order('criado_em', { ascending: false })
+      .limit(1);
+    if (!pats?.length) { toast.erro('Nenhum disponível.'); setAjustando(null); return; }
+    const p = pats[0];
+    await supabase.from('estoque_patrimonios').update({ status: 'descartado' }).eq('id', p.id);
+    await supabase.from('estoque_eventos').insert({
+      patrimonio_id: p.id, tipo: 'descarte', observacoes: 'Descarte via aba Plantas',
+    });
+    toast.ok(`−1 ${especie.nome} (${p.qr_codigo} descartado)`);
+    setAjustando(null);
+    carregar();
+  }
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase().trim();
-    return q ? resumo.filter(e => e.nome.toLowerCase().includes(q)) : resumo;
-  }, [resumo, busca]);
+    return resumo.filter(e => {
+      if (q && !e.nome.toLowerCase().includes(q)) return false;
+      if (categoriaFiltro !== 'todas' && e.categoria !== categoriaFiltro) return false;
+      if (filtro === 'zerado'      && Number(e.total_ativos)   > 0) return false;
+      if (filtro === 'baixo'       && (Number(e.disponiveis)   > 3 || Number(e.disponiveis) === 0)) return false;
+      if (filtro === 'disponiveis' && Number(e.disponiveis)   === 0) return false;
+      if (filtro === 'em_cliente'  && Number(e.em_cliente)    === 0) return false;
+      if (filtro === 'em_evento'   && Number(e.em_evento)     === 0) return false;
+      if (filtro === 'em_manut'    && Number(e.em_manutencao) === 0) return false;
+      return true;
+    });
+  }, [resumo, busca, filtro, categoriaFiltro]);
 
   const kpis = useMemo(() => ({
     especies:   resumo.length,
@@ -36,6 +105,24 @@ export default function PlantasTab() {
     disponivel: resumo.reduce((s, e) => s + Number(e.disponiveis), 0),
     em_cliente: resumo.reduce((s, e) => s + Number(e.em_cliente), 0),
   }), [resumo]);
+
+  const filtrosDisponiveis = [
+    { id: 'todos',       label: 'Todos' },
+    { id: 'disponiveis', label: 'Disponíveis' },
+    { id: 'baixo',       label: '⚠ Estoque baixo (1-3)' },
+    { id: 'zerado',      label: 'Zerados' },
+    { id: 'em_cliente',  label: 'No cliente' },
+    { id: 'em_evento',   label: 'Em evento' },
+    { id: 'em_manut',    label: 'Em recuperação' },
+  ];
+
+  const categorias = [
+    { id: 'todas',   label: 'Todas' },
+    { id: 'interna', label: 'Interna' },
+    { id: 'locacao', label: 'Locação' },
+    { id: 'evento',  label: 'Evento' },
+    { id: 'outro',   label: 'Outra' },
+  ];
 
   return (
     <>
@@ -46,7 +133,7 @@ export default function PlantasTab() {
         </div>
         <div className="es__kpi">
           <span className="es__kpi-valor">{kpis.total}</span>
-          <span className="es__kpi-label">Total de plantas</span>
+          <span className="es__kpi-label">Total</span>
         </div>
         <div className="es__kpi">
           <span className="es__kpi-valor">{kpis.disponivel}</span>
@@ -69,9 +156,60 @@ export default function PlantasTab() {
           />
           {busca && <button className="es__busca-clear" onClick={() => setBusca('')}>✕</button>}
         </div>
-        <span className="es__count">{filtrados.length} espécie{filtrados.length !== 1 ? 's' : ''}</span>
-        <button className="es__btn-pri" onClick={() => setModalEspecie({})}>+ Nova espécie</button>
+
+        <button
+          className={`es__btn-sec ${filtro !== 'todos' || categoriaFiltro !== 'todas' ? 'es__btn-sec--ativo' : ''}`}
+          onClick={() => setFiltrosAbertos(v => !v)}
+          title="Filtros"
+        >
+          ⚗ Filtros{filtro !== 'todos' || categoriaFiltro !== 'todas' ? ' •' : ''}
+        </button>
+
+        <div className="es__layout-toggle" role="group" aria-label="Layout">
+          <button
+            className={`es__layout-btn ${layout === 'lista' ? 'es__layout-btn--ativo' : ''}`}
+            onClick={() => setLayout('lista')}
+            title="Lista"
+            aria-label="Ver como lista"
+          >☰</button>
+          <button
+            className={`es__layout-btn ${layout === 'grid' ? 'es__layout-btn--ativo' : ''}`}
+            onClick={() => setLayout('grid')}
+            title="Cards"
+            aria-label="Ver como grade"
+          >▦</button>
+        </div>
+
+        <span className="es__count">{filtrados.length}</span>
+        <button className="es__btn-pri" onClick={() => setModalEspecie({})}>+ Espécie</button>
       </div>
+
+      {filtrosAbertos && (
+        <div className="es__filtros-painel">
+          <div className="es__filtros-grupo">
+            <span className="es__filtros-titulo">Estado</span>
+            <div className="es__filtros-pills">
+              {filtrosDisponiveis.map(f => (
+                <button key={f.id}
+                  className={`es__pill ${filtro === f.id ? 'es__pill--ativo' : ''}`}
+                  onClick={() => setFiltro(f.id)}
+                >{f.label}</button>
+              ))}
+            </div>
+          </div>
+          <div className="es__filtros-grupo">
+            <span className="es__filtros-titulo">Categoria</span>
+            <div className="es__filtros-pills">
+              {categorias.map(c => (
+                <button key={c.id}
+                  className={`es__pill ${categoriaFiltro === c.id ? 'es__pill--ativo' : ''}`}
+                  onClick={() => setCategoriaFiltro(c.id)}
+                >{c.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="es__estado"><div className="es__spinner" /><p>Carregando plantas...</p></div>
@@ -85,27 +223,36 @@ export default function PlantasTab() {
           <p className="es__estado-msg">{resumo.length === 0 ? 'Nenhuma espécie cadastrada.' : 'Nenhuma espécie encontrada.'}</p>
         </div>
       ) : (
-        <div className="es__lista">
+        <div className={`es__lista es__lista--${layout}`}>
           {filtrados.map(e => (
-            <div key={e.especie_id} className="es-card ep-especie-card">
-              <div className="es-card__info">
-                <div className="es-card__nome">{e.nome}</div>
-                <div className="es-card__meta">
-                  {e.disponiveis > 0   && <span className="ep-cnt ep-cnt--verde">{e.disponiveis} disponível{e.disponiveis !== 1 ? 'is' : ''}</span>}
-                  {e.em_cliente > 0    && <span className="ep-cnt ep-cnt--azul">{e.em_cliente} no cliente</span>}
-                  {e.em_manutencao > 0 && <span className="ep-cnt ep-cnt--amarelo">{e.em_manutencao} em manutenção</span>}
-                  {e.descartados > 0   && <span className="ep-cnt ep-cnt--cinza">{e.descartados} descartado{e.descartados !== 1 ? 's' : ''}</span>}
-                </div>
+            <div
+              key={e.especie_id}
+              className={`ep-card ep-card--${layout}`}
+              onClick={() => setModalEspecie({ id: e.especie_id, nome: e.nome, categoria: e.categoria })}
+              role="button"
+              tabIndex={0}
+              onKeyDown={ev => (ev.key === 'Enter' || ev.key === ' ') && setModalEspecie({ id: e.especie_id, nome: e.nome, categoria: e.categoria })}
+            >
+              <div className="ep-card__topo">
+                <div className="ep-card__nome">{e.nome}</div>
+                <div className="ep-card__saldo">{e.total_ativos}</div>
               </div>
-              <div className="es-card__saldo es-card__saldo--ok">
-                <span className="es-card__saldo-val">{e.total_ativos}</span>
-                <span className="es-card__saldo-un">un</span>
+              <div className="ep-card__acoes" onClick={ev => ev.stopPropagation()}>
+                <button
+                  className="ep-card__btn"
+                  onClick={() => removerPlanta(e)}
+                  disabled={ajustando === e.especie_id || e.disponiveis <= 0}
+                  aria-label="Descartar 1"
+                  title="Descartar 1 disponível"
+                >−</button>
+                <button
+                  className="ep-card__btn ep-card__btn--add"
+                  onClick={() => adicionarPlanta(e)}
+                  disabled={ajustando === e.especie_id}
+                  aria-label="Adicionar 1"
+                  title="Gerar novo QR + planta"
+                >+</button>
               </div>
-              <button
-                className="es-card__editar"
-                onClick={() => setModalEspecie({ id: e.especie_id, nome: e.nome, categoria: e.categoria })}
-                title="Editar espécie"
-              >✏</button>
             </div>
           ))}
         </div>

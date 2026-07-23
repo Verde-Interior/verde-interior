@@ -140,6 +140,7 @@ const NAV_ITEM_CONFIG = { id: 'configuracoes', Icon: IconConfig, label: 'Configu
 function AppLayout() {
   const [tela, setTela]               = useState('dashboard');
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [drawerAberto, setDrawerAberto] = useState(false);
   const [qrScan,      setQrScan]      = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('patrimonio') ?? null;
@@ -169,7 +170,7 @@ function AppLayout() {
     return (
       <button
         className={`app__nav-item ${ativo ? 'app__nav-item--ativo' : ''}`}
-        onClick={() => setTela(item.id)}
+        onClick={() => { setTela(item.id); setDrawerAberto(false); }}
       >
         <span className="app__nav-icon"><item.Icon /></span>
         {item.label}
@@ -183,8 +184,31 @@ function AppLayout() {
     );
   }
 
+  const telaAtual = NAV_ITEMS_TOP.find(i => i.id === tela) ?? NAV_ITEM_CONFIG;
+
   return (
-    <div className="app">
+    <div className={`app ${drawerAberto ? 'app--drawer-aberto' : ''}`}>
+      {/* ── Topbar mobile ── */}
+      <div className="app__topbar">
+        <button
+          className="app__hamburger"
+          onClick={() => setDrawerAberto(v => !v)}
+          aria-label="Abrir menu"
+        >
+          <span /><span /><span />
+        </button>
+        <span className="app__topbar-titulo">{telaAtual.label}</span>
+        <button
+          className="app__topbar-busca"
+          onClick={() => setBuscaAberta(true)}
+          aria-label="Buscar"
+        >⌕</button>
+      </div>
+
+      {drawerAberto && (
+        <div className="app__drawer-backdrop" onClick={() => setDrawerAberto(false)} />
+      )}
+
       {/* ── Sidebar ── */}
       <aside className="app__sidebar">
         <div className="app__sidebar-logo">

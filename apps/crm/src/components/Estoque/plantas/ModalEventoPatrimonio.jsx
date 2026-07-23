@@ -4,13 +4,15 @@ import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
 
 const TIPOS = [
-  { id: 'instalacao',       label: 'Instalar no cliente'  },
-  { id: 'retirada',         label: 'Retirar do cliente'   },
-  { id: 'troca_especie',    label: 'Trocar espécie'        },
-  { id: 'manutencao_inicio',label: 'Iniciar manutenção'   },
-  { id: 'manutencao_fim',   label: 'Concluir manutenção'  },
-  { id: 'descarte',         label: 'Descartar planta'      },
-  { id: 'observacao',       label: 'Registrar observação'  },
+  { id: 'instalacao',       label: '📍 Instalar no cliente' },
+  { id: 'retirada',         label: '↩ Retirar do cliente'   },
+  { id: 'evento_inicio',    label: '🎉 Enviar para evento'  },
+  { id: 'evento_fim',       label: '↩ Retorno de evento'    },
+  { id: 'manutencao_inicio',label: '🔧 Iniciar recuperação' },
+  { id: 'manutencao_fim',   label: '✅ Concluir recuperação'},
+  { id: 'troca_especie',    label: '🔄 Trocar espécie'      },
+  { id: 'descarte',         label: '🗑 Descartar planta'    },
+  { id: 'observacao',       label: '💬 Registrar observação' },
 ];
 
 const TIPOS_MANUTENCAO = [
@@ -25,11 +27,13 @@ const TIPOS_MANUTENCAO = [
 const STATUS_APOS = {
   instalacao:        'em_cliente',
   retirada:          'disponivel',
-  troca_especie:     null,          // mantém atual
+  evento_inicio:     'em_evento',
+  evento_fim:        'disponivel',
+  troca_especie:     null,
   manutencao_inicio: 'em_manutencao',
   manutencao_fim:    'disponivel',
   descarte:          'descartado',
-  observacao:        null,          // mantém atual
+  observacao:        null,
 };
 
 export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, onSalvo }) {
@@ -57,8 +61,11 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
     return TIPOS.filter(t => {
       if (t.id === 'instalacao'        && s !== 'disponivel')    return false;
       if (t.id === 'retirada'          && s !== 'em_cliente')    return false;
-      if (t.id === 'manutencao_inicio' && s === 'em_manutencao') return false;
+      if (t.id === 'evento_inicio'     && s !== 'disponivel')    return false;
+      if (t.id === 'evento_fim'        && s !== 'em_evento')     return false;
+      if (t.id === 'manutencao_inicio' && s !== 'disponivel')    return false;
       if (t.id === 'manutencao_fim'    && s !== 'em_manutencao') return false;
+      if (t.id === 'descarte'          && s === 'descartado')    return false;
       return true;
     });
   }
@@ -91,8 +98,8 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
     const patch = {};
     const novoStatus = STATUS_APOS[tipo];
     if (novoStatus) patch.status = novoStatus;
-    if (tipo === 'instalacao') patch.cliente_id = form.cliente_id;
-    if (tipo === 'retirada')   patch.cliente_id = null;
+    if (tipo === 'instalacao' || tipo === 'evento_inicio') patch.cliente_id = form.cliente_id || null;
+    if (tipo === 'retirada' || tipo === 'evento_fim')      patch.cliente_id = null;
     if (tipo === 'troca_especie') patch.especie_id = form.especie_nova_id;
 
     if (Object.keys(patch).length) {
@@ -145,9 +152,12 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
             </select>
           </div>
 
-          {tipo === 'instalacao' && (
+          {(tipo === 'instalacao' || tipo === 'evento_inicio') && (
             <div className="mm__campo">
-              <label className="modal__label">Cliente <span className="modal__obrigatorio">*</span></label>
+              <label className="modal__label">
+                Cliente {tipo === 'instalacao' && <span className="modal__obrigatorio">*</span>}
+                {tipo === 'evento_inicio' && <span style={{ opacity: .6 }}> (opcional — onde é o evento)</span>}
+              </label>
               <select className="modal__select" value={form.cliente_id} onChange={e => setF('cliente_id', e.target.value)}>
                 <option value="">Selecione o cliente...</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome_empresa}</option>)}

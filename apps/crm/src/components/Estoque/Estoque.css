@@ -591,6 +591,232 @@
   text-align: center;
 }
 
+/* ── Layout toggle (lista / grid) ───────────────────── */
+.es__layout-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: white;
+}
+
+.es__layout-btn {
+  padding: 8px 12px;
+  background: white;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+.es__layout-btn:hover { background: var(--cream-50); }
+.es__layout-btn--ativo {
+  background: var(--forest-100);
+  color: var(--forest-800);
+}
+.es__layout-btn + .es__layout-btn { border-left: 1px solid var(--surface-border); }
+
+.es__btn-sec--ativo {
+  background: var(--forest-100);
+  color: var(--forest-800);
+  border-color: var(--forest-300);
+}
+
+/* ── Painel de filtros expansível ──────────────────── */
+.es__filtros-painel {
+  padding: 12px 28px 14px;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--cream-50);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.es__filtros-grupo { display: flex; flex-direction: column; gap: 6px; }
+
+.es__filtros-titulo {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.es__filtros-painel .es__filtros-pills { flex-wrap: wrap; gap: 6px; }
+
+/* ── Card de espécie (Plantas) — layouts lista/grid ─── */
+.es__lista--lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.es__lista--grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* Sobrescreve grid antigo da ep-card */
+.ep-card {
+  display: block;
+  padding: 14px 16px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+.ep-card:hover { box-shadow: var(--shadow-sm); border-color: var(--forest-300); }
+.ep-card:focus-visible { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-lt); }
+
+.ep-card__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ep-card--grid .ep-card__topo {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 60px;
+}
+
+.ep-card__nome {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  word-break: break-word;
+}
+.ep-card--grid .ep-card__nome { font-size: 13px; }
+
+.ep-card__saldo {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--forest-700);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.ep-card--grid .ep-card__saldo { font-size: 26px; }
+
+.ep-card__acoes {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.ep-card--grid .ep-card__acoes { justify-content: space-between; }
+
+.ep-card__btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--surface-border);
+  background: white;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.ep-card__btn:hover:not(:disabled) {
+  background: var(--cream-50);
+  border-color: var(--text-muted);
+}
+.ep-card__btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.ep-card__btn--add {
+  background: var(--forest-700);
+  color: white;
+  border-color: var(--forest-700);
+}
+.ep-card__btn--add:hover:not(:disabled) {
+  background: var(--forest-800);
+  border-color: var(--forest-800);
+}
+
+/* ── Badge de status (Plantas + QR) ─────────────────── */
+.ep-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ep-status--verde   { background: var(--forest-100); color: var(--forest-800); }
+.ep-status--azul    { background: #DBEAFE; color: #1E40AF; }
+.ep-status--roxo    { background: #EDE9FE; color: #6D28D9; }
+.ep-status--amarelo { background: #FEF3C7; color: #92600A; }
+.ep-status--cinza   { background: var(--cream-100); color: var(--text-muted); }
+
+/* ── QR card (novo layout) ──────────────────────────── */
+.qr-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.qr-card--grid {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.qr-card__mini {
+  flex-shrink: 0;
+  padding: 4px;
+  background: white;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  display: flex;
+}
+
+.qr-card__corpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.qr-card--grid .qr-card__corpo { align-items: center; }
+
+.qr-card__codigo {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.qr-card__especie {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.qr-card__cliente {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.qr-card--sem-especie { border-left: 3px solid #F59E0B; }
+.qr-card--sem-especie .qr-card__especie { color: #92600A; font-style: italic; }
+
 /* ── Responsivo mobile ──────────────────────────────── */
 @media (max-width: 720px) {
   .es__header { padding: 12px 14px 0; }
@@ -622,4 +848,49 @@
   .es-card__saldo { padding: 6px 10px; min-width: 70px; }
   .es-card__saldo-val { font-size: 16px; }
   .es-card__editar { padding: 5px 8px; font-size: 12px; }
+
+  /* Novos elementos — ajustes mobile */
+  .es__kpis { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); padding: 10px 14px 0; }
+  .es__filtros-painel { padding: 10px 14px 12px; }
+
+  .es__filtros {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+  .es__busca-wrap { grid-column: 1 / -1; }
+  .es__layout-toggle { grid-column: 1; justify-self: start; }
+  .es__btn-sec { padding: 8px 12px; }
+  .es__btn-pri { grid-column: 2; }
+  .es__count { display: none; }
+
+  .es__lista--grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ep-card { padding: 12px 12px; }
+  .ep-card__nome { font-size: 13px; }
+  .ep-card__saldo { font-size: 22px; }
+  .ep-card--grid .ep-card__saldo { font-size: 24px; }
+  .ep-card__btn { width: 42px; height: 42px; font-size: 22px; }
+
+  .qr-card { padding: 10px 12px; gap: 10px; }
+  .qr-card__especie { font-size: 12px; }
+  .qr-card__codigo { font-size: 11px; }
+
+  /* Modal mobile: full screen */
+  .modal-overlay { padding: 0; align-items: stretch; }
+  .modal {
+    max-width: 100% !important;
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal__body { flex: 1; overflow-y: auto; }
+  .modal__footer { position: sticky; bottom: 0; background: white; border-top: 1px solid var(--surface-border); }
+}
+
+/* Grade em 1 coluna em telas muito pequenas */
+@media (max-width: 400px) {
+  .es__lista--grid { grid-template-columns: 1fr; }
 }
