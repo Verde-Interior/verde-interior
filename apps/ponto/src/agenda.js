@@ -231,7 +231,10 @@ async function loadVisitas() {
     `)
     .eq('funcionario_id', String(ses.employee_id))
     .eq('data_agendada', st.data)
-    .neq('status', 'rascunho')
+    // Só mostra o que o funcionário deve ver: já publicado, em execução ou
+    // concluído. Rascunho (ainda não publicado) e cancelado (gestor cancelou)
+    // ficam invisíveis pro colaborador.
+    .in('status', ['publicado', 'em_execucao', 'concluido'])
     .order('ordem_rota', { ascending: true });
 
   if (error) { console.error(error); toast('Erro ao carregar agenda', false); return []; }
