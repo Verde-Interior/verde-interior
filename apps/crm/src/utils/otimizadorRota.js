@@ -58,13 +58,15 @@ export function simularOrdem(ordem, _opts = {}) {
   const primeiro = ordem[0];
   const janIni = primeiro.clientes?.janela_entrada_inicio
     ? horaEmMinutos(primeiro.clientes.janela_entrada_inicio) : null;
-  const janFim = primeiro.clientes?.janela_entrada_fim
-    ? horaEmMinutos(primeiro.clientes.janela_entrada_fim) : null;
-  const horaAg = primeiro.hora_estimada_chegada
-    ? horaEmMinutos(primeiro.hora_estimada_chegada) : null;
-  let tempoAtual = horaAg ?? HORA_INICIO_DEFAULT;
-  if (janIni != null && janIni > tempoAtual) tempoAtual = janIni;
-  if (janFim != null && tempoAtual > janFim) tempoAtual = janFim;
+  // O otimizador SEMPRE começa no horário mais cedo possível — não respeita
+  // a hora_estimada_chegada que porventura já esteja na visita (essa hora
+  // pode ter sido setada errado antes). Preferência:
+  //   janela_entrada_inicio do cliente (se existir) > HORA_INICIO_DEFAULT (07:00)
+  // Assim, cliente que aceita a partir das 08:00 → 1ª visita fica 08:00,
+  // não 08:30 (que é o limite fim, não o início).
+  let tempoAtual = janIni != null && janIni > HORA_INICIO_DEFAULT
+    ? janIni
+    : HORA_INICIO_DEFAULT;
 
   for (let i = 0; i < ordem.length; i++) {
     const v = ordem[i];
