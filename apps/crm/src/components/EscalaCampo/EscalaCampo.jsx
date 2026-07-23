@@ -549,42 +549,28 @@ export default function EscalaCampo() {
   }
 
   // ── Duplicar visita para outro funcionário (2A) ────────────────────────────
-  // Chamado pelo botão "+ Funcionário" no ModalEditVisita. Abre um picker
-  // simples e replica a visita atribuída a outro funcionário no mesmo dia.
-  async function duplicarParaOutroFuncionario(campos) {
-    if (!modalEdit) return;
-    const idsExistentes = new Set(
-      (agenda ?? [])
-        .filter(v => v.cliente_id === modalEdit.cliente_id
-                  && v.lead_id === modalEdit.lead_id
-                  && v.data_agendada === modalEdit.data_agendada)
-        .map(v => String(v.funcionario_id))
-    );
-    const disponiveis = employees.filter(e => !idsExistentes.has(String(e.id)));
-    if (disponiveis.length === 0) {
-      alert('Todos os funcionários já têm essa visita nesse dia.');
-      return;
-    }
-    const nome = prompt(
-      'Duplicar essa visita para qual funcionário?\n\n' +
-      disponiveis.map((e, i) => `${i + 1}. ${e.name}`).join('\n') +
-      '\n\nDigite o número:'
-    );
-    if (!nome) return;
-    const idx = parseInt(nome, 10) - 1;
-    const alvo = disponiveis[idx];
-    if (!alvo) { alert('Funcionário inválido.'); return; }
+  // O botão "+ Funcionário" no ModalEditVisita abre o picker (state abaixo).
+  // Quando o usuário escolhe um funcionário, chamamos executarDuplicacao.
+  const [pickerDup, setPickerDup] = useState(null); // { campos: form } | null
 
+  function abrirPickerDuplicar(campos) {
+    setPickerDup({ campos });
+  }
+
+  async function executarDuplicacao(alvoId) {
+    if (!modalEdit || !pickerDup) return;
+    const campos = pickerDup.campos;
+    setPickerDup(null);
     setSalvandoEdit(true);
     try {
-      const visitasEmpDia = agendaOrg[modalEdit.data_agendada]?.[alvo.id] ?? [];
+      const visitasEmpDia = agendaOrg[modalEdit.data_agendada]?.[alvoId] ?? [];
       const proximaOrdem = visitasEmpDia.length > 0
         ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
         : 0;
       const { error } = await supabase.from('agenda').insert({
         cliente_id:            modalEdit.cliente_id,
         lead_id:               modalEdit.lead_id,
-        funcionario_id:        String(alvo.id),
+        funcionario_id:        String(alvoId),
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         data_agendada:         modalEdit.data_agendada,
         hora_estimada_chegada: campos.hora || null,
@@ -604,6 +590,18 @@ export default function EscalaCampo() {
     }
   }
 
+  // Funcionários candidatos: os que ainda não têm essa visita nesse dia
+  const funcionariosParaDuplicar = pickerDup && modalEdit ? (() => {
+    const idsExistentes = new Set(
+      (agenda ?? [])
+        .filter(v => v.cliente_id === modalEdit.cliente_id
+                  && v.lead_id === modalEdit.lead_id
+                  && v.data_agendada === modalEdit.data_agendada)
+        .map(v => String(v.funcionario_id))
+    );
+    return employees.filter(e => !idsExistentes.has(String(e.id)));
+  })() : [];
+
   // ── Adicionar visita a partir do painel "atrasados" ────────────────────────
   function abrirModalCliente(cliente) {
     setModal({
@@ -617,8 +615,12 @@ export default function EscalaCampo() {
 
   const visitasDiaSel = agendaOrg[diaSel] ?? {};
   const statusAtual   = statusDia[diaSel] ?? 'vazio';
-  const temRascunho   = agenda.some(v => v.data_agendada === diaSel && v.status === 'rascunho');
-  const qtdSel        = selecionadas.size;
+  const temRascunho    = agenda.some(v => v.data_agendada === diaSel && v.status === 'rascunho');
+  // Modo seleção agora aceita rascunho + publicado, então o botão aparece se
+  // existir qualquer um dos dois (útil pra reverter/mover em bloco tarefas
+  // publicadas quando alguém falta ou precisa reprogramar).
+  const temSelecionavel = agenda.some(v => v.data_agendada === diaSel && (v.status === 'rascunho' || v.status === 'publicado'));
+  const qtdSel          = selecionadas.size;
 
   return (
     <div className="ec">
@@ -711,7 +713,7 @@ export default function EscalaCampo() {
           )}
           {!modoSelecao ? (
             <>
-              {temRascunho && (
+              {temSelecionavel && (
                 <button className="ec__btn-sel" onClick={ativarModoSelecao}>☑ Selecionar</button>
               )}
               <button className="ec__btn-add" onClick={() => setModal({ funcionarioId: employees[0]?.id?.toString() ?? '' })}>
@@ -944,7 +946,7 @@ export default function EscalaCampo() {
           onFechar={() => setModalEdit(null)}
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
-          onDuplicarFuncionario={duplicarParaOutroFuncionario}
+          onDuplicarFuncionario={abrirPickerDuplicar}
           salvando={salvandoEdit}
         />
       )}
@@ -955,6 +957,45 @@ export default function EscalaCampo() {
           visita={modalRel}
           onFechar={() => setModalRel(null)}
         />
+      )}
+
+      {/* ── Picker "+ Funcionário": lista clicável em vez de prompt() ── */}
+      {pickerDup && (
+        <div className="ec-overlay" onClick={e => e.target === e.currentTarget && setPickerDup(null)}>
+          <div className="ec-modal" style={{ maxWidth: 380 }}>
+            <header className="ec-modal__header">
+              <div>
+                <h3 className="ec-modal__titulo">Duplicar para outro funcionário</h3>
+                <p className="ec-modal__sub">Cria uma cópia idêntica (hora, tarefa, observações) atribuída a quem você escolher.</p>
+              </div>
+              <button className="ec-modal__fechar" onClick={() => setPickerDup(null)}>✕</button>
+            </header>
+            <div className="ec-modal__corpo">
+              {funcionariosParaDuplicar.length === 0 ? (
+                <p className="ec-hint">Todos os funcionários já têm essa visita nesse dia.</p>
+              ) : (
+                <div className="ec-picker__lista">
+                  {funcionariosParaDuplicar.map(f => (
+                    <button
+                      key={f.id}
+                      className="ec-picker__item"
+                      onClick={() => executarDuplicacao(String(f.id))}
+                      disabled={salvandoEdit}
+                    >
+                      <span className="ec-picker__nome">{f.name}</span>
+                      {f.cargo && <span className="ec-picker__cargo">{f.cargo}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <footer className="ec-modal__footer">
+              <button className="ec-btn ec-btn--sec" onClick={() => setPickerDup(null)} disabled={salvandoEdit}>
+                Cancelar
+              </button>
+            </footer>
+          </div>
+        </div>
       )}
 
       {/* ── Modal de bloqueios do funcionário ── */}

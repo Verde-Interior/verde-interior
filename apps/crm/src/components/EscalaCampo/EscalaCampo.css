@@ -349,7 +349,7 @@
   background: white;
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
-  padding: 8px 96px 8px 5px; /* padding-right pra dar espaço ao badge grande de status */
+  padding: 8px 30px 8px 5px; /* padding-right pequeno pro ícone de status caber */
   position: relative;
   transition: box-shadow var(--transition-fast);
 }
@@ -375,24 +375,19 @@
    restrição-dia > conflito-sobreposição > conflito-fim > prioridade
    ═══════════════════════════════════════════════════════════════ */
 
-/* Status = badge grande no canto + border-left espesso pra distinguir de longe */
+/* Status — indicador visual sutil: só borda esquerda + fundo levemente tingido */
 .ec-cartao--publicado,
 .ec-cartao--em_execucao,
 .ec-cartao--concluido,
-.ec-cartao--cancelado { border-left: 5px solid transparent; }
-.ec-cartao--publicado   { border-left-color: #10b981; background: #ecfdf5; }
-.ec-cartao--em_execucao {
-  border-left-color: #2563eb;
-  background: #eff6ff;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, .25);
-}
-.ec-cartao--concluido   { border-left-color: #059669; background: #d1fae5; }
-.ec-cartao--cancelado   { border-left-color: #ef4444; background: #fef2f2; opacity: 0.6; }
-.ec-cartao--concluido .ec-cartao__nome,
-.ec-cartao--concluido .ec-cartao__bairro {
-  text-decoration: line-through;
-  color: #4b5563;
-}
+.ec-cartao--cancelado { border-left: 4px solid transparent; }
+/* Aguardando (publicado): mantém quase branco pra não competir com concluído */
+.ec-cartao--publicado   { border-left-color: #86efac; background: #ffffff; }
+/* Em execução: azul discreto */
+.ec-cartao--em_execucao { border-left-color: #2563eb; background: #eff6ff; }
+/* Concluída: verde suave (mais evidente que aguardando) */
+.ec-cartao--concluido   { border-left-color: #059669; background: #ecfdf5; }
+/* Cancelada: vermelho apagado */
+.ec-cartao--cancelado   { border-left-color: #ef4444; background: #fef2f2; opacity: 0.65; }
 
 /* Conflitos de horário — fundo sólido, sem gradientes */
 .ec-cartao--conflito-sob {
@@ -415,9 +410,9 @@
 /* Restrição do cliente (dia ou hora fora da regra) — mais grave */
 .ec-cartao--restr-dia,
 .ec-cartao--restr-hora {
-  background: #FEE2E2;
-  border-color: #DC2626;
-  border-left: 4px solid #DC2626;
+  background: #fff7ed;
+  border-color: #fed7aa;
+  border-left: 4px solid #f97316;
 }
 
 /* Tags de restrição — pequenas mas legíveis */
@@ -949,44 +944,29 @@
   max-width: 260px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff;
 }
 
-/* Badge grande de status — sempre visível, top-right do cartão */
+/* Ícone pequeno de status no canto — não invade o nome */
 .ec-cartao__pub {
   position: absolute;
   top: 6px;
   right: 6px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: .03em;
-  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
   flex-shrink: 0;
+  line-height: 1;
 }
-.ec-cartao__pub--publicado {
-  color: #065f46;
-  background: #a7f3d0;
-  border: 1px solid #6ee7b7;
-}
-.ec-cartao__pub--em_execucao {
-  color: #fff;
-  background: #2563eb;
-  animation: ec-pulsa 1.6s ease-in-out infinite;
-}
-.ec-cartao__pub--concluido {
-  color: #fff;
-  background: #059669;
-  border: 1px solid #047857;
-}
-.ec-cartao__pub--cancelado {
-  color: #fff;
-  background: #ef4444;
-}
+.ec-cartao__pub--publicado   { color: #059669; background: transparent; }
+.ec-cartao__pub--em_execucao { color: #fff;    background: #2563eb; animation: ec-pulsa 1.6s ease-in-out infinite; }
+.ec-cartao__pub--concluido   { color: #fff;    background: #059669; }
+.ec-cartao__pub--cancelado   { color: #fff;    background: #ef4444; }
 @keyframes ec-pulsa {
   0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .55); }
-  50%      { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+  50%      { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0); }
 }
 
 /* ═══════════════════════════════════════════
@@ -1060,6 +1040,47 @@
   background: var(--surface-card);
   flex-shrink: 0;
 }
+/* Variante do footer do EditVisita: destrutivas à esquerda, positivas à direita */
+.ec-modal__footer--edit {
+  justify-content: space-between;
+}
+.ec-modal__footer-esq,
+.ec-modal__footer-dir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ec-modal__footer-esq { margin-right: auto; }
+
+/* Picker de funcionário — lista clicável (em vez de prompt() feio) */
+.ec-picker__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.ec-picker__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+.ec-picker__item:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+.ec-picker__item:disabled { opacity: 0.5; cursor: not-allowed; }
+.ec-picker__nome  { font-size: 14px; font-weight: 600; color: #111827; }
+.ec-picker__cargo { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
 
 /* ── Campos do modal ── */
 .ec-grid2 {

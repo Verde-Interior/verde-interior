@@ -42,10 +42,10 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
 
         if (rel?.id) {
           const { data: fts, error: e2 } = await supabase
-            .from('relatorios_fotos')
+            .from('fotos_relatorio')
             .select('*')
             .eq('relatorio_id', rel.id)
-            .order('created_at', { ascending: true });
+            .order('ordem', { ascending: true });
           if (e2) throw e2;
           setFotos(fts ?? []);
         } else {
@@ -76,9 +76,11 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
       status: statusLabel,
       checkin: formatarHora(relatorio.checkin_at),
       checkout: formatarHora(relatorio.checkout_at),
+      obsGestor: visita.observacoes_gestor ?? '',
       relato: relatorio.relato ?? '',
+      obsRelatorio: relatorio.observacoes ?? '',
       assinatura: relatorio.assinatura_responsavel_img ?? null,
-      responsavel: relatorio.responsavel_nome ?? '',
+      responsavel: relatorio.assinatura_responsavel_nome ?? '',
       fotos,
     }));
     w.document.close();
@@ -117,6 +119,13 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
                 </div>
               </div>
 
+              {visita.observacoes_gestor && (
+                <section className="ec-relatorio__sec">
+                  <h4>Observações do gestor</h4>
+                  <p className="ec-relatorio__relato">{visita.observacoes_gestor}</p>
+                </section>
+              )}
+
               <section className="ec-relatorio__sec">
                 <h4>Fotos <span className="ec-hint">({fotos.length})</span></h4>
                 {fotos.length === 0 ? (
@@ -134,19 +143,26 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
               </section>
 
               <section className="ec-relatorio__sec">
-                <h4>Relato da tarefa</h4>
+                <h4>Relato da tarefa <span className="ec-hint">(escrito pelo colaborador)</span></h4>
                 {relatorio.relato
                   ? <p className="ec-relatorio__relato">{relatorio.relato}</p>
                   : <p className="ec-hint">Ainda não preenchido.</p>}
               </section>
+
+              {relatorio.observacoes && (
+                <section className="ec-relatorio__sec">
+                  <h4>Observações gerais</h4>
+                  <p className="ec-relatorio__relato">{relatorio.observacoes}</p>
+                </section>
+              )}
 
               <section className="ec-relatorio__sec">
                 <h4>Assinatura do responsável</h4>
                 {relatorio.assinatura_responsavel_img
                   ? <img src={relatorio.assinatura_responsavel_img} alt="Assinatura" className="ec-relatorio__assinatura" />
                   : <p className="ec-hint">Ainda não assinada.</p>}
-                {relatorio.responsavel_nome && (
-                  <p className="ec-hint">Responsável: <strong>{relatorio.responsavel_nome}</strong></p>
+                {relatorio.assinatura_responsavel_nome && (
+                  <p className="ec-hint">Responsável: <strong>{relatorio.assinatura_responsavel_nome}</strong></p>
                 )}
               </section>
             </>
@@ -168,7 +184,7 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
 }
 
 // ─── HTML da página de impressão (usado por exportarPDF) ──────────────────────
-function gerarHtmlImprimivel({ cliente, bairro, data, status, checkin, checkout, relato, assinatura, responsavel, fotos }) {
+function gerarHtmlImprimivel({ cliente, bairro, data, status, checkin, checkout, obsGestor, relato, obsRelatorio, assinatura, responsavel, fotos }) {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[c]);
@@ -227,7 +243,11 @@ function gerarHtmlImprimivel({ cliente, bairro, data, status, checkin, checkout,
     ${responsavel ? `<div><span>Responsável</span>${esc(responsavel)}</div>` : '<div></div>'}
   </div>
 
+  ${obsGestor ? `<section><h2>Observações do gestor</h2><p class="relato">${esc(obsGestor)}</p></section>` : ''}
+
   ${relato ? `<section><h2>Relato da tarefa</h2><p class="relato">${esc(relato)}</p></section>` : ''}
+
+  ${obsRelatorio ? `<section><h2>Observações gerais</h2><p class="relato">${esc(obsRelatorio)}</p></section>` : ''}
 
   ${fotos.length ? `<section><h2>Fotos (${fotos.length})</h2><div class="fotos">${fotosHtml}</div></section>` : ''}
 

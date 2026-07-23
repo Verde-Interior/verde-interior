@@ -139,11 +139,19 @@ export default function CartaoVisita({
         <button className="ec-cartao__del" onClick={e => { e.stopPropagation(); onDeletar(); }} title="Remover">✕</button>
       )}
       {!editavel && (
-        <span className={`ec-cartao__pub ec-cartao__pub--${status}`}>
-          {status === 'publicado'   && <>● Aguardando</>}
-          {status === 'em_execucao' && <>▶ Em execução</>}
-          {status === 'concluido'   && <>✓ Concluída</>}
-          {status === 'cancelado'   && <>✕ Cancelada</>}
+        <span
+          className={`ec-cartao__pub ec-cartao__pub--${status}`}
+          title={
+            status === 'publicado'   ? 'Aguardando início' :
+            status === 'em_execucao' ? 'Em execução' :
+            status === 'concluido'   ? 'Concluída' :
+            status === 'cancelado'   ? 'Cancelada' : ''
+          }
+        >
+          {status === 'publicado'   && '●'}
+          {status === 'em_execucao' && '▶'}
+          {status === 'concluido'   && '✓'}
+          {status === 'cancelado'   && '✕'}
         </span>
       )}
     </div>

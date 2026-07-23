@@ -148,46 +148,49 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
           )}
         </div>
 
-        <footer className="ec-modal__footer">
-          {publicada && (
-            <>
-              <button
-                className="ec-btn ec-btn--perigo"
-                onClick={onCancelar}
-                disabled={salvando}
-                title="Marca a visita como cancelada. Ela desaparece do App Ponto do funcionário."
-              >
-                ✕ Cancelar visita
-              </button>
+        <footer className="ec-modal__footer ec-modal__footer--edit">
+          <div className="ec-modal__footer-esq">
+            {publicada && (
+              <>
+                <button
+                  className="ec-btn ec-btn--perigo"
+                  onClick={onCancelar}
+                  disabled={salvando}
+                  title="Marca a visita como cancelada. Ela desaparece do App Ponto do funcionário."
+                >
+                  ✕ Cancelar visita
+                </button>
+                <button
+                  className="ec-btn ec-btn--sec"
+                  onClick={onDespublicar}
+                  disabled={salvando}
+                  title="Volta para rascunho. O funcionário não vê mais essa visita até você republicar o dia."
+                >
+                  ↩ Voltar para rascunho
+                </button>
+              </>
+            )}
+          </div>
+          <div className="ec-modal__footer-dir">
+            {onDuplicarFuncionario && (
               <button
                 className="ec-btn ec-btn--sec"
-                onClick={onDespublicar}
+                onClick={() => onDuplicarFuncionario(form)}
                 disabled={salvando}
-                title="Volta para rascunho. O funcionário não vê mais essa visita até você republicar o dia."
+                title="Cria uma cópia desta visita atribuída a outro funcionário (mesma hora, tarefa e observações)"
               >
-                ↩ Voltar para rascunho
+                👥 + Funcionário
               </button>
-            </>
-          )}
-          {onDuplicarFuncionario && (
+            )}
+            <button className="ec-btn ec-btn--sec" onClick={onFechar}>Fechar</button>
             <button
-              className="ec-btn ec-btn--sec"
-              onClick={() => onDuplicarFuncionario(form)}
-              disabled={salvando}
-              title="Cria uma cópia desta visita atribuída a outro funcionário (mesma hora, tarefa e observações)"
+              className="ec-btn ec-btn--pri"
+              onClick={() => onSalvar(form)}
+              disabled={salvando || !form.funcionarioId}
             >
-              👥 + Funcionário
+              {salvando ? 'Salvando...' : 'Salvar alterações'}
             </button>
-          )}
-          <span style={{ flex: 1 }} />
-          <button className="ec-btn ec-btn--sec" onClick={onFechar}>Fechar</button>
-          <button
-            className="ec-btn ec-btn--pri"
-            onClick={() => onSalvar(form)}
-            disabled={salvando || !form.funcionarioId}
-          >
-            {salvando ? 'Salvando...' : 'Salvar alterações'}
-          </button>
+          </div>
         </footer>
       </div>
     </div>
