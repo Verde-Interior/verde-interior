@@ -4,10 +4,15 @@ import { useState, useMemo } from 'react';
 import { TIPO_LABEL, verificarHorario } from '../../utils/escalaHelpers';
 
 export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar }) {
-  const clienteCompleto = useMemo(
-    () => clientes.find(c => c.id === visita.cliente_id),
-    [clientes, visita.cliente_id]
-  );
+  // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
+  // se é visita de lead (cliente_id null), usa o `visita.clientes` sintético
+  // já enriquecido pela EscalaCampo — traz cliente_servicos como array de 1 item
+  // com id prefixado `lead-` pra o dropdown funcionar.
+  const clienteCompleto = useMemo(() => {
+    if (visita.cliente_id) return clientes.find(c => c.id === visita.cliente_id);
+    return visita.clientes ?? null;
+  }, [clientes, visita.cliente_id, visita.clientes]);
+
   const servicosAtivos = useMemo(
     () => (clienteCompleto?.cliente_servicos ?? []).filter(s => s.ativo),
     [clienteCompleto]

@@ -106,34 +106,46 @@ export default function EscalaCampo() {
       .order('ordem_rota');
     setLoading(false);
     if (!error) {
-      // Compat: cartões da Escala esperam sempre `v.clientes`. Quando a visita
-      // veio de um lead (lead_id != null e cliente_id == null), copiamos os
-      // campos essenciais do lead para dentro de `.clientes` e marcamos
-      // `__isLead` para o cartão distinguir visualmente.
+      // Compat: cartões e modais da Escala esperam sempre `v.clientes`.
+      // Quando a visita veio de um lead (lead_id != null e cliente_id == null),
+      // copiamos os campos essenciais do lead pra dentro de `.clientes`,
+      // marcamos `__isLead` e fabricamos um id sintético com prefixo `lead-`
+      // pra distinguir claramente de ids reais de cliente cadastrado.
       const enriched = (data ?? []).map((v) => {
         if (!v.clientes && v.leads) {
           const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
             ? v.leads.tipos_servico[0]
             : null;
+          // Serviço sintético com id prefixado — ArrayVisita e ModalEditVisita
+          // usam esse id como chave; prefixo `lead-` evita colisão com id real.
+          const servicoSintetico = tipoPrimario ? {
+            id:           `lead-${v.leads.id}-${tipoPrimario}`,
+            tipo_servico: tipoPrimario,
+            frequencia:   v.leads.frequencia_visita ?? null,
+            ativo:        true,
+            __isLead:     true,
+          } : null;
           return {
             ...v,
             __isLead: true,
+            leadId:   v.leads.id,
             clientes: {
+              id:                `lead-${v.leads.id}`,   // id sintético prefixado
+              __isLead:          true,
               nome_empresa:      v.leads.empresa,
               bairro:            v.leads.bairro,
               lat:               v.leads.lat,
               lng:               v.leads.lng,
               frequencia_visita: v.leads.frequencia_visita,
-              contato:           v.leads.contato,
-              telefone:          v.leads.telefone,
+              contato_nome:      v.leads.contato,
+              contato_telefone:  v.leads.telefone,
               endereco:          v.leads.endereco,
-              // dias_disponiveis, janela ficam ausentes ⇒ sem restrição pro otimizador.
+              // Array (mesma shape de cliente real) — consumido pelo ModalEditVisita
+              cliente_servicos:  servicoSintetico ? [servicoSintetico] : [],
+              // dias_disponiveis, janela_entrada_* ausentes ⇒ sem restrição pro otimizador.
             },
-            // Se o lead tem tipos_servico, fabricamos um cliente_servicos
-            // pra o cartão exibir a cor/tag correta (venda/manutencao/etc).
-            cliente_servicos: v.cliente_servicos ?? (
-              tipoPrimario ? { tipo_servico: tipoPrimario, frequencia: v.leads.frequencia_visita ?? null } : null
-            ),
+            // Objeto único (join FK do agenda.cliente_servico_id) — consumido pelo CartaoVisita
+            cliente_servicos: v.cliente_servicos ?? servicoSintetico,
           };
         }
         return v;
@@ -307,7 +319,7 @@ export default function EscalaCampo() {
       const { error } = await supabase.from('agenda').insert({
         cliente_id:            form.clienteId,
         funcionario_id:        String(form.funcionarioId),
-        cliente_servico_id:    form.servicoId || null,
+        cliente_servico_id:    idServicoParaBanco(form.servicoId),
         data_agendada:         form.data,
         hora_estimada_chegada: form.hora || null,
         duracao_estimada_min:  form.duracao ? Number(form.duracao) : null,
@@ -454,6 +466,15 @@ export default function EscalaCampo() {
     }
   }
 
+  // Ids sintéticos de cliente_servicos vindos de LEADS começam com "lead-"
+  // (ver enrichment em carregarAgenda). Eles não podem ir pro banco pois
+  // agenda.cliente_servico_id é UUID FK — só aceita id real.
+  function idServicoParaBanco(id) {
+    if (!id) return null;
+    if (String(id).startsWith('lead-')) return null;
+    return id;
+  }
+
   // ── Salvar edição de visita ────────────────────────────────────────────────
   async function salvarEdicao(campos) {
     if (!modalEdit) return;
@@ -461,7 +482,7 @@ export default function EscalaCampo() {
     try {
       const payload = {
         funcionario_id:        String(campos.funcionarioId),
-        cliente_servico_id:    campos.servicoId || null,
+        cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         hora_estimada_chegada: campos.hora || null,
         duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
         observacoes_gestor:    campos.obs || null,
