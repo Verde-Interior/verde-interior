@@ -4,27 +4,26 @@ import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
 
 const TIPOS = [
-  { id: 'instalacao',       label: '📍 Instalar no cliente' },
-  { id: 'retirada',         label: '↩ Retirar do cliente'   },
-  { id: 'evento_inicio',    label: '🎉 Enviar para evento'  },
-  { id: 'evento_fim',       label: '↩ Retorno de evento'    },
-  { id: 'manutencao_inicio',label: '🔧 Iniciar recuperação' },
-  { id: 'manutencao_fim',   label: '✅ Concluir recuperação'},
-  { id: 'troca_especie',    label: '🔄 Trocar espécie'      },
-  { id: 'descarte',         label: '🗑 Descartar planta'    },
-  { id: 'observacao',       label: '💬 Registrar observação' },
+  { id: 'entrada',          label: '📦 Chegou do fornecedor', grupo: 'ciclo' },
+  { id: 'instalacao',       label: '📍 Instalar no cliente',  grupo: 'ciclo' },
+  { id: 'retirada',         label: '↩ Retirar do cliente',    grupo: 'ciclo' },
+  { id: 'evento_inicio',    label: '🎉 Enviar para evento',   grupo: 'ciclo' },
+  { id: 'evento_fim',       label: '↩ Retorno de evento',     grupo: 'ciclo' },
+  { id: 'manutencao_inicio',label: '🔧 Iniciar recuperação',  grupo: 'recup' },
+  { id: 'manutencao_fim',   label: '✅ Concluir recuperação', grupo: 'recup' },
+  { id: 'manejo_adubacao',   label: '🌿 Adubação',            grupo: 'manejo', obs: 'Adubação realizada' },
+  { id: 'manejo_rega',       label: '💧 Rega especial',       grupo: 'manejo', obs: 'Rega especial' },
+  { id: 'manejo_poda',       label: '✂ Poda',                 grupo: 'manejo', obs: 'Poda realizada' },
+  { id: 'manejo_substrato',  label: '🪴 Troca de substrato',  grupo: 'manejo', obs: 'Substrato trocado' },
+  { id: 'manejo_pragas',     label: '🐛 Tratamento de pragas',grupo: 'manejo', obs: 'Tratamento de pragas' },
+  { id: 'observacao',       label: '💬 Observação livre',     grupo: 'outros' },
+  { id: 'troca_especie',    label: '🔄 Trocar espécie',       grupo: 'outros' },
+  { id: 'descarte',         label: '🗑 Descartar planta',     grupo: 'outros' },
 ];
 
-const TIPOS_MANUTENCAO = [
-  { id: 'rega_especial',    label: 'Rega especial'       },
-  { id: 'troca_substrato',  label: 'Troca de substrato'  },
-  { id: 'poda',             label: 'Poda'                },
-  { id: 'tratamento_pragas',label: 'Tratamento de pragas'},
-  { id: 'outro',            label: 'Outro'               },
-];
-
-// Status resultante após cada tipo de evento
+// Status resultante após cada tipo de evento (null = mantém atual)
 const STATUS_APOS = {
+  entrada:           'disponivel',
   instalacao:        'em_cliente',
   retirada:          'disponivel',
   evento_inicio:     'em_evento',
@@ -34,7 +33,18 @@ const STATUS_APOS = {
   manutencao_fim:    'disponivel',
   descarte:          'descartado',
   observacao:        null,
+  manejo_adubacao:   null,
+  manejo_rega:       null,
+  manejo_poda:       null,
+  manejo_substrato:  null,
+  manejo_pragas:     null,
 };
+
+// Mapeia o id da UI para o tipo real no banco
+function tipoBanco(tipoUI) {
+  if (tipoUI.startsWith('manejo_')) return 'observacao';
+  return tipoUI;
+}
 
 export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, onSalvo }) {
   const toast = useToast();
@@ -70,25 +80,39 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
     });
   }
 
+  function grupoOpcoes(grupo, label) {
+    const opts = tiposDisponiveis().filter(t => t.grupo === grupo);
+    if (!opts.length) return null;
+    return <optgroup label={label}>{opts.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}</optgroup>;
+  }
+
   async function salvar() {
     if (!tipo) { toast.erro('Selecione o tipo de evento.'); return; }
     if (tipo === 'instalacao' && !form.cliente_id) { toast.erro('Selecione o cliente.'); return; }
     if (tipo === 'troca_especie' && !form.especie_nova_id) { toast.erro('Selecione a nova espécie.'); return; }
-    if (tipo === 'manutencao_inicio' && !form.tipo_manutencao) { toast.erro('Selecione o tipo de manutenção.'); return; }
 
     setSalvando(true);
 
+    const tipoUI = tipo;
+    const tipoDB = tipoBanco(tipoUI);
+    const meta = TIPOS.find(t => t.id === tipoUI);
+
+    // Se é manejo, usa observação como texto default
+    const obsUsuario = form.obs.trim();
+    const observacoesFinal = tipoUI.startsWith('manejo_')
+      ? (obsUsuario ? `${meta.obs}: ${obsUsuario}` : meta.obs)
+      : (obsUsuario || null);
+
     const evento = {
       patrimonio_id:      patrimonio.id,
-      tipo,
+      tipo:               tipoDB,
       cliente_id:         form.cliente_id || null,
-      especie_anterior_id: tipo === 'troca_especie' ? patrimonio.especie_id : null,
-      especie_nova_id:    tipo === 'troca_especie' ? form.especie_nova_id : null,
-      observacoes:        form.obs.trim() || null,
-      dados_extra:        tipo === 'manutencao_inicio' ? {
-        tipo_manutencao: form.tipo_manutencao,
-        previsao:        form.previsao || null,
-      } : {},
+      especie_anterior_id: tipoUI === 'troca_especie' ? patrimonio.especie_id : null,
+      especie_nova_id:    tipoUI === 'troca_especie' ? form.especie_nova_id : null,
+      observacoes:        observacoesFinal,
+      dados_extra:        tipoUI.startsWith('manejo_')
+        ? { manejo: tipoUI.replace('manejo_', '') }
+        : (tipoUI === 'manutencao_inicio' && form.previsao ? { previsao: form.previsao } : {}),
     };
 
     const { error: eEv } = await supabase.from('estoque_eventos').insert(evento);
@@ -96,41 +120,22 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
 
     // Atualiza status e espécie do patrimônio
     const patch = {};
-    const novoStatus = STATUS_APOS[tipo];
+    const novoStatus = STATUS_APOS[tipoUI];
     if (novoStatus) patch.status = novoStatus;
-    if (tipo === 'instalacao' || tipo === 'evento_inicio') patch.cliente_id = form.cliente_id || null;
-    if (tipo === 'retirada' || tipo === 'evento_fim')      patch.cliente_id = null;
-    if (tipo === 'troca_especie') patch.especie_id = form.especie_nova_id;
+    if (tipoUI === 'instalacao' || tipoUI === 'evento_inicio') patch.cliente_id = form.cliente_id || null;
+    if (tipoUI === 'retirada' || tipoUI === 'evento_fim')      patch.cliente_id = null;
+    if (tipoUI === 'troca_especie') patch.especie_id = form.especie_nova_id;
 
     if (Object.keys(patch).length) {
       const { error: ePat } = await supabase.from('estoque_patrimonios').update(patch).eq('id', patrimonio.id);
       if (ePat) { toast.erro('Evento salvo mas erro ao atualizar status: ' + ePat.message); }
     }
 
-    // Cria manutenção aberta se aplicável
-    if (tipo === 'manutencao_inicio') {
-      await supabase.from('estoque_manutencoes').insert({
-        patrimonio_id:             patrimonio.id,
-        tipo:                      form.tipo_manutencao,
-        motivo:                    form.obs.trim() || null,
-        prevista_conclusao:        form.previsao || null,
-        status:                    'aberta',
-      });
-    }
-
-    // Fecha manutenção aberta
-    if (tipo === 'manutencao_fim' && patrimonio.manutencao_aberta_id) {
-      await supabase.from('estoque_manutencoes')
-        .update({ status: 'concluida', concluida_em: new Date().toISOString() })
-        .eq('id', patrimonio.manutencao_aberta_id);
-    }
 
     toast.ok('Evento registrado com sucesso');
     setSalvando(false);
     onSalvo?.();
   }
-
-  const tipos = tiposDisponiveis();
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !salvando && onFechar()}>
@@ -148,7 +153,10 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
             <label className="modal__label">Tipo de evento <span className="modal__obrigatorio">*</span></label>
             <select className="modal__select" value={tipo} onChange={e => setTipo(e.target.value)}>
               <option value="">Selecione...</option>
-              {tipos.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              {grupoOpcoes('ciclo',  'Ciclo (fornecedor → cliente/evento)')}
+              {grupoOpcoes('manejo', 'Manejo na Lapa')}
+              {grupoOpcoes('recup',  'Recuperação')}
+              {grupoOpcoes('outros', 'Outros')}
             </select>
           </div>
 
@@ -178,19 +186,10 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
           )}
 
           {tipo === 'manutencao_inicio' && (
-            <>
-              <div className="mm__campo">
-                <label className="modal__label">Tipo de manutenção <span className="modal__obrigatorio">*</span></label>
-                <select className="modal__select" value={form.tipo_manutencao} onChange={e => setF('tipo_manutencao', e.target.value)}>
-                  <option value="">Selecione...</option>
-                  {TIPOS_MANUTENCAO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-              </div>
-              <div className="mm__campo">
-                <label className="modal__label">Previsão de conclusão</label>
-                <input type="date" className="modal__input" value={form.previsao} onChange={e => setF('previsao', e.target.value)} />
-              </div>
-            </>
+            <div className="mm__campo">
+              <label className="modal__label">Previsão de conclusão</label>
+              <input type="date" className="modal__input" value={form.previsao} onChange={e => setF('previsao', e.target.value)} />
+            </div>
           )}
 
           {tipo === 'descarte' && (

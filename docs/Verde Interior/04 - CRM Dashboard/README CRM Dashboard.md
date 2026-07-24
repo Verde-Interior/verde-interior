@@ -3,23 +3,24 @@
 **Status:** ✅ Deployado e operacional
 **Stack:** React 18 + Vite (JavaScript puro)
 **Pasta local:** `apps/crm/`
-**Última atualização da doc:** 20/07/2026
+**Última atualização da doc:** 23/07/2026
 
 ---
 
-## Módulos operacionais (9)
+## Módulos operacionais (10)
 
 | Módulo | Estado | Persistência |
 |---|---|---|
-| Dashboard | ✅ Operacional (KPIs, range de datas, atalhos, follow-up limpo separando ação vs lembrete) | Supabase (agenda, clientes, relatórios) |
+| Dashboard | ✅ Operacional (KPIs, range de datas, atalhos, follow-up limpo) | Supabase (agenda, clientes, relatórios) |
 | **Pipeline / Kanban** | ✅ Funil de vendas com 5 estágios, **multi-tipo de serviço** (016), delete lead na UI | ✅ Supabase (`leads`, migration 015) |
 | **Tarefas** | ✅ CRUD com prioridade, categoria, vínculo com lead | ✅ Supabase (`tarefas`, migration 015) |
 | Funil de Execução | ✅ Kanban pós-aprovação (materiais → pós-venda) | Supabase (estoque, employees) + leads via context |
-| Clientes | ✅ CRUD com dias disponíveis, janelas, frequência, completude | Supabase (`clientes`, `cliente_servicos`) |
-| Escala de Campo | ✅ Otimizador, drag & drop atômico via RPC `reorder_agenda`, tooltips, bloqueios, **aceita visitas de lead** (badge "🌱 lead", 016) | Supabase (`agenda`, `employees`, `employee_bloqueios`, `leads`) |
+| Clientes | ✅ CRUD com dias disponíveis, janelas, frequência, completude; 120 clientes importados | Supabase (`clientes`, `cliente_servicos`) |
+| **Ordens de Serviço** | ✅ Lista com `os_id` real (OS-NNN), criado automaticamente ao aprovar orçamento | Supabase (`ordens_servico`) |
+| Escala de Campo | ✅ Otimizador corrigido (usa `janela_entrada_inicio`), drag & drop atômico via RPC, bloqueios, **aceita visitas de lead** (016); canceladas ocultas no App Ponto | Supabase (`agenda`, `employees`, `employee_bloqueios`, `leads`) |
 | Relatórios | ✅ Fase 4 (fotos, assinatura, GPS, reverse geocoding) | Supabase (`relatorios`, `fotos_relatorio`, storage) |
 | Agenda | ✅ Calendário + sidebar | Supabase (`agenda`) |
-| Estoque | ✅ Etapa 2: lista + KPIs + **modais de cadastro de material e movimentação** | Supabase (`materiais`, `estoque_movimentacoes`, `estoque_saldos_totais`) |
+| **Estoque v2** | ✅ 5 abas: Plantas, Insumos, Vasos, Materiais, QR Codes. 260 patrimônios. Scan mobile. | Supabase (`estoque_*` — ver schema) |
 
 Também presentes: `GlobalSearch` (Cmd+K), `Configurações`, `AddLeadModal` com validação de duplicata, `ModalOrcamento` com histórico de atividades e ciclo completo de aprovação.
 
@@ -42,12 +43,26 @@ Integração com estoque para alertar materiais faltantes.
 
 ---
 
+## Estoque v2 — 5 abas
+
+| Aba | O que mostra | Fonte de dados |
+|---|---|---|
+| **Plantas** | Espécies do catálogo + quantidades (disponíveis, no cliente, manutenção) | `estoque_especies_resumo` (view) |
+| **Insumos** | Itens da categoria `insumo` com saldo e movimentações | `estoque_itens_saldo_total` (view) |
+| **Vasos** | Itens da categoria `vaso` | `estoque_itens_saldo_total` |
+| **Materiais** | Itens da categoria `material` | `estoque_itens_saldo_total` |
+| **QR Codes** | Patrimônios físicos VI-xxxx, gera QR, atribui espécie, imprime etiqueta | `estoque_patrimonios_view` |
+
+**Scan mobile:** URL `?patrimonio=VI-xxxx` detectada em `App.jsx` ao carregar → abre `ModalAtribuirQR` como overlay em qualquer dispositivo sem precisar de rota separada.
+
+---
+
 ## Autenticação (já implementada)
 
 - `AuthContext.jsx` → `supabase.auth.signInWithPassword()` (email `{user}@vi.app`)
 - Session: `user.id`, `user.email`, `user_metadata.username`, `user_metadata.role` (default `colab`)
 - `AppGate` renderiza `<Login />` se não houver sessão
-- Policies anônimas removidas em 07/2026 (commit `9a94f7c`)
+- Policies anônimas removidas em 07/2026
 
 **Pendente:** proteção granular de rotas por role (hoje qualquer usuário autenticado acessa todas as views).
 
@@ -56,27 +71,30 @@ Integração com estoque para alertar materiais faltantes.
 ## Persistência — mapa real
 
 **Cache local (não é fonte de verdade):**
-- `crm-verde-leads` e `crm-verde-tarefas` — cache de rendering rápido + fallback offline (fonte de verdade é o Supabase)
-- `crm-font-scale`, `crm-nome-usuario`, `crm-notif-*`, `crm-metas` (preferências, não sincronizam)
+- `crm-verde-leads` e `crm-verde-tarefas` — cache de rendering rápido + fallback offline
+- `crm-font-scale`, `crm-notif-*`, `crm-metas` (preferências, não sincronizam)
 
 **No Supabase (leitura + escrita):**
-- `leads`, `tarefas` (015), `clientes`, `cliente_servicos`, `agenda` (agora com `lead_id`, 016), `relatorios`, `fotos_relatorio`, `employee_bloqueios`, `materiais`, `estoque_movimentacoes`
+- `leads`, `tarefas` (015), `clientes`, `cliente_servicos`, `agenda` (com `lead_id`, 016), `relatorios`, `fotos_relatorio`, `employee_bloqueios`, `ordens_servico` (019)
+- `estoque_especies`, `estoque_patrimonios`, `estoque_eventos`, `estoque_manutencoes`, `estoque_itens`, `estoque_itens_movs` (025-028)
 
 **No Supabase (só leitura no CRM):**
-- `employees`, `estoque_saldos_totais` (view), `audit_log` (só gestor lê)
+- `employees`, `estoque_patrimonios_view`, `estoque_especies_resumo`, `estoque_itens_saldo_total`, `estoque_itens_saldo_titular`, `audit_log` (só gestor)
 
-**Multi-tipo de serviço (016):** `leads.tipos_servico TEXT[]` substitui `tipo_servico` (singular). Acesso via helper `getTiposServico(lead)` no CRMContext — aceita array novo, string legada ou vazio.
+**Deprecated (mantidas no banco por compat):**
+- `materiais`, `estoque_movimentacoes` — dados migrados para as novas tabelas em 027
 
 ---
 
 ## Bugs conhecidos (resolvidos ou pendentes)
 
-- ✅ **Race condition — Escala** (RESOLVIDO em 015): RPC atômica `reorder_agenda(p_updates jsonb)` substitui todos os `Promise.all` de updates. Drag & drop e otimizador agora são transacionais.
-- **Sem rollback:** `promoverParaCliente()` (`CRMContext.jsx`) pode deixar o cliente sem `cliente_servicos` se a segunda chamada falhar. Agora cria N contratos (um por tipo recorrente/venda) — mais chances de partial failure.
-- **Anexos legado:** convivem `orcamentoAnexo` (singular) e `orcamentoAnexos` (array) em ModalOrcamento — dívida técnica pequena.
-- **Export "CSV"** em `Configuracoes.jsx` gera JSON.
-- **Sem RLS enforcement no cliente:** confiança total no Supabase (padrão `_auth_all` no CRM — só authenticated, sem role granular).
-- **Perda silenciosa ao editar:** clicar em outro lead antes de salvar o modal descarta mudanças sem aviso.
+- ✅ **Race condition — Escala** (RESOLVIDO em 015): RPC atômica `reorder_agenda(p_updates jsonb)`.
+- ✅ **Otimizador de rota** (RESOLVIDO em commit 180201a): usa `janela_entrada_inicio` em vez de `hora_estimada_chegada` salva.
+- ✅ **Visitas canceladas** (RESOLVIDO em commit 7ebb341): ocultas do App Ponto.
+- **Sem rollback:** `promoverParaCliente()` pode deixar cliente sem `cliente_servicos` se segunda chamada falhar.
+- **Anexos legado:** convivem `orcamentoAnexo` (singular) e `orcamentoAnexos` (array) — dívida técnica.
+- **Export "CSV"** em `Configuracoes.jsx` gera JSON com extensão `.csv`.
+- **Sem RLS enforcement no cliente:** confiança total no Supabase (`_auth_all` no CRM).
 
 ---
 
@@ -84,15 +102,14 @@ Integração com estoque para alertar materiais faltantes.
 
 | Arquivo | Linhas | Sinal |
 |---|---|---|
-| `EscalaCampo.jsx` | ~2.500 | Crítico — precisa quebrar em subcomponentes |
-| `ModalOrcamento.jsx` | ~1.700 | Crítico — precisa quebrar em seções |
+| `ModalOrcamento.jsx` | ~1.700 | Crítico — SecaoAnexos, SecaoAgendaLead, SecaoFluxo, SecaoLead pendentes |
+| `EscalaCampo.jsx` | ~879 | Refatorado 64% (de 2.456) — ainda extenso; falta EscalaGrid, EscalaCartao, EscalaOtimizador |
 | `Dashboard.jsx` | ~1.300 | Alto |
 | `Clientes.jsx` | 820 | Aceitável |
 
-- ✅ **ESLint configurado** (`eslint.config.js`, flat config com react + hooks + prettier). Rodar `npm run lint`. Baseline: 1 erro + 15 warnings.
-- ✅ **Vitest configurado** com 13 testes de helpers do CRMContext (`getTiposServico`, `addDias`, `criarFluxoOrcamento`). Rodar `npm test`.
+- ✅ **ESLint configurado** (`eslint.config.js`, flat config com react + hooks). Baseline: 15 warnings (exhaustive-deps, unused vars).
+- ✅ **Vitest configurado** com 24 testes: 13 em `CRMContext.test.js`, 11 em `otimizadorRota.test.js`.
 - **Sem TypeScript**
-- Utilitários duplicados: `formatarData()`, `formatarValor()` em vários componentes (parcialmente centralizados em `src/utils/` após refactor `2714965`)
 
 ---
 
@@ -100,11 +117,11 @@ Integração com estoque para alertar materiais faltantes.
 
 Ver [[PROXIMOS-PASSOS]] para o backlog geral. Do CRM especificamente:
 
-1. **Refatorar `EscalaCampo.jsx`** em: `EscalaGrid`, `EscalaCartao`, `EscalaOtimizador`, `EscalaModalEdicao`, `EscalaRedistribuicao`, `EscalaMapa`. Uma extração por vez, build passando entre cada.
-2. **Refatorar `ModalOrcamento.jsx`** em: `SecaoLead`, `SecaoAnexos`, `SecaoServicos`, `SecaoContrato`, `SecaoAgendaLead`, `SecaoFluxo`, `SecaoHistorico`.
-3. **Corrigir os 15 warnings do ESLint** (unused vars e exhaustive-deps intencionais).
-4. **Ampliar cobertura de testes** — otimizador de rota da Escala e `promoverParaCliente` (mocking do supabase-js).
-5. **Hardening de roles** (só quando colaborador de campo precisar entrar no CRM).
+1. **Reset de senha** — Edge Function pronta (`admin-reset-password`), falta: SMTP no Supabase Dashboard → Auth → Custom SMTP + `supabase functions deploy` + popular `profiles.email_recuperacao`
+2. **Estoque — completar fluxo QR:** botão "Registrar evento" (instalação, retirada, manutenção) na aba QR Codes
+3. **Refatorar `ModalOrcamento.jsx`** — SecaoAnexos, SecaoAgendaLead, SecaoFluxo, SecaoLead (estado compartilhado profundo)
+4. **Refatorar `EscalaCampo.jsx`** — EscalaGrid, EscalaCartao, EscalaOtimizador
+5. **Corrigir 15 warnings ESLint**
 
 ---
 
@@ -115,13 +132,11 @@ Todos os clientes da Verde Interior têm ambientes corporativos com:
 - Apenas luz artificial (sem luz solar direta)
 - Sem pontos de água próximos (rega manual com transporte de água)
 
-Isso implica seleção de espécies resistentes a sombra e logística de rega planejada.
-
 ---
 
 ## Tipos de serviço (badges do Kanban)
 
-Desde a migration 016, um lead pode ter **múltiplos** tipos simultâneos (ex: "reforma + manutenção" para reformar as plantas existentes e depois manter contrato; "locação + manutenção" para não perder plantas rápido). Coluna `leads.tipos_servico TEXT[]`.
+Desde a migration 016, um lead pode ter **múltiplos** tipos simultâneos. Coluna `leads.tipos_servico TEXT[]`.
 
 | Serviço | Faturamento | Observação |
 |---|---|---|
@@ -135,5 +150,12 @@ Desde a migration 016, um lead pode ter **múltiplos** tipos simultâneos (ex: "
 
 ## Integrações novas (20/07/2026)
 
-- **Gerar orçamento a partir do lead** — botão "🛠 Gerar orçamento" no `ModalOrcamento` abre `/gerador-orcamento.html?empresa=...&contato=...&servico=...` em nova aba (dados do lead pré-preenchidos).
-- **Agendar visita técnica direto do lead** — seção "📅 Agendar visita técnica na Escala" no `ModalOrcamento`: gestor escolhe funcionário + data + hora + duração + observações, publica direto na Escala (sem precisar cadastrar cliente primeiro). Aparece na Escala com badge "🌱 lead".
+- **Gerar orçamento a partir do lead** — botão "🛠 Gerar orçamento" no `ModalOrcamento` abre `/gerador-orcamento.html?empresa=...&contato=...&servico=...` em nova aba.
+- **Agendar visita técnica direto do lead** — seção "📅 Agendar visita técnica na Escala" no `ModalOrcamento`.
+
+## Estoque v2 (23/07/2026)
+
+- 260 patrimônios VI-0001→VI-0260 pré-gerados com QR codes únicos
+- 37 espécies cadastradas no catálogo inicial
+- Scan mobile: escanear QR → URL com `?patrimonio=VI-xxxx` → `ModalAtribuirQR` abre automaticamente → seleciona espécie → registra evento `troca_especie`
+- Migrations 025-028 aplicadas via Supabase CLI

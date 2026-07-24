@@ -97,8 +97,11 @@ export default function ModalHistorico({ patrimonio, onFechar }) {
                         {ev.especie_anterior.nome} → {ev.especie_nova.nome}
                       </div>
                     )}
-                    {ev.dados_extra?.tipo_manutencao && (
-                      <div className="ep-timeline__detalhe">Tipo: {ev.dados_extra.tipo_manutencao}</div>
+                    {ev.dados_extra?.manejo && (
+                      <div className="ep-timeline__detalhe">Manejo: {ev.dados_extra.manejo}</div>
+                    )}
+                    {ev.dados_extra?.previsao && (
+                      <div className="ep-timeline__detalhe">Previsão: {new Date(ev.dados_extra.previsao).toLocaleDateString('pt-BR')}</div>
                     )}
                     {ev.observacoes && (
                       <div className="ep-timeline__obs">{ev.observacoes}</div>

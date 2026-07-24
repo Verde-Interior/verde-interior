@@ -19,7 +19,6 @@ export default function PlantasTab() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [layout, setLayout] = useState(() => localStorage.getItem(LAYOUT_KEY) ?? 'lista');
   const [filtro, setFiltro] = useState(() => localStorage.getItem(FILTRO_KEY) ?? 'todos');
-  const [categoriaFiltro, setCategoriaFiltro] = useState('todas');
 
   useEffect(() => { localStorage.setItem(LAYOUT_KEY, layout); }, [layout]);
   useEffect(() => { localStorage.setItem(FILTRO_KEY, filtro); }, [filtro]);
@@ -88,7 +87,6 @@ export default function PlantasTab() {
     const q = busca.toLowerCase().trim();
     return resumo.filter(e => {
       if (q && !e.nome.toLowerCase().includes(q)) return false;
-      if (categoriaFiltro !== 'todas' && e.categoria !== categoriaFiltro) return false;
       if (filtro === 'zerado'      && Number(e.total_ativos)   > 0) return false;
       if (filtro === 'baixo'       && (Number(e.disponiveis)   > 3 || Number(e.disponiveis) === 0)) return false;
       if (filtro === 'disponiveis' && Number(e.disponiveis)   === 0) return false;
@@ -97,7 +95,7 @@ export default function PlantasTab() {
       if (filtro === 'em_manut'    && Number(e.em_manutencao) === 0) return false;
       return true;
     });
-  }, [resumo, busca, filtro, categoriaFiltro]);
+  }, [resumo, busca, filtro]);
 
   const kpis = useMemo(() => ({
     especies:   resumo.length,
@@ -114,14 +112,6 @@ export default function PlantasTab() {
     { id: 'em_cliente',  label: 'No cliente' },
     { id: 'em_evento',   label: 'Em evento' },
     { id: 'em_manut',    label: 'Em recuperação' },
-  ];
-
-  const categorias = [
-    { id: 'todas',   label: 'Todas' },
-    { id: 'interna', label: 'Interna' },
-    { id: 'locacao', label: 'Locação' },
-    { id: 'evento',  label: 'Evento' },
-    { id: 'outro',   label: 'Outra' },
   ];
 
   return (
@@ -158,11 +148,11 @@ export default function PlantasTab() {
         </div>
 
         <button
-          className={`es__btn-sec ${filtro !== 'todos' || categoriaFiltro !== 'todas' ? 'es__btn-sec--ativo' : ''}`}
+          className={`es__btn-sec ${filtro !== 'todos' ? 'es__btn-sec--ativo' : ''}`}
           onClick={() => setFiltrosAbertos(v => !v)}
           title="Filtros"
         >
-          ⚗ Filtros{filtro !== 'todos' || categoriaFiltro !== 'todas' ? ' •' : ''}
+          ⚗ Filtros{filtro !== 'todos' ? ' •' : ''}
         </button>
 
         <div className="es__layout-toggle" role="group" aria-label="Layout">
@@ -194,17 +184,6 @@ export default function PlantasTab() {
                   className={`es__pill ${filtro === f.id ? 'es__pill--ativo' : ''}`}
                   onClick={() => setFiltro(f.id)}
                 >{f.label}</button>
-              ))}
-            </div>
-          </div>
-          <div className="es__filtros-grupo">
-            <span className="es__filtros-titulo">Categoria</span>
-            <div className="es__filtros-pills">
-              {categorias.map(c => (
-                <button key={c.id}
-                  className={`es__pill ${categoriaFiltro === c.id ? 'es__pill--ativo' : ''}`}
-                  onClick={() => setCategoriaFiltro(c.id)}
-                >{c.label}</button>
               ))}
             </div>
           </div>

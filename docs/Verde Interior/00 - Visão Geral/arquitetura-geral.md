@@ -1,7 +1,7 @@
 # Arquitetura Geral — Verde Interior
 
 > Documento de referência do projeto. Atualizar sempre que uma decisão estrutural for tomada.
-> Última atualização: 20/07/2026
+> Última atualização: 23/07/2026
 
 ---
 
@@ -37,7 +37,7 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 ---
 
 ### 2. CRM / Dashboard
-- **Status:** deployado e operacional — 9 módulos ativos
+- **Status:** deployado e operacional — 10 módulos ativos
 - **Stack:** React 18 + JSX (Vite) + ESLint 9 flat config + Vitest
 - **Deploy:** Vercel (auto via GitHub, `apps/crm/vercel.json`)
 - **Pasta local:** `apps/crm/`
@@ -46,18 +46,24 @@ Construir uma **plataforma operacional integrada** para a Verde Interior Paisagi
 - **Pipeline / Kanban** com 5 estágios, **multi-tipo de serviço por lead** (016), delete via UI
 - **Funil de Execução** para contratos ativos (materiais → pós-venda)
 - **Dashboard** com KPIs, range de datas, agenda e relatórios integrados. Follow-up separa "ação pendente" (borda verde) de "🕐 só lembrete" (borda cinza)
-- **Clientes** — CRUD com dias disponíveis, janelas, frequência, completude
-- **Escala de Campo** — otimizador de rota, drag & drop **atômico via RPC `reorder_agenda`** (015), tooltips, prioridade/bloqueios, **aceita visitas de lead** (badge "🌱 lead", 016)
+- **Clientes** — CRUD com dias disponíveis, janelas, frequência, completude; 120 clientes importados (023); merge duplicados (024)
+- **Ordens de Serviço** — lista com `os_id` real (OS-NNN), criado automaticamente ao aprovar orçamento
+- **Escala de Campo** — otimizador de rota (corrigido para usar `janela_entrada_inicio`), drag & drop **atômico via RPC `reorder_agenda`** (015), tooltips, prioridade/bloqueios, **aceita visitas de lead** (badge "🌱 lead", 016), visitas canceladas ocultas no App Ponto
 - **Relatórios** — visualização de fotos, assinatura, GPS, reverse geocoding
 - **Agenda** — calendário + sidebar
 - **Tarefas** — CRUD com prioridade, categoria, vínculo com lead
-- **Estoque** — Etapa 2 completa: modais de cadastro de material e movimentação (entrada/saída/ajuste/perda/transferência)
+- **Estoque v2** — 5 abas:
+  - **Plantas** — espécies do catálogo com quantidades derivadas de `estoque_especies_resumo` (disponíveis, no cliente, manutenção, descartadas)
+  - **Insumos / Vasos / Materiais** — ItensTab compartilhada com CRUD + movimentações
+  - **QR Codes** — gera VI-xxxx, exibe QR visual, imprime etiqueta, atribui espécie
 - Busca global (Cmd+K), autenticação Supabase
+- **Scan mobile:** `?patrimonio=VI-xxxx` na URL abre `ModalAtribuirQR` automaticamente
 
 **Persistência (tudo no Supabase agora):**
-- Escrita: `leads`, `tarefas` (015), `clientes`, `cliente_servicos`, `agenda` (com `lead_id`, 016), `relatorios`, `fotos_relatorio`, `employee_bloqueios`, `materiais`, `estoque_movimentacoes`
-- Leitura: `employees`, `estoque_saldos_totais`, `audit_log` (só gestor)
+- Escrita: `leads`, `tarefas` (015), `clientes`, `cliente_servicos`, `agenda` (com `lead_id`, 016), `relatorios`, `fotos_relatorio`, `employee_bloqueios`, `estoque_especies`, `estoque_patrimonios`, `estoque_eventos`, `estoque_manutencoes`, `estoque_itens`, `estoque_itens_movs`
+- Leitura: `employees`, `estoque_patrimonios_view`, `estoque_especies_resumo`, `estoque_itens_saldo_total`, `estoque_itens_saldo_titular`, `audit_log` (só gestor)
 - Cache local: `localStorage['crm-verde-leads' | 'crm-verde-tarefas']` — apenas rendering rápido + fallback offline
+- Deprecated (mantidas no banco por compat com legado): `materiais`, `estoque_movimentacoes`
 
 **Backlog:** ver [[README CRM Dashboard]] e [[PROXIMOS-PASSOS]]
 
@@ -147,6 +153,18 @@ verdeinterior-newproject/
 
 ---
 
+## Migrations
+
+28 migrations aplicadas. Canal oficial: **Supabase CLI** (`supabase db push`). Nunca mais pelo SQL Editor manual.
+
+```bash
+cd apps/ponto
+supabase link --project-ref mcaqxfogzvrqqnoixptv
+supabase db push
+```
+
+---
+
 ## Decisões críticas já tomadas
 
 - Estratégia modular primeiro, unificar depois
@@ -155,6 +173,8 @@ verdeinterior-newproject/
 - Supabase como backend para apps com persistência
 - Vite como build tool padrão
 - Deploy via Vercel + GitHub
+- **Supabase CLI** como único canal para aplicar migrations (23/07/2026)
+- **QR patrimônio** (VI-xxxx) como identidade física permanente — `qr_codigo` imutável; espécie pode mudar (23/07/2026)
 
 ## Decisões ainda abertas
 
@@ -164,8 +184,9 @@ verdeinterior-newproject/
 - [x] ~~Multi-tipo de serviço no lead~~ — array (016)
 - [x] ~~Agenda vinculada a lead ou cliente~~ — cliente_id nullable + lead_id + check (016)
 - [x] ~~Auditoria de edições no Ponto~~ — trigger genérico em audit_log (017)
+- [x] ~~Estoque de plantas vs QR Codes~~ — separados em abas distintas; Plantas usa `estoque_especies_resumo` (quantidades derivadas); QR gerencia patrimônios físicos (023-028)
 - [ ] Design system visual unificado (paleta, tipografia, componentes)
 - [ ] Estratégia de roles no CRM (`gestor`, `colab`, `campo`) e proteção de rotas — **adiado** até algum colaborador de campo precisar entrar no CRM
 - [ ] Refactor de `EscalaCampo.jsx` e `ModalOrcamento.jsx` em subcomponentes (dias de trabalho, iterativo)
-- [ ] Reset de senha via e-mail (precisa SMTP no Supabase Auth) e gestor redefinir senha (precisa Edge Function)
+- [ ] Reset de senha via e-mail (precisa SMTP no Supabase Auth) e gestor redefinir senha (Edge Function pronta, falta SMTP)
 - [ ] Momento de migrar os HTMLs (Orçamentos, OS) para módulos React dentro do CRM (Plataforma Unificada)
