@@ -98,20 +98,21 @@ function login() {
 
 function logout() {
   supabase.auth.signOut().then(() => {
-    _session = null;
-    document.getElementById('lu').value = '';
-    document.getElementById('lp').value = '';
-    clearErr();
-    document.getElementById('sessao-wrap').style.display = 'none';
-    const el = document.getElementById('ls');
-    el.style.display = 'flex';
-    el.classList.remove('fade');
-    document.querySelectorAll('.vw').forEach(e => e.classList.remove('on'));
-    document.querySelectorAll('.ntb').forEach(e => e.classList.remove('on'));
-    document.getElementById('vw-colab').classList.add('on');
-    const nc = document.getElementById('nb-colab');
-    if (nc) nc.classList.add('on');
-    setTimeout(() => { const lu = document.getElementById('lu'); if (lu) lu.focus(); }, 150);
+    // Limpar chaves específicas do usuário anterior antes do reload.
+    // Sem isso, o próximo login herda o estado (visitaSel, relatorioSel,
+    // fila de fotos, punches locais) do usuário anterior — bug reportado
+    // de "logei como Larissa mas as tarefas eram do Paulo".
+    [
+      'vi-agenda-exec',            // {visitaId, relatorioId, view} — dispara restore da visita errada
+      'vi-agenda-pending-fotos',   // fotos pendentes de upload amarradas a relatorio_id do outro user
+      'vi-pending-punches',        // fila de punches offline com empIdx do usuário anterior
+      'vi-ps', 'vi-hist', 'vi-justs', // cache local de punches/histórico/justificativas
+    ].forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
+
+    // Reload garante que módulos com estado singleton (agenda.st, store.state,
+    // notify._notifiedEntry/_notifiedExit) reiniciam do zero, sem vazamento
+    // entre sessões no mesmo dispositivo (comum em celular compartilhado).
+    window.location.reload();
   });
 }
 
