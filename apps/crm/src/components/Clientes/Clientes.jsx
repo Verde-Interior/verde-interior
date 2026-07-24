@@ -121,9 +121,11 @@ export default function Clientes() {
   const [modal,         setModal]         = useState(null); // null | { modo: 'editar'|'novo', cliente?: obj }
   const [form,          setForm]          = useState(null);
   const [salvando,      setSalvando]      = useState(false);
-  const [addServico,    setAddServico]    = useState(false);
-  const [formServico,   setFormServico]   = useState(FORM_SERVICO_VAZIO);
-  const [salvandoServ,  setSalvandoServ]  = useState(false);
+  const [addServico,      setAddServico]      = useState(false);
+  const [formServico,     setFormServico]     = useState(FORM_SERVICO_VAZIO);
+  const [salvandoServ,    setSalvandoServ]    = useState(false);
+  const [editandoServ,    setEditandoServ]    = useState(null); // { id }
+  const [formEditServico, setFormEditServico] = useState(FORM_SERVICO_VAZIO);
 
   // ── Dados ──────────────────────────────────────────────────────
 
@@ -279,6 +281,52 @@ export default function Clientes() {
       toast.erro('Erro ao adicionar contrato: ' + e.message);
     } finally {
       setSalvandoServ(false);
+    }
+  }
+
+  function abrirEditServico(s) {
+    setEditandoServ({ id: s.id });
+    setFormEditServico({
+      tipo_servico:    s.tipo_servico,
+      frequencia:      s.frequencia,
+      quantidade_vasos: s.quantidade_vasos ?? '',
+      valor_mensal:    s.valor_mensal ?? '',
+    });
+  }
+
+  async function salvarEditServico() {
+    if (!editandoServ) return;
+    setSalvandoServ(true);
+    try {
+      const { error } = await supabase.from('cliente_servicos').update({
+        tipo_servico:    formEditServico.tipo_servico,
+        frequencia:      formEditServico.frequencia,
+        quantidade_vasos: formEditServico.quantidade_vasos ? Number(formEditServico.quantidade_vasos) : null,
+        valor_mensal:    formEditServico.valor_mensal    ? Number(formEditServico.valor_mensal)    : null,
+      }).eq('id', editandoServ.id);
+      if (error) throw error;
+      const { data } = await supabase.from('cliente_servicos').select('*').eq('cliente_id', modal.cliente.id);
+      setForm(f => ({ ...f, _servicos: data ?? [] }));
+      setEditandoServ(null);
+      carregar();
+      toast.ok('Contrato atualizado');
+    } catch (e) {
+      toast.erro('Erro ao atualizar: ' + e.message);
+    } finally {
+      setSalvandoServ(false);
+    }
+  }
+
+  async function toggleAtivoServico(s) {
+    try {
+      const novoAtivo = !s.ativo;
+      const { error } = await supabase.from('cliente_servicos').update({ ativo: novoAtivo }).eq('id', s.id);
+      if (error) throw error;
+      setForm(f => ({ ...f, _servicos: f._servicos.map(x => x.id === s.id ? { ...x, ativo: novoAtivo } : x) }));
+      carregar();
+      toast.ok(novoAtivo ? 'Contrato reativado' : 'Contrato desativado');
+    } catch (e) {
+      toast.erro('Erro: ' + e.message);
     }
   }
 
@@ -769,16 +817,90 @@ export default function Clientes() {
 
                   <div className="cl-servicos-lista">
                     {form._servicos.map(s => (
-                      <div key={s.id} className={`cl-servico ${!s.ativo ? 'cl-servico--inativo' : ''}`}>
-                        <span className="cl-servico__tipo">{TIPO_LABEL[s.tipo_servico] ?? s.tipo_servico}</span>
-                        <span className="cl-servico__freq">{FREQ_LABEL[s.frequencia] ?? s.frequencia}</span>
-                        {s.quantidade_vasos && (
-                          <span className="cl-servico__info">{s.quantidade_vasos} vasos</span>
+                      <div key={s.id}>
+                        <div className={`cl-servico ${!s.ativo ? 'cl-servico--inativo' : ''}`}>
+                          <span className="cl-servico__tipo">{TIPO_LABEL[s.tipo_servico] ?? s.tipo_servico}</span>
+                          <span className="cl-servico__freq">{FREQ_LABEL[s.frequencia] ?? s.frequencia}</span>
+                          {s.quantidade_vasos && (
+                            <span className="cl-servico__info">{s.quantidade_vasos} vasos</span>
+                          )}
+                          {s.valor_mensal && (
+                            <span className="cl-servico__info">{formatarMoeda(s.valor_mensal)}/mês</span>
+                          )}
+                          {!s.ativo && <span className="cl-servico__badge-inativo">Inativo</span>}
+                          <div className="cl-servico__acoes">
+                            <button
+                              className="cl-servico__btn"
+                              onClick={() => editandoServ?.id === s.id ? setEditandoServ(null) : abrirEditServico(s)}
+                              title="Editar contrato"
+                            >
+                              {editandoServ?.id === s.id ? '✕' : '✏'}
+                            </button>
+                            <button
+                              className={`cl-servico__btn ${s.ativo ? 'cl-servico__btn--desativar' : 'cl-servico__btn--ativar'}`}
+                              onClick={() => toggleAtivoServico(s)}
+                              title={s.ativo ? 'Desativar contrato' : 'Reativar contrato'}
+                            >
+                              {s.ativo ? 'Desativar' : 'Reativar'}
+                            </button>
+                          </div>
+                        </div>
+                        {editandoServ?.id === s.id && (
+                          <div className="cl-novo-servico cl-edit-servico">
+                            <div className="cl-grid">
+                              <div className="cl-campo">
+                                <label>Tipo de Serviço</label>
+                                <select
+                                  value={formEditServico.tipo_servico}
+                                  onChange={e => setFormEditServico(f => ({ ...f, tipo_servico: e.target.value }))}
+                                >
+                                  {Object.entries(TIPO_LABEL).map(([k, v]) => (
+                                    <option key={k} value={k}>{v}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="cl-campo">
+                                <label>Frequência</label>
+                                <select
+                                  value={formEditServico.frequencia}
+                                  onChange={e => setFormEditServico(f => ({ ...f, frequencia: e.target.value }))}
+                                >
+                                  {Object.entries(FREQ_LABEL).map(([k, v]) => (
+                                    <option key={k} value={k}>{v}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="cl-campo">
+                                <label>Qtd. Vasos</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={formEditServico.quantidade_vasos}
+                                  onChange={e => setFormEditServico(f => ({ ...f, quantidade_vasos: e.target.value }))}
+                                  placeholder="—"
+                                />
+                              </div>
+                              <div className="cl-campo">
+                                <label>Valor Mensal (R$)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={formEditServico.valor_mensal}
+                                  onChange={e => setFormEditServico(f => ({ ...f, valor_mensal: e.target.value }))}
+                                  placeholder="—"
+                                />
+                              </div>
+                            </div>
+                            <button
+                              className="cl-btn-salvar-servico"
+                              onClick={salvarEditServico}
+                              disabled={salvandoServ}
+                            >
+                              {salvandoServ ? 'Salvando...' : 'Salvar Alterações'}
+                            </button>
+                          </div>
                         )}
-                        {s.valor_mensal && (
-                          <span className="cl-servico__info">{formatarMoeda(s.valor_mensal)}/mês</span>
-                        )}
-                        {!s.ativo && <span className="cl-servico__badge-inativo">Inativo</span>}
                       </div>
                     ))}
                   </div>

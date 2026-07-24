@@ -1,6 +1,8 @@
 // src/components/LeadCard/LeadCard.jsx
 import { useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { useToast } from '../Toast/Toast';
+import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import './LeadCard.css';
 
 const ICONE_CANAL = { WhatsApp: '💬', 'E-mail': '✉️', Telefone: '📞' };
@@ -13,11 +15,18 @@ function telefoneLimpo(tel) {
 export default function LeadCard({ lead }) {
   const { abrirModal, TIPOS_SERVICO, dragLeadId, setDragLeadId, ESTAGIOS_EXECUCAO, promoverParaCliente, removerLead, getTiposServico } = useCRM();
   const [promovendo, setPromovendo] = useState(false);
+  const [confirmar, setConfirmar] = useState(null);
+  const toast = useToast();
 
   function handleExcluir(e) {
     e.stopPropagation();
-    if (!confirm(`Excluir o lead "${lead.empresa}"?\n\nEssa ação remove o lead do pipeline e não pode ser desfeita. Tarefas vinculadas a ele deixam de ter referência.`)) return;
-    removerLead(lead.id);
+    setConfirmar({
+      titulo: `Excluir o lead "${lead.empresa}"?`,
+      mensagem: 'Essa ação remove o lead do pipeline e não pode ser desfeita. Tarefas vinculadas a ele deixam de ter referência.',
+      confirmLabel: 'Excluir',
+      variante: 'danger',
+      onConfirmar: () => { setConfirmar(null); removerLead(lead.id); },
+    });
   }
 
   const jaEhCliente = !!lead.clienteSupabaseId;
@@ -29,14 +38,22 @@ export default function LeadCard({ lead }) {
     abrirModal(lead, { focarSecao: 'anexo' });
   }
 
-  async function handlePromover(e) {
+  function handlePromover(e) {
     e.stopPropagation();
-    if (!confirm(`Promover "${lead.empresa}" a Cliente na base de campo?\n\nIsso cria o cadastro em Clientes com o contrato do orçamento. O lead permanece no Kanban.`)) return;
-    setPromovendo(true);
-    const res = await promoverParaCliente(lead.id);
-    setPromovendo(false);
-    if (res.ok) alert(`✓ ${lead.empresa} agora está na base de Clientes. Complete os dados que faltam (dias disponíveis, duração, janela) na aba Clientes.`);
-    else alert('Erro: ' + res.error);
+    setConfirmar({
+      titulo: `Promover "${lead.empresa}" a Cliente?`,
+      mensagem: 'Isso cria o cadastro em Clientes com o contrato do orçamento. O lead permanece no Kanban.',
+      confirmLabel: 'Promover',
+      variante: 'normal',
+      onConfirmar: async () => {
+        setConfirmar(null);
+        setPromovendo(true);
+        const res = await promoverParaCliente(lead.id);
+        setPromovendo(false);
+        if (res.ok) toast.ok(`✓ ${lead.empresa} está na base de Clientes. Complete os dados que faltam na aba Clientes.`);
+        else toast.erro('Erro: ' + res.error);
+      },
+    });
   }
 
   const tiposLead    = getTiposServico(lead);
@@ -234,6 +251,17 @@ export default function LeadCard({ lead }) {
       >
         🗑
       </button>
+
+      {confirmar && (
+        <ModalConfirmar
+          titulo={confirmar.titulo}
+          mensagem={confirmar.mensagem}
+          confirmLabel={confirmar.confirmLabel}
+          variante={confirmar.variante}
+          onConfirmar={confirmar.onConfirmar}
+          onCancelar={() => setConfirmar(null)}
+        />
+      )}
     </article>
   );
 }

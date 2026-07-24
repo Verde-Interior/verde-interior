@@ -21,9 +21,10 @@ export function startNotifyChecker() {
     const ses = AUTH.getSession();
     if (!ses || ses.role === 'gestor') return;
 
-    const now  = new Date();
-    const h    = now.getHours();
-    const m    = now.getMinutes();
+    const now    = new Date();
+    const h      = now.getHours();
+    const m      = now.getMinutes();
+    const nowMin = h * 60 + m;
 
     const recs     = state.PS[state.cu] || [];
     const hasEntry = recs.some(p => p.type === 'entry');
@@ -35,10 +36,18 @@ export function startNotifyChecker() {
       _notifiedEntry = getHoje();
     }
 
-    // Lembrete de saída às 18h05 se já entrou mas não saiu
-    if (h === 18 && m === 5 && hasEntry && !hasExit && _notifiedExit !== getHoje()) {
-      notify('Lembrete — Verde Interior', 'Não esqueça de registrar sua saída!');
-      _notifiedExit = getHoje();
+    // Lembrete de saída: entrada + jornada + 5 min de tolerância
+    if (hasEntry && !hasExit && _notifiedExit !== getHoje()) {
+      const entryRec = recs.find(p => p.type === 'entry');
+      const emp      = state.EMP[state.cu];
+      if (entryRec && emp) {
+        const [eh, em]      = entryRec.time.split(':').map(Number);
+        const expectedExit  = eh * 60 + em + emp.j * 60 + 5;
+        if (nowMin >= expectedExit) {
+          notify('Lembrete — Verde Interior', 'Não esqueça de registrar sua saída!');
+          _notifiedExit = getHoje();
+        }
+      }
     }
   }, 60000);
 }

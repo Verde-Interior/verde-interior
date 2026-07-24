@@ -396,9 +396,9 @@ export default function Configuracoes() {
 
               <div className="config__linha">
                 <div className="config__linha-info">
-                  <span className="config__linha-label">Limpar todos os dados</span>
+                  <span className="config__linha-label">Limpar cache local</span>
                   <span className="config__linha-desc config__linha-desc--perigo">
-                    Remove permanentemente todos os leads e tarefas
+                    Apaga preferências e cache do navegador. Dados no servidor (leads, tarefas) não são afetados.
                   </span>
                 </div>
                 {!confirmLimpar ? (

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { formatarDataHora, formatarData } from '../../utils/dateUtils';
 import { distanciaMetros } from '../../utils/geoUtils';
 import { formatarDuracao } from '../../utils/formatUtils';
+import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import './Relatorios.css';
 
 function duracaoEntre(inicio, fim) {
@@ -307,13 +308,26 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
   const [urlsFotos, setUrlsFotos] = useState({}); // fotoId -> signed url
   const [assinUrl, setAssinUrl] = useState(null);
   const [removendo, setRemovendo] = useState(false);
+  const [confirmar, setConfirmar] = useState(null);
   const [enderecoIn,  setEnderecoIn]  = useState(null); // rua+num do check-in
   const [enderecoOut, setEnderecoOut] = useState(null); // rua+num do check-out
   const [loadingEnd,  setLoadingEnd]  = useState(false);
 
-  async function remover() {
+  function remover() {
     const nome = c?.nome_empresa ?? 'este relatório';
-    if (!confirm(`Remover o relatório de "${nome}"?\n\nIsso apaga:\n- ${r.fotos?.length ?? 0} foto(s)\n- Assinatura (se houver)\n- O registro do relatório\n\nA visita na agenda volta para status "publicado" para permitir refazer.\n\nEsta ação não pode ser desfeita.`)) return;
+    setConfirmar({
+      titulo: `Remover relatório de "${nome}"?`,
+      mensagem: `Isso apaga ${r.fotos?.length ?? 0} foto(s), a assinatura e o registro. A visita volta para "publicado" para ser refeita. Ação não pode ser desfeita.`,
+      confirmLabel: 'Remover',
+      variante: 'danger',
+      onConfirmar: async () => {
+        setConfirmar(null);
+        await _executarRemover();
+      },
+    });
+  }
+
+  async function _executarRemover() {
     setRemovendo(true);
     try {
       // Apaga arquivos do storage (fotos + assinatura)
@@ -334,7 +348,13 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
       }
       onRemovido?.();
     } catch (e) {
-      alert('Erro ao remover: ' + e.message);
+      setConfirmar({
+        titulo: 'Erro ao remover',
+        mensagem: e.message,
+        confirmLabel: 'OK',
+        variante: 'normal',
+        onConfirmar: () => setConfirmar(null),
+      });
     } finally {
       setRemovendo(false);
     }
@@ -535,6 +555,17 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
           <img src={fotoAmp.url} alt="foto ampliada" />
           {fotoAmp.observacao && <div className="rel-lightbox__obs">{fotoAmp.observacao}</div>}
         </div>
+      )}
+
+      {confirmar && (
+        <ModalConfirmar
+          titulo={confirmar.titulo}
+          mensagem={confirmar.mensagem}
+          confirmLabel={confirmar.confirmLabel}
+          variante={confirmar.variante}
+          onConfirmar={confirmar.onConfirmar}
+          onCancelar={() => setConfirmar(null)}
+        />
       )}
     </div>
   );

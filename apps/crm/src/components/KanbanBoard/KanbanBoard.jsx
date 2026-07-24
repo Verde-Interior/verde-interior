@@ -14,7 +14,7 @@ const ORDENACOES = [
 ];
 
 export default function KanbanBoard() {
-  const { ESTAGIOS, TIPOS_SERVICO, leads, metricas, getTiposServico } = useCRM();
+  const { ESTAGIOS, TIPOS_SERVICO, leads, metricas, getTiposServico, abrirModal } = useCRM();
 
   const [busca, setBusca]                 = useState('');
   const [filtroServico, setFiltroServico] = useState('todos');
@@ -174,7 +174,7 @@ export default function KanbanBoard() {
                   const fuAtrasado = lead.proximoFollowUp && lead.proximoFollowUp < hoje;
                   const fuHoje     = lead.proximoFollowUp === hoje;
                   return (
-                    <tr key={lead.id} className="kanban-board__lista-linha" onClick={() => leads.find && undefined}>
+                    <tr key={lead.id} className="kanban-board__lista-linha" onClick={() => abrirModal(lead)}>
                       <td className="kanban-board__lista-empresa">
                         <span className="kanban-board__lista-nome">{lead.empresa}</span>
                       </td>

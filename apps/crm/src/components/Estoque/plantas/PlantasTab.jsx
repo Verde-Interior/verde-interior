@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
+import ModalConfirmar from '../../ModalConfirmar/ModalConfirmar';
 import ModalEspecie from './ModalEspecie';
 
 const LAYOUT_KEY = 'estoque-plantas-layout';
@@ -15,7 +16,8 @@ export default function PlantasTab() {
   const [erro,    setErro]    = useState(null);
   const [busca,   setBusca]   = useState('');
   const [modalEspecie, setModalEspecie] = useState(null); // null | {} (nova) | obj (editar)
-  const [ajustando, setAjustando] = useState(null); // id da espécie sendo ajustada
+  const [ajustando,  setAjustando]  = useState(null); // id da espécie sendo ajustada
+  const [confirmar,  setConfirmar]  = useState(null);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [layout, setLayout] = useState(() => localStorage.getItem(LAYOUT_KEY) ?? 'lista');
   const [filtro, setFiltro] = useState(() => localStorage.getItem(FILTRO_KEY) ?? 'todos');
@@ -57,12 +59,24 @@ export default function PlantasTab() {
     carregar();
   }
 
-  async function removerPlanta(especie) {
+  function removerPlanta(especie) {
     if (especie.disponiveis <= 0) {
       toast.erro('Sem plantas disponíveis para remover.');
       return;
     }
-    if (!window.confirm(`Descartar 1 planta de ${especie.nome}? Isso marca o patrimônio mais recente como descartado.`)) return;
+    setConfirmar({
+      titulo: `Descartar planta de ${especie.nome}?`,
+      mensagem: 'Isso marca o patrimônio mais recente como descartado. A ação não pode ser desfeita.',
+      confirmLabel: 'Descartar',
+      variante: 'danger',
+      onConfirmar: async () => {
+        setConfirmar(null);
+        _executarRemoverPlanta(especie);
+      },
+    });
+  }
+
+  async function _executarRemoverPlanta(especie) {
     setAjustando(especie.especie_id);
     // pega o patrimônio disponível mais recente
     const { data: pats } = await supabase
@@ -242,6 +256,17 @@ export default function PlantasTab() {
           especie={modalEspecie.id ? modalEspecie : null}
           onFechar={() => setModalEspecie(null)}
           onSalvo={carregar}
+        />
+      )}
+
+      {confirmar && (
+        <ModalConfirmar
+          titulo={confirmar.titulo}
+          mensagem={confirmar.mensagem}
+          confirmLabel={confirmar.confirmLabel}
+          variante={confirmar.variante}
+          onConfirmar={confirmar.onConfirmar}
+          onCancelar={() => setConfirmar(null)}
         />
       )}
     </>

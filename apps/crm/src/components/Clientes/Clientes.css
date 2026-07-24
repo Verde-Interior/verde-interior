@@ -623,7 +623,37 @@
   border: 1px solid var(--surface-border);
   padding: 1px 6px;
   border-radius: 10px;
+}
+
+.cl-servico__acoes {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cl-servico__btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--surface-border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background .12s;
+}
+
+.cl-servico__btn:hover { background: var(--surface-hover, #f3f4f6); }
+
+.cl-servico__btn--desativar { color: #b45309; border-color: #fde68a; }
+.cl-servico__btn--desativar:hover { background: #fef9c3; }
+
+.cl-servico__btn--ativar { color: #15803d; border-color: #bbf7d0; }
+.cl-servico__btn--ativar:hover { background: #f0fdf4; }
+
+.cl-edit-servico {
+  margin-top: 4px;
+  margin-bottom: 4px;
 }
 
 /* ── Novo contrato form ── */

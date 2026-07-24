@@ -1,6 +1,8 @@
 // src/components/OrdensServico/OrdensServico.jsx
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../Toast/Toast';
+import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import './OrdensServico.css';
 
 const STATUS_LABEL = {
@@ -31,6 +33,8 @@ export default function OrdensServico() {
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [atualizando, setAtualizando] = useState(null); // os.id em atualização
   const [modalOS, setModalOS] = useState(null); // OS em foco para ver detalhes
+  const [confirmar, setConfirmar] = useState(null);
+  const toast = useToast();
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -54,23 +58,50 @@ export default function OrdensServico() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  async function avancarStatus(os) {
+  async function _executarAvancar(os) {
     const proximo = STATUS_PROXIMO[os.status];
     if (!proximo) return;
     setAtualizando(os.id);
     const update = { status: proximo };
     if (proximo === 'concluida') update.concluida_em = new Date().toISOString();
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
-    if (!error) setOrdens(prev => prev.map(o => o.id === os.id ? { ...o, ...update } : o));
+    if (!error) {
+      setOrdens(prev => prev.map(o => o.id === os.id ? { ...o, ...update } : o));
+      if (proximo === 'concluida') toast.ok(`✓ OS ${os.os_id} concluída`);
+    }
     setAtualizando(null);
   }
 
-  async function cancelar(os) {
-    if (!confirm(`Cancelar a OS ${os.os_id}?`)) return;
-    setAtualizando(os.id);
-    const { error } = await supabase.from('ordens_servico').update({ status: 'cancelada' }).eq('id', os.id);
-    if (!error) setOrdens(prev => prev.map(o => o.id === os.id ? { ...o, status: 'cancelada' } : o));
-    setAtualizando(null);
+  function avancarStatus(os) {
+    const proximo = STATUS_PROXIMO[os.status];
+    if (!proximo) return;
+    if (proximo === 'concluida') {
+      setConfirmar({
+        titulo: `Concluir OS ${os.os_id}?`,
+        mensagem: 'Essa ação marca a ordem de serviço como concluída e registra a data de conclusão.',
+        confirmLabel: 'Concluir',
+        variante: 'normal',
+        onConfirmar: () => { setConfirmar(null); _executarAvancar(os); },
+      });
+      return;
+    }
+    _executarAvancar(os);
+  }
+
+  function cancelar(os) {
+    setConfirmar({
+      titulo: `Cancelar OS ${os.os_id}?`,
+      mensagem: 'A ordem de serviço ficará com status Cancelada e não poderá ser revertida por aqui.',
+      confirmLabel: 'Cancelar OS',
+      variante: 'danger',
+      onConfirmar: async () => {
+        setConfirmar(null);
+        setAtualizando(os.id);
+        const { error } = await supabase.from('ordens_servico').update({ status: 'cancelada' }).eq('id', os.id);
+        if (!error) setOrdens(prev => prev.map(o => o.id === os.id ? { ...o, status: 'cancelada' } : o));
+        setAtualizando(null);
+      },
+    });
   }
 
   const totais = ordens.reduce((acc, o) => {
@@ -196,6 +227,17 @@ export default function OrdensServico() {
       {/* Modal de detalhes */}
       {modalOS && (
         <ModalDetalhesOS os={modalOS} onFechar={() => setModalOS(null)} />
+      )}
+
+      {confirmar && (
+        <ModalConfirmar
+          titulo={confirmar.titulo}
+          mensagem={confirmar.mensagem}
+          confirmLabel={confirmar.confirmLabel}
+          variante={confirmar.variante}
+          onConfirmar={confirmar.onConfirmar}
+          onCancelar={() => setConfirmar(null)}
+        />
       )}
     </div>
   );

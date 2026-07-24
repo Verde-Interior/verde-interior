@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
+import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import './FunilExecucao.css';
 
 const ICONE_SERVICO = {
@@ -26,6 +27,7 @@ export default function FunilExecucao() {
   const [modalMateriais, setModalMateriais] = useState(null); // lead
   const [modalAgendar, setModalAgendar] = useState(null);     // lead
   const [copiadoId, setCopiadoId] = useState(null);           // lead.id com feedback "copiado"
+  const [confirmar, setConfirmar] = useState(null);           // { titulo, mensagem, variante, onConfirmar }
 
   useEffect(() => {
     (async () => {
@@ -84,7 +86,8 @@ export default function FunilExecucao() {
 
   // ── Link da OS pré-preenchido com dados do lead ──────────────────────────
   function gerarLinkOS(lead) {
-    const osId = osMap.get(lead.id) ?? `OS-${String(lead.id).slice(0, 8).toUpperCase()}`;
+    const osId = osMap.get(lead.id);
+    if (!osId) return null;
     const params = new URLSearchParams({
       cliente:  lead.empresa ?? '',
       os:       osId,
@@ -98,7 +101,9 @@ export default function FunilExecucao() {
 
   function copiarLinkOS(lead, e) {
     e.stopPropagation();
-    const url = window.location.origin + gerarLinkOS(lead);
+    const path = gerarLinkOS(lead);
+    if (!path) return;
+    const url = window.location.origin + path;
     navigator.clipboard.writeText(url).then(() => {
       setCopiadoId(lead.id);
       setTimeout(() => setCopiadoId(null), 2000);
@@ -271,26 +276,32 @@ export default function FunilExecucao() {
                         </p>
                       )}
 
-                      {/* ── Link/QR da OS (útil para compartilhar com colaborador em campo) ── */}
-                      <div className="funil-exec__card-os" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="funil-exec__btn-os"
-                          onClick={(e) => copiarLinkOS(lead, e)}
-                          title="Copiar link da OS para o clipboard"
-                        >
-                          {copiadoId === lead.id ? '✅ Copiado!' : '🔗 Link OS'}
-                        </button>
-                        <a
-                          className="funil-exec__btn-os funil-exec__btn-os--open"
-                          href={gerarLinkOS(lead)}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Abrir OS em nova aba"
-                        >
-                          ↗
-                        </a>
-                      </div>
+                      {/* ── Link/QR da OS (só mostra quando OS existe no banco) ── */}
+                      {osMap.has(lead.id) ? (
+                        <div className="funil-exec__card-os" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="funil-exec__btn-os"
+                            onClick={(e) => copiarLinkOS(lead, e)}
+                            title="Copiar link da OS para o clipboard"
+                          >
+                            {copiadoId === lead.id ? '✅ Copiado!' : '🔗 Link OS'}
+                          </button>
+                          <a
+                            className="funil-exec__btn-os funil-exec__btn-os--open"
+                            href={gerarLinkOS(lead)}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Abrir OS em nova aba"
+                          >
+                            ↗
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="funil-exec__card-os funil-exec__card-os--sem-os" onClick={(e) => e.stopPropagation()}>
+                          <span className="funil-exec__sem-os">OS não gerada</span>
+                        </div>
+                      )}
 
                       {/* Ações rápidas de avanço */}
                       <div className="funil-exec__card-acoes" onClick={(e) => e.stopPropagation()}>
@@ -299,9 +310,33 @@ export default function FunilExecucao() {
                             className="funil-exec__card-btn-avancar"
                             onClick={() => {
                               const idx = ESTAGIOS_EXECUCAO.findIndex((e) => e.id === etapa.id);
-                              if (idx < ESTAGIOS_EXECUCAO.length - 1) {
-                                moverFunilExecucao(lead.id, ESTAGIOS_EXECUCAO[idx + 1].id);
+                              if (idx >= ESTAGIOS_EXECUCAO.length - 1) return;
+                              const proxId = ESTAGIOS_EXECUCAO[idx + 1].id;
+                              const mover = () => moverFunilExecucao(lead.id, proxId);
+
+                              if (proxId === 'agendamento' && !lead.clienteSupabaseId) {
+                                setConfirmar({
+                                  titulo: 'Avançar sem cliente vinculado?',
+                                  mensagem: `"${lead.empresa}" ainda não foi promovido a Cliente. O agendamento ficará salvo aqui, mas não vai aparecer na agenda do funcionário até você promover o lead.`,
+                                  confirmLabel: 'Avançar assim mesmo',
+                                  variante: 'normal',
+                                  onConfirmar: () => { setConfirmar(null); mover(); },
+                                });
+                                return;
                               }
+
+                              if (proxId === 'pos_venda') {
+                                setConfirmar({
+                                  titulo: 'Concluir projeto?',
+                                  mensagem: `Mover "${lead.empresa}" para Pós-Venda marca o projeto como concluído.`,
+                                  confirmLabel: 'Concluir',
+                                  variante: 'normal',
+                                  onConfirmar: () => { setConfirmar(null); mover(); },
+                                });
+                                return;
+                              }
+
+                              mover();
                             }}
                           >
                             Avançar →
@@ -350,6 +385,18 @@ export default function FunilExecucao() {
           }}
         />
       )}
+
+      {/* ── Modal de confirmação ── */}
+      {confirmar && (
+        <ModalConfirmar
+          titulo={confirmar.titulo}
+          mensagem={confirmar.mensagem}
+          confirmLabel={confirmar.confirmLabel}
+          variante={confirmar.variante}
+          onConfirmar={confirmar.onConfirmar}
+          onCancelar={() => setConfirmar(null)}
+        />
+      )}
     </div>
   );
 }
@@ -361,6 +408,7 @@ function ModalMateriais({ lead, saldos, onFechar, onSalvar }) {
   const [itens, setItens] = useState(() => lead.funilExecucao?.materiais ?? []);
   const [novoId, setNovoId] = useState('');
   const [novaQtd, setNovaQtd] = useState('1');
+  const [erroAdd, setErroAdd] = useState('');
 
   const saldoMap = useMemo(() => new Map(saldos.map(s => [s.material_id, s])), [saldos]);
   const disponiveis = useMemo(
@@ -373,9 +421,10 @@ function ModalMateriais({ lead, saldos, onFechar, onSalvar }) {
     const s = saldoMap.get(novoId);
     if (!s) return;
     if (itens.some(i => i.material_id === novoId)) {
-      alert('Esse material já está na lista. Edite a quantidade.');
+      setErroAdd('Esse material já está na lista. Edite a quantidade diretamente abaixo.');
       return;
     }
+    setErroAdd('');
     setItens([...itens, { material_id: novoId, nome: s.nome, quantidade: Number(novaQtd) }]);
     setNovoId('');
     setNovaQtd('1');
@@ -410,7 +459,7 @@ function ModalMateriais({ lead, saldos, onFechar, onSalvar }) {
         <div className="fe-modal__corpo">
           {/* Adicionar */}
           <div className="fe-mat__add">
-            <select value={novoId} onChange={e => setNovoId(e.target.value)}>
+            <select value={novoId} onChange={e => { setNovoId(e.target.value); setErroAdd(''); }}>
               <option value="">— Escolha um material —</option>
               {disponiveis.map(s => (
                 <option key={s.material_id} value={s.material_id}>
@@ -427,6 +476,7 @@ function ModalMateriais({ lead, saldos, onFechar, onSalvar }) {
             />
             <button className="fe-btn fe-btn--primario" onClick={adicionar} disabled={!novoId}>+ Adicionar</button>
           </div>
+          {erroAdd && <p className="fe-mat__aviso" style={{ marginTop: 6 }}>{erroAdd}</p>}
 
           {/* Lista */}
           {itens.length === 0 ? (

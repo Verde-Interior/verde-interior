@@ -1,5 +1,5 @@
 import { state, save, dbAddPunch, dbDeletePunch, dbUpdateJustStatus } from './store.js';
-import { HM, HMh, WDS, meta, calcWork, calcWorkClosed, TM, getHoje, toast, esc } from './utils.js';
+import { HM, HMh, WDS, MESES, meta, calcWork, calcWorkClosed, TM, getHoje, toast, esc } from './utils.js';
 import * as XLSX from 'xlsx';
 
 export function genAlerts() {
@@ -14,7 +14,23 @@ export function genAlerts() {
   return a;
 }
 
+function _initReportDates() {
+  const rs = document.getElementById('rs');
+  const re = document.getElementById('re');
+  if (!rs || !re || rs.value) return; // só inicializa se ainda vazio
+  const now = new Date();
+  const y   = now.getFullYear();
+  const m   = String(now.getMonth() + 1).padStart(2, '0');
+  const last = new Date(y, now.getMonth() + 1, 0).getDate();
+  rs.value = `${y}-${m}-01`;
+  re.value = `${y}-${m}-${String(last).padStart(2, '0')}`;
+}
+
 export function renderAdmin() {
+  const now = new Date();
+  const rml = document.getElementById('relatorio-mes-label');
+  if (rml) rml.textContent = `Resumo — ${MESES[now.getMonth()]} ${now.getFullYear()}`;
+  _initReportDates();
   const pres = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; const l = p[p.length - 1]; return l.type === 'entry' || l.type === 'return'; }).length;
   const brk  = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; return p[p.length - 1].type === 'break'; }).length;
   const late = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; const e = p.find(x => x.type === 'entry'); if (!e) return false; const [h, m] = e.time.split(':').map(Number); return h * 60 + m > 8 * 60 + 10; }).length;
@@ -46,14 +62,37 @@ export function renderAdmin() {
     ? alerts.map(a => `<div class="al-item ${a.type === 'err' ? 'al-err' : 'al-warn'}"><i class="fa-solid ${a.icon}" style="font-size:16px;flex-shrink:0;margin-top:1px"></i><div><div style="font-size:13px;font-weight:700">${a.title}</div><div style="font-size:12px;opacity:.85">${a.msg}</div></div></div>`).join('')
     : '<div class="card"><div class="empty"><i class="fa-solid fa-check-circle"></i>Nenhum alerta no momento</div></div>';
 
-  const pend = state.JUSTS.filter(j => j.status === 'pendente');
+  const pend = state.JUSTS.map((j, i) => ({ j, i })).filter(({ j }) => j.status === 'pendente');
   document.getElementById('plist').innerHTML = pend.length
-    ? pend.map(j => {
-        const idx    = state.JUSTS.indexOf(j);
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;user-select:none;min-height:44px">
+           <input type="checkbox" id="just-sel-all" style="width:16px;height:16px"
+             onchange="document.querySelectorAll('.just-check').forEach(c=>c.checked=this.checked)">
+           Selecionar todos
+         </label>
+         <button class="brs" onclick="resolveJLote()" style="margin-left:auto">✓ Aprovar selecionados</button>
+       </div>` +
+      pend.map(({ j, i }) => {
         const files  = j.files || [];
         const badge  = files.length ? `<span class="jf-badge" style="margin-bottom:.5rem;display:inline-flex"><i class="fa-solid fa-paperclip" style="font-size:10px"></i> ${files.length} anexo${files.length > 1 ? 's' : ''}</span><br>` : '';
         const thumbs = files.length ? `<div class="jf-row" style="margin-bottom:.75rem">${files.map(f => { if (f.type === 'img' && f.preview) return `<img src="${f.preview}" class="ft-img" alt="">`; if (f.type === 'pdf') return `<div class="ft-pdf">PDF</div>`; return `<div class="ft-doc">DOC</div>`; }).join('')}</div>` : '';
-        return `<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px;font-weight:700">${esc(state.EMP[j.user] ? state.EMP[j.user].name : '—')}</span><span style="font-size:12px;color:var(--text2)">${esc(j.date)} — ${esc(j.type)}</span></div><div style="font-size:12px;color:var(--text2);margin-bottom:.625rem">${esc(j.desc)}</div>${badge}${thumbs}<div style="display:flex;gap:8px"><button class="brs" onclick="resolveJ(${idx},true)"><i class="fa-solid fa-check"></i> Aprovar</button><button class="brj" onclick="resolveJ(${idx},false)"><i class="fa-solid fa-xmark"></i> Recusar</button></div></div>`;
+        return `<div class="card" style="margin-bottom:8px">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <input type="checkbox" class="just-check" data-idx="${i}" style="width:16px;height:16px;margin-top:3px;flex-shrink:0">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                <span style="font-size:13px;font-weight:700">${esc(state.EMP[j.user] ? state.EMP[j.user].name : '—')}</span>
+                <span style="font-size:12px;color:var(--text2)">${esc(j.date)} — ${esc(j.type)}</span>
+              </div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:.625rem">${esc(j.desc)}</div>
+              ${badge}${thumbs}
+              <div style="display:flex;gap:8px">
+                <button class="brs" onclick="resolveJ(${i},true)"><i class="fa-solid fa-check"></i> Aprovar</button>
+                <button class="brj" onclick="resolveJ(${i},false)"><i class="fa-solid fa-xmark"></i> Recusar</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
       }).join('')
     : '<div class="card"><div class="empty"><i class="fa-regular fa-circle-check"></i>Nenhuma pendente</div></div>';
 
@@ -83,6 +122,44 @@ export function resolveJ(idx, approve) {
     save();
     renderAdmin();
     toast(approve ? '✓ Aprovada' : 'Recusada');
+
+    // Para "Esquecimento de ponto": navega para Editar Registros pré-preenchido
+    if (approve && just.type === 'Esquecimento de ponto') {
+      setTimeout(() => {
+        state.eu = just.user;
+        // Muda para a aba "Editar Registros"
+        const editBtn = document.querySelector('#atabs .ch[onclick*="editar"]');
+        if (editBtn && window.setAs) window.setAs('editar', editBtn);
+        // Seleciona a data da justificativa
+        buildEditDates();
+        const edate = document.getElementById('edate');
+        if (edate && [...edate.options].some(o => o.value === just.date)) {
+          edate.value = just.date;
+        }
+        renderEdit();
+        openAdd();
+        toast('Adicione o registro de ponto em falta');
+      }, 350);
+    }
+  })();
+}
+
+export function resolveJLote() {
+  const checks  = document.querySelectorAll('.just-check:checked');
+  const indices = [...checks].map(c => parseInt(c.dataset.idx));
+  if (!indices.length) { toast('Selecione ao menos uma justificativa', false); return; }
+  (async () => {
+    let count = 0;
+    for (const idx of indices) {
+      const just = state.JUSTS[idx];
+      if (!just || just.status !== 'pendente') continue;
+      await dbUpdateJustStatus(just, 'aprovado');
+      just.status = 'aprovado';
+      count++;
+    }
+    save();
+    renderAdmin();
+    toast(`✓ ${count} aprovada${count !== 1 ? 's' : ''}`);
   })();
 }
 
@@ -220,12 +297,47 @@ export function delER(date, idx) {
 export function openAdd()  { document.getElementById('addform').style.display = 'block'; }
 export function closeAdd() { document.getElementById('addform').style.display = 'none'; }
 
+function _toMin(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
 export function saveAdd() {
   const type = document.getElementById('atype').value;
   const time = document.getElementById('atime').value;
   const obs  = document.getElementById('aobs').value.trim();
   if (!time) { toast('Informe o horário', false); return; }
-  const dv  = document.getElementById('edate').value || getHoje();
+  const dv      = document.getElementById('edate').value || getHoje();
+  const timeMin = _toMin(time);
+
+  // Validação de sequência
+  const recs = dv === getHoje()
+    ? (state.PS[state.eu] || [])
+    : ((state.HIST[state.eu] || []).find(d => d.date === dv) || { records: [] }).records;
+
+  if (type === 'break' || type === 'exit') {
+    const lastIn = [...recs]
+      .filter(r => r.type === 'entry' || r.type === 'return')
+      .sort((a, b) => b.time.localeCompare(a.time))[0];
+    if (!lastIn) {
+      toast('Não é possível registrar sem uma entrada anterior', false); return;
+    }
+    if (timeMin <= _toMin(lastIn.time)) {
+      toast(`Horário deve ser após ${TM[lastIn.type]?.lbl ?? lastIn.type} (${lastIn.time})`, false); return;
+    }
+  }
+  if (type === 'return') {
+    const lastBrk = [...recs]
+      .filter(r => r.type === 'break')
+      .sort((a, b) => b.time.localeCompare(a.time))[0];
+    if (!lastBrk) {
+      toast('Não é possível registrar retorno sem intervalo anterior', false); return;
+    }
+    if (timeMin <= _toMin(lastBrk.time)) {
+      toast(`Horário deve ser após Intervalo (${lastBrk.time})`, false); return;
+    }
+  }
+
   const rec = { type, time };
   if (obs) rec.obs = obs;
   (async () => {

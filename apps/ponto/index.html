@@ -197,7 +197,7 @@
       <div class="mc"><div class="ml">Horas devidas</div><div class="mv neg" id="bdue">0h00</div></div>
       <div class="mc"><div class="ml">Meta mensal</div><div class="mv neu" id="bmeta">176h</div></div>
     </div>
-    <div class="sl">Semanas — maio 2026</div>
+    <div class="sl" id="bank-semanas-label">Semanas</div>
     <div id="wbd"></div>
   </div>
 
@@ -209,8 +209,9 @@
     <div id="prof-alerts" style="margin-top:.75rem"></div>
     <div class="card" style="margin-top:1rem">
       <div class="sl" style="margin-bottom:1rem">Alterar senha</div>
+      <div class="fr"><label>Senha atual</label><input type="password" id="cp0" placeholder="sua senha atual" autocomplete="current-password"></div>
       <div class="fr"><label>Nova senha</label><input type="password" id="np1" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
-      <div class="fr"><label>Confirmar senha</label><input type="password" id="np2" placeholder="repita a nova senha" autocomplete="new-password"></div>
+      <div class="fr"><label>Confirmar nova senha</label><input type="password" id="np2" placeholder="repita a nova senha" autocomplete="new-password"></div>
       <button class="bg" onclick="changePassword()"><i class="fa-solid fa-key"></i> Alterar senha</button>
     </div>
   </div>
@@ -324,8 +325,8 @@
     <div class="card">
       <div class="sl" style="margin-bottom:1rem">Exportar relatório</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
-        <div class="fr" style="margin:0"><label>Início</label><input type="date" id="rs" value="2026-05-01"></div>
-        <div class="fr" style="margin:0"><label>Fim</label><input type="date" id="re" value="2026-05-31"></div>
+        <div class="fr" style="margin:0"><label>Início</label><input type="date" id="rs"></div>
+        <div class="fr" style="margin:0"><label>Fim</label><input type="date" id="re"></div>
       </div>
       <div class="fr"><label>Colaborador</label><select id="ru"><option value="all">Todos</option></select></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -339,7 +340,7 @@
         <button class="bsm" onclick="expXLSX('banco')"><i class="fa-solid fa-file-excel"></i> Banco</button>
       </div>
     </div>
-    <div class="sl">Resumo — maio 2026</div>
+    <div class="sl" id="relatorio-mes-label">Resumo</div>
     <div style="overflow-x:auto">
       <table class="tt">
         <thead><tr><th style="width:18%">Nome</th><th style="width:10%">Ctto</th><th style="width:10%">Dias</th><th style="width:13%">Trab.</th><th style="width:9%">Meta</th><th style="width:11%">Extras</th><th style="width:11%">Devidas</th><th style="width:18%">Banco</th></tr></thead>

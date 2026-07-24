@@ -149,7 +149,7 @@ export async function dbUpdateEmployee(empIdx) {
 
 export async function dbUpdateEmployeeStats(empIdx) {
   const emp = state.EMP[empIdx];
-  if (!emp?.id) return;
+  if (!emp?.id) return true;
   const { error } = await supabase.from('employees').update({
     bank_minutes: emp.bank,
     worked_hours: emp.worked,
@@ -157,7 +157,35 @@ export async function dbUpdateEmployeeStats(empIdx) {
     due_hours:    emp.due,
     days_worked:  emp.days,
   }).eq('id', emp.id);
-  if (error) console.error('dbUpdateEmployeeStats:', error.message);
+  if (error) { console.error('dbUpdateEmployeeStats:', error.message); return false; }
+  return true;
+}
+
+// ── Fila offline ─────────────────────────────────────────────────────────────
+const PENDING_PUNCHES_KEY = 'vi-pending-punches';
+
+export function queuePendingPunch(empIdx, rec, date) {
+  const q = JSON.parse(localStorage.getItem(PENDING_PUNCHES_KEY) || '[]');
+  q.push({ empIdx, rec, date });
+  localStorage.setItem(PENDING_PUNCHES_KEY, JSON.stringify(q));
+}
+
+export function hasPendingPunches() {
+  return JSON.parse(localStorage.getItem(PENDING_PUNCHES_KEY) || '[]').length > 0;
+}
+
+export async function replayPendingPunches() {
+  const q = JSON.parse(localStorage.getItem(PENDING_PUNCHES_KEY) || '[]');
+  if (!q.length) return 0;
+  let synced = 0;
+  const failed = [];
+  for (const item of q) {
+    const dbRec = await dbAddPunch(item.empIdx, item.rec, item.date);
+    if (dbRec) synced++;
+    else failed.push(item);
+  }
+  localStorage.setItem(PENDING_PUNCHES_KEY, JSON.stringify(failed));
+  return synced;
 }
 
 export async function dbAddJust(empIdx, just) {

@@ -1,13 +1,13 @@
 import './styles/main.css';
 
-import { load } from './store.js';
+import { load, hasPendingPunches, replayPendingPunches } from './store.js';
 import { F, WDS, MESES, toast } from './utils.js';
 import { AUTH } from './auth.js';
 import { renderPunch, doPunch, doExit, delTR } from './punch.js';
 import { renderMirror, printMirror } from './mirror.js';
 import { handleFiles, removeFile, handleDrag, handleDrop } from './upload.js';
 import { sendJust } from './justs.js';
-import { resolveJ, renderEdit, delER, openAdd, closeAdd, saveAdd, expCSV, expXLSX } from './admin.js';
+import { resolveJ, resolveJLote, renderEdit, delER, openAdd, closeAdd, saveAdd, expCSV, expXLSX } from './admin.js';
 import { addEmp, removeEmp, resetAll, editEmp, closeEditEmp, saveEditEmp, adminResetSenha, fecharModalResetPwd, confirmarAdminResetSenha } from './config.js';
 import { buildBars, selU, selEU, setV, setSv, setAs } from './nav.js';
 import { installPWA, dismissInstall, applyUpdate } from './pwa.js';
@@ -41,6 +41,7 @@ window.handleDrag     = handleDrag;
 window.handleDrop     = handleDrop;
 window.sendJust       = sendJust;
 window.resolveJ       = resolveJ;
+window.resolveJLote   = resolveJLote;
 window.renderEdit     = renderEdit;
 window.delER          = delER;
 window.openAdd        = openAdd;
@@ -155,14 +156,24 @@ setupPeekSenha();
 function setupOfflineBanner() {
   const el = document.createElement('div');
   el.id = 'net-banner';
-  el.innerHTML = `<i class="fa-solid fa-plug-circle-xmark"></i> Sem internet — as fotos e o relatório vão salvar quando reconectar`;
+  el.innerHTML = `<i class="fa-solid fa-plug-circle-xmark"></i> Sem internet — pontos e fotos serão sincronizados ao reconectar`;
   document.body.prepend(el);
   function refresh() {
     if (navigator.onLine) el.classList.remove('on');
     else el.classList.add('on');
   }
-  window.addEventListener('online',  refresh);
   window.addEventListener('offline', refresh);
+  window.addEventListener('online', async () => {
+    refresh();
+    if (!AUTH.getSession()) return;
+    if (!hasPendingPunches()) return;
+    const n = await replayPendingPunches();
+    if (n > 0) {
+      toast(`${n} ponto${n !== 1 ? 's' : ''} sincronizado${n !== 1 ? 's' : ''} com sucesso`);
+      await load();
+      renderPunch();
+    }
+  });
   refresh();
 }
 setupOfflineBanner();

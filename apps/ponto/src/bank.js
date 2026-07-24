@@ -1,5 +1,5 @@
 import { state } from './store.js';
-import { HM, HMh, meta, calcWorkClosed, F } from './utils.js';
+import { HM, HMh, meta, calcWorkClosed, F, MESES } from './utils.js';
 
 function buildWeeks(empIdx) {
   const hist = state.HIST[empIdx] || [];
@@ -33,6 +33,10 @@ export function renderBank() {
   const e   = state.EMP[i];
   const bal = e.bank;
   const m   = meta(e);
+
+  const now = new Date();
+  const semLbl = document.getElementById('bank-semanas-label');
+  if (semLbl) semLbl.textContent = `Semanas — ${MESES[now.getMonth()]} ${now.getFullYear()}`;
 
   document.getElementById('btot').textContent = HM(bal);
   document.getElementById('btot').style.color = bal >= 0 ? '#1D9E75' : '#E24B4A';

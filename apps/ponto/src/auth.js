@@ -115,17 +115,24 @@ function logout() {
   });
 }
 
-function changePassword() {
+async function changePassword() {
+  const p0 = (document.getElementById('cp0')?.value || '');
   const p1 = (document.getElementById('np1').value || '');
   const p2 = (document.getElementById('np2').value || '');
+  if (!p0)           { toast('Informe a senha atual', false); return; }
   if (p1.length < 6) { toast('Mínimo 6 caracteres', false); return; }
   if (p1 !== p2)     { toast('Senhas não coincidem', false); return; }
-  supabase.auth.updateUser({ password: p1 }).then(({ error }) => {
-    if (error) { toast('Erro: ' + error.message, false); return; }
-    document.getElementById('np1').value = '';
-    document.getElementById('np2').value = '';
-    toast('✓ Senha alterada com sucesso');
-  });
+  const { data: ud } = await supabase.auth.getUser();
+  const email = ud?.user?.email;
+  if (!email) { toast('Sessão inválida', false); return; }
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: p0 });
+  if (signInError) { toast('Senha atual incorreta', false); return; }
+  const { error } = await supabase.auth.updateUser({ password: p1 });
+  if (error) { toast('Erro: ' + error.message, false); return; }
+  document.getElementById('cp0').value = '';
+  document.getElementById('np1').value = '';
+  document.getElementById('np2').value = '';
+  toast('✓ Senha alterada com sucesso');
 }
 
 // Reset de senha (Fase 5) — colaborador esqueceu a senha.

@@ -1,4 +1,4 @@
-import { state, save, dbAddPunch, dbDeletePunch, dbUpdateEmployeeStats } from './store.js';
+import { state, save, dbAddPunch, dbDeletePunch, dbUpdateEmployeeStats, queuePendingPunch } from './store.js';
 import { F, HM, TM, getHoje, calcWork, getStatus, getNext, toast } from './utils.js';
 import { AUTH } from './auth.js';
 import { renderPunchMap } from './admin.js';
@@ -12,6 +12,20 @@ export function renderPunch() {
   document.getElementById('pstat').textContent = st.lbl;
   document.getElementById('pstat').className   = 'ps-badge ' + st.css;
   document.getElementById('plbl').textContent  = np.lbl;
+
+  // Cor do botão reflete a próxima ação
+  const btnColors = {
+    entry:  { bg: 'var(--g)',  border: 'var(--g)',  color: '#fff' },
+    break:  { bg: '#EF9F27',   border: '#EF9F27',   color: '#fff' },
+    return: { bg: '#185FA5',   border: '#185FA5',   color: '#fff' },
+  };
+  const pbtn = document.getElementById('pbtn');
+  if (pbtn) {
+    const bc = btnColors[np.type] || {};
+    pbtn.style.background  = bc.bg     ?? '';
+    pbtn.style.borderColor = bc.border ?? '';
+    pbtn.style.color       = bc.color  ?? '';
+  }
 
   const ent = (state.PS[i] || []).find(p => p.type === 'entry');
   document.getElementById('ce').textContent = ent ? ent.time : '--:--';
@@ -69,6 +83,15 @@ function locationToast(reason) {
 export function doPunch() {
   const np  = getNext(state.PS, state.cu);
   const btn = document.getElementById('pbtn');
+
+  // Confirmação para horários fora do expediente normal (< 7h ou ≥ 21h)
+  const agora = new Date();
+  const hora  = agora.getHours();
+  if (hora < 7 || hora >= 21) {
+    const hStr = F(hora) + ':' + F(agora.getMinutes());
+    if (!confirm(`São ${hStr} — fora do horário habitual.\nConfirmar "${np.lbl}"?`)) return;
+  }
+
   btn.classList.add('act');
   const n = new Date();
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
@@ -76,9 +99,10 @@ export function doPunch() {
     if (!state.PS[state.cu]) state.PS[state.cu] = [];
     const needsLoc = np.type === 'entry' || np.type === 'exit';
     const geo      = needsLoc ? await getCoords() : { coords: null, reason: null };
-    const rec      = { type: np.type, time: t, ...(geo.coords || {}) };
-    const dbRec    = await dbAddPunch(state.cu, rec);
+    const rec   = { type: np.type, time: t, ...(geo.coords || {}) };
+    const dbRec = await dbAddPunch(state.cu, rec);
     if (dbRec) rec._id = dbRec.id;
+    else queuePendingPunch(state.cu, rec, getHoje());
     state.PS[state.cu].push(rec);
     btn.classList.remove('act');
     renderPunch();
@@ -96,8 +120,19 @@ export function doExit() {
   (async () => {
     const geo = await getCoords();
     const rec = { type: 'exit', time: t, ...(geo.coords || {}) };
-    const dbRec = await dbAddPunch(state.cu, rec);
+
+    // Tenta salvar o ponto com até 3 tentativas; se tudo falhar, enfileira
+    let dbRec = null;
+    for (let i = 0; i < 3 && !dbRec; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, 1500));
+      dbRec = await dbAddPunch(state.cu, rec);
+    }
     if (dbRec) rec._id = dbRec.id;
+    else {
+      queuePendingPunch(state.cu, rec, getHoje());
+      toast('Sem conexão — ponto salvo localmente e vai sincronizar ao reconectar', false);
+    }
+
     state.PS[state.cu].push(rec);
     if (!state.HIST[state.cu]) state.HIST[state.cu] = [];
     const ex = state.HIST[state.cu].findIndex(d => d.date === getHoje());
@@ -105,7 +140,7 @@ export function doExit() {
     if (ex >= 0) state.HIST[state.cu][ex] = en;
     else state.HIST[state.cu].unshift(en);
 
-    // Atualizar banco de horas do dia
+    // Atualizar banco de horas com até 3 tentativas
     const emp = state.EMP[state.cu];
     if (emp) {
       const workedMin  = calcWork(state.PS[state.cu]);
@@ -115,7 +150,12 @@ export function doExit() {
       emp.worked = Number((emp.worked + workedMin / 60).toFixed(2));
       if (dailySaldo > 0) emp.extra = Number((emp.extra + dailySaldo / 60).toFixed(2));
       else                emp.due   = Number((emp.due   - dailySaldo / 60).toFixed(2));
-      await dbUpdateEmployeeStats(state.cu);
+      let statsOk = false;
+      for (let i = 0; i < 3 && !statsOk; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 1500));
+        statsOk = await dbUpdateEmployeeStats(state.cu);
+      }
+      if (!statsOk) toast('Banco de horas salvo localmente — sincroniza ao reconectar', false);
     }
 
     renderPunch();

@@ -2,6 +2,7 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../Toast/Toast';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -114,6 +115,7 @@ const STORAGE_ABA = 'crm-verde-dashboard-aba';
 
 export default function Dashboard({ onNavegar }) {
   const { leads, ESTAGIOS, TIPOS_SERVICO, metricas, abrirModal, tarefas, atualizarLead, getTiposServico } = useCRM();
+  const toast = useToast();
   const [aba, setAba] = useState(() => localStorage.getItem(STORAGE_ABA) || 'comercial');
   useEffect(() => { localStorage.setItem(STORAGE_ABA, aba); }, [aba]);
 
@@ -220,19 +222,22 @@ export default function Dashboard({ onNavegar }) {
     const limite30 = new Date();
     limite30.setDate(limite30.getDate() - 30);
     const limiteStr = limite30.toISOString().split('T')[0];
-    leads
-      .filter((l) => l.proximoFollowUp && l.proximoFollowUp <= limiteStr)
-      .forEach((l) => {
-        atualizarLead(l.id, {
-          proximoFollowUp:   null,
-          followUpAssuntos:  [],
-          followUpNota:      null,
-          followUpArquivados: [
-            ...(l.followUpArquivados ?? []),
-            { data: l.proximoFollowUp, assuntos: l.followUpAssuntos ?? [], nota: l.followUpNota ?? null, arquivadoEm: hoje },
-          ],
-        });
+    const paraArquivar = leads.filter((l) => l.proximoFollowUp && l.proximoFollowUp <= limiteStr);
+    paraArquivar.forEach((l) => {
+      atualizarLead(l.id, {
+        proximoFollowUp:   null,
+        followUpAssuntos:  [],
+        followUpNota:      null,
+        followUpArquivados: [
+          ...(l.followUpArquivados ?? []),
+          { data: l.proximoFollowUp, assuntos: l.followUpAssuntos ?? [], nota: l.followUpNota ?? null, arquivadoEm: hoje },
+        ],
       });
+    });
+    if (paraArquivar.length > 0) {
+      const n = paraArquivar.length;
+      toast.info(`${n} follow-up${n !== 1 ? 's' : ''} arquivado${n !== 1 ? 's' : ''} automaticamente`);
+    }
   }, [leads.length]); // eslint-disable-line
 
   const followUpsHoje = useMemo(() => {
