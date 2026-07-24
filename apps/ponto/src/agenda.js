@@ -22,6 +22,22 @@ const st = {
   sigPad:        null,
 };
 
+// Rastreio de sessão pra detectar troca de conta e zerar estado stale
+let _lastRenderedUserId = null;
+let _visListenerInstalado = false;
+
+function resetAgendaState() {
+  st.view          = 'list';
+  st.data          = getHoje();
+  st.visitas       = [];
+  st.visitaSel     = null;
+  st.relatorioSel  = null;
+  st.fotos         = [];
+  st.pendingFotos  = [];
+  st.sigPad        = null;
+  limparEstadoPersistido();
+}
+
 // ── Persistência de estado de execução (resiliência a reload) ────
 const STORAGE_KEY = 'vi-agenda-exec';
 const PENDING_KEY = 'vi-agenda-pending-fotos';
@@ -269,6 +285,29 @@ export async function renderAgenda() {
   if (!ses || !ses.employee_id) {
     root.innerHTML = `<div class="ag-empty">Sua conta não está vinculada a um funcionário — sem agenda para exibir.</div>`;
     return;
+  }
+
+  // Detecta troca de conta e zera estado stale. Complementa o reload do logout
+  // — se por algum motivo o reload não rolar (SW cache, versão antiga, ou
+  // troca de sessão sem passar pelo logout), a agenda ainda começa limpa.
+  if (_lastRenderedUserId && _lastRenderedUserId !== ses.user_id) {
+    resetAgendaState();
+  }
+  _lastRenderedUserId = ses.user_id;
+
+  // Instala listener de visibilidade uma vez só: quando o app volta pro
+  // primeiro plano (celular saindo do background), refresca as visitas
+  // automaticamente se o usuário estiver na lista de agenda. Evita "abri
+  // o app e apareceu tarefa desatualizada".
+  if (!_visListenerInstalado) {
+    _visListenerInstalado = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      const svAgenda = document.getElementById('sv-agenda');
+      if (!svAgenda?.classList.contains('on')) return;
+      if (st.view !== 'list') return; // não interrompe visita em execução
+      renderAgenda();
+    });
   }
 
   // Restaura estado de execução se houver
