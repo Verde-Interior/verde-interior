@@ -68,6 +68,9 @@
     </button>
     <div class="lfooter">Ponto &amp; Banco de Horas — Verde Interior</div>
     <button class="lforgot" onclick="toggleEsqueci()" type="button">Esqueci minha senha</button>
+    <button class="linstall" onclick="installPWA()" type="button" data-pwa-install-btn>
+      <i class="fa-solid fa-mobile-screen-button"></i>&nbsp;Instalar como App
+    </button>
     <div id="esqueci-panel" style="display:none;margin-top:14px">
       <div class="lfield">
         <label>Seu e-mail de recuperação</label>
@@ -207,6 +210,11 @@
     <div class="sl">Indicadores do mês</div>
     <div id="prof-stats"></div>
     <div id="prof-alerts" style="margin-top:.75rem"></div>
+    <div class="card" style="margin-top:1rem" data-pwa-install-btn>
+      <div class="sl" style="margin-bottom:.5rem">Instalar como App</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Instale o Ponto no seu celular para abrir mais rápido e usar offline.</p>
+      <button class="bg" onclick="installPWA()"><i class="fa-solid fa-mobile-screen-button"></i>&nbsp;Instalar agora</button>
+    </div>
     <div class="card" style="margin-top:1rem">
       <div class="sl" style="margin-bottom:1rem">Alterar senha</div>
       <div class="fr"><label>Senha atual</label><input type="password" id="cp0" placeholder="sua senha atual" autocomplete="current-password"></div>
@@ -467,6 +475,50 @@
   <div class="pwa-banner-actions">
     <button class="bsm" onclick="dismissInstall()">Agora não</button>
     <button class="bg" onclick="installPWA()"><i class="fa-solid fa-download"></i> Instalar</button>
+  </div>
+</div>
+
+<!-- Modal com instruções de instalação (iOS/Android sem prompt/desktop) -->
+<div id="pwa-install-help" class="pwa-help-overlay">
+  <div class="pwa-help-modal">
+    <button class="pwa-help-fechar" onclick="closeInstallHelp()" aria-label="Fechar">✕</button>
+    <div class="pwa-help-titulo">Instalar Verde Interior</div>
+
+    <!-- iOS (Safari) -->
+    <div id="pwa-help-ios" class="pwa-help-secao" style="display:none">
+      <p class="pwa-help-sub">No iPhone/iPad (Safari):</p>
+      <ol class="pwa-help-passos">
+        <li>Toque no botão <strong>Compartilhar</strong>
+          <svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:middle;margin:0 3px" aria-hidden="true">
+            <path fill="#185FA5" d="M12 2l-4 4h3v10h2V6h3l-4-4zm-7 8v11a1 1 0 001 1h12a1 1 0 001-1V10h-2v10H7V10H5z"/>
+          </svg>
+          na barra do Safari</li>
+        <li>Role e toque em <strong>Adicionar à Tela de Início</strong></li>
+        <li>Toque em <strong>Adicionar</strong> no canto superior direito</li>
+      </ol>
+      <div class="pwa-help-aviso">⚠ Só funciona no Safari — não vai aparecer se você abriu por outro navegador.</div>
+    </div>
+
+    <!-- Android sem prompt nativo disponível -->
+    <div id="pwa-help-and" class="pwa-help-secao" style="display:none">
+      <p class="pwa-help-sub">No Android (Chrome):</p>
+      <ol class="pwa-help-passos">
+        <li>Toque nos três pontinhos <strong>⋮</strong> no canto superior direito</li>
+        <li>Toque em <strong>Instalar app</strong> ou <strong>Adicionar à Tela inicial</strong></li>
+        <li>Confirme tocando em <strong>Instalar</strong></li>
+      </ol>
+    </div>
+
+    <!-- Fallback genérico (desktop / outros) -->
+    <div id="pwa-help-oth" class="pwa-help-secao" style="display:none">
+      <p class="pwa-help-sub">Para instalar como app:</p>
+      <ol class="pwa-help-passos">
+        <li>Abra o menu do seu navegador</li>
+        <li>Procure por <strong>Instalar app</strong> ou <strong>Adicionar à Tela de Início</strong></li>
+      </ol>
+    </div>
+
+    <button class="bg pwa-help-ok" onclick="closeInstallHelp()">Entendi</button>
   </div>
 </div>
 

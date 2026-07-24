@@ -154,6 +154,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section-label-sm{font-size:11px;color:var(--text3);margin-bottom:6px}
 
 /* ── PWA Install Banner ── */
+/* Botão "Instalar como App" na tela de login */
+.linstall{margin-top:10px;background:transparent;border:1.5px solid var(--gl);color:var(--g);padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s}
+.linstall:hover{background:var(--gb)}
+.linstall:focus-visible{outline:2px solid var(--gl);outline-offset:2px}
+
+/* Modal de instruções de instalação */
+.pwa-help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1200;padding:16px}
+.pwa-help-overlay.show{display:flex}
+.pwa-help-modal{background:#fff;border-radius:14px;padding:22px 22px 18px;max-width:400px;width:100%;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.pwa-help-fechar{position:absolute;top:10px;right:12px;background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:4px 8px;line-height:1}
+.pwa-help-titulo{font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px}
+.pwa-help-sub{font-size:13px;color:var(--text2);margin-bottom:10px}
+.pwa-help-passos{margin:0 0 12px 20px;padding:0;font-size:14px;color:var(--text);line-height:1.7}
+.pwa-help-passos li{margin-bottom:6px}
+.pwa-help-aviso{font-size:12px;color:var(--text2);background:var(--gb);padding:8px 10px;border-radius:6px;margin-top:10px}
+.pwa-help-ok{width:100%;margin-top:8px}
+
 #pwa-banner{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:14px 20px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:200;box-shadow:0 -4px 20px rgba(0,0,0,.08)}
 #pwa-banner.show{display:flex}
 .pwa-banner-left{display:flex;align-items:center;gap:12px}

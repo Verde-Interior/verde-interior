@@ -10,7 +10,7 @@ import { sendJust } from './justs.js';
 import { resolveJ, resolveJLote, renderEdit, delER, openAdd, closeAdd, saveAdd, expCSV, expXLSX } from './admin.js';
 import { addEmp, removeEmp, resetAll, editEmp, closeEditEmp, saveEditEmp, adminResetSenha, fecharModalResetPwd, confirmarAdminResetSenha } from './config.js';
 import { buildBars, selU, selEU, setV, setSv, setAs } from './nav.js';
-import { installPWA, dismissInstall, applyUpdate } from './pwa.js';
+import { installPWA, dismissInstall, applyUpdate, closeInstallHelp } from './pwa.js';
 import { requestNotifyPermission, startNotifyChecker } from './notify.js';
 import {
   renderAgenda, openDetail as agOpenDetail, back as agBack, backToList as agBackToList,
@@ -109,6 +109,7 @@ window.startNotifyChecker      = startNotifyChecker;
 window.installPWA              = installPWA;
 window.dismissInstall = dismissInstall;
 window.applyUpdate    = applyUpdate;
+window.closeInstallHelp = closeInstallHelp;
 window.toast          = toast;
 
 // Sistema de Campo — Minha Agenda
