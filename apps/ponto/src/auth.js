@@ -40,6 +40,9 @@ function applySession() {
   const badge = document.getElementById('sessao-badge');
   const wrap  = document.getElementById('sessao-wrap');
 
+  const empIdx = state.EMP.findIndex(e => e.id === _session.employee_id);
+  state.cu = empIdx >= 0 ? empIdx : 0;
+
   if (_session.role === 'gestor') {
     badge.textContent = 'Gestor';
     badge.className   = 'sbadge gestor';
@@ -48,8 +51,6 @@ function applySession() {
   } else {
     badge.textContent = _session.name.split(' ')[0];
     badge.className   = 'sbadge';
-    const idx = state.EMP.findIndex(e => e.id === _session.employee_id);
-    state.cu  = idx >= 0 ? idx : 0;
     _showNav('nb-admin',  false);
     _showNav('nb-config', false);
   }
