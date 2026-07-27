@@ -44,11 +44,11 @@ serve(async (req) => {
       return json({ error: 'Invalid token' }, 401);
     }
 
-    // 2. Confirma que o chamador é gestor
+    // 2. Confirma que o chamador é gestor (fase 2: role vive em employees)
     const { data: caller } = await anonClient
-      .from('profiles')
+      .from('employees')
       .select('role')
-      .eq('id', userData.user.id)
+      .eq('auth_user_id', userData.user.id)
       .maybeSingle();
 
     if (caller?.role !== 'gestor') {

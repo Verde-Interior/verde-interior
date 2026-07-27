@@ -39,18 +39,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 1. Encontra o profile pelo email_recuperacao
-    const { data: profile } = await admin
-      .from('profiles')
+    // 1. Encontra o employee pelo email_recuperacao (fase 2: profiles foi mergeado)
+    const { data: emp } = await admin
+      .from('employees')
       .select('username')
       .eq('email_recuperacao', email_recuperacao.trim().toLowerCase())
+      .not('auth_user_id', 'is', null)
       .maybeSingle();
 
     // Silêncio se não achou — não vaza quais e-mails estão cadastrados
-    if (!profile) return json({ sent: false }, 200);
+    if (!emp) return json({ sent: false }, 200);
 
     // 2. Gera o link de recovery via admin API do Supabase
-    const authEmail = `${profile.username}@vi.app`;
+    const authEmail = `${emp.username}@vi.app`;
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'recovery',
       email: authEmail,

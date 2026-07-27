@@ -78,15 +78,17 @@ async function run() {
       authId = created.user.id;
     }
 
-    // 3. Profile
-    const { error: prErr } = await supa.from('profiles').upsert({
-      id:                 authId,
-      employee_id:        u.id,
-      username:           u.username,
-      role:               u.role,
-      email_recuperacao:  u.email_rec ?? null,
-    }, { onConflict: 'id' });
-    if (prErr) { console.error(`  ❌ profile ${u.username}:`, prErr.message); continue; }
+    // 3. Employee: preenche as colunas de identidade (fase 2: profiles foi mergeado)
+    const { error: prErr } = await supa
+      .from('employees')
+      .update({
+        auth_user_id:      authId,
+        username:          u.username,
+        role:              u.role,
+        email_recuperacao: u.email_rec ?? null,
+      })
+      .eq('id', u.id);
+    if (prErr) { console.error(`  ❌ employee update ${u.username}:`, prErr.message); continue; }
 
     console.log(`  ✓ ${u.name} (${u.role}) — login: ${u.username} / senha: ${SENHA}`);
   }

@@ -22,8 +22,13 @@ Deno.serve(async (req) => {
   const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
   if (userErr || !user) return json({ error: 'Não autenticado' }, 401);
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'gestor') return json({ error: 'Sem permissão' }, 403);
+  // Fase 2: role vive em employees (profiles foi mergeado)
+  const { data: caller } = await supabase
+    .from('employees')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single();
+  if (caller?.role !== 'gestor') return json({ error: 'Sem permissão' }, 403);
 
   const { username, password, employee_id } = await req.json();
   if (!username || !password) return json({ error: 'username e password obrigatórios' }, 400);
@@ -36,9 +41,11 @@ Deno.serve(async (req) => {
   });
   if (error) return json({ error: error.message }, 400);
 
-  const { error: pe } = await supabase.from('profiles').insert({
-    id: data.user.id, employee_id, username, role: 'colab',
-  });
+  // Fase 2: atualiza o employee com auth_user_id + username + role
+  const { error: pe } = await supabase
+    .from('employees')
+    .update({ auth_user_id: data.user.id, username, role: 'colab' })
+    .eq('id', employee_id);
   if (pe) return json({ error: pe.message }, 400);
 
   return json({ ok: true, user_id: data.user.id });
