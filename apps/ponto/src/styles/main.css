@@ -631,6 +631,10 @@ body:has(#net-banner.on) .nav{top:44px}
 .ag-menu-item--acao .ag-menu-item__title,.ag-menu-item--acao .ag-menu-item__meta,.ag-menu-item--acao .ag-menu-item__arrow{color:#fff}
 .ag-menu-item--acao:hover{background:var(--gl);border-color:var(--gl)}
 
+.ag-exec__cancelar-wrap{margin-top:6px;padding-top:10px;border-top:1px dashed var(--border)}
+.ag-exec__cancelar-btn{width:100%;background:none;border:1px solid #fca5a5;color:#b91c1c;border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.ag-exec__cancelar-btn:hover{background:#fef2f2}
+
 /* ── Fotos (view dedicada) ── */
 .ag-photos{display:flex;flex-direction:column;gap:12px}
 .ag-photos__actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}

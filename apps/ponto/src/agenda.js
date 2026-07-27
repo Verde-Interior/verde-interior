@@ -597,6 +597,14 @@ function viewExec() {
         </div>
         <i class="fa-solid fa-chevron-right ag-menu-item__arrow"></i>
       </button>
+
+      ${!nFotos && !temRelato && !temAssin ? `
+      <div class="ag-exec__cancelar-wrap">
+        <button class="ag-exec__cancelar-btn" onclick="agendaCancelarCheckin()">
+          <i class="fa-solid fa-door-closed"></i> Não consegui entrar — desfazer check-in
+        </button>
+      </div>
+      ` : ''}
     </div>
   `;
 }
@@ -1483,6 +1491,64 @@ export async function confirmSign() {
   st.view = 'exec';
   renderCurrentView();
   startTimer();
+}
+
+// ── Cancelar check-in (portaria não liberou / precisa voltar mais tarde) ──────
+export async function cancelCheckIn() {
+  const v = st.visitaSel;
+  const r = st.relatorioSel;
+  if (!v || !r) return;
+
+  // Verificação local: nenhuma evidência de trabalho pode existir
+  const temConteudo = (r.relato || '').trim() ||
+                      r.assinatura_responsavel_img ||
+                      r.checkout_at ||
+                      st.fotos.length > 0;
+  if (temConteudo) {
+    toast('Não é possível cancelar: já há conteúdo registrado nesta visita', false);
+    return;
+  }
+
+  // Verificação no servidor: garante que não há fotos persistidas
+  const { data: fotosServer } = await supabase
+    .from('fotos_relatorio')
+    .select('id')
+    .eq('relatorio_id', r.id)
+    .limit(1);
+  if (fotosServer?.length > 0) {
+    toast('Não é possível cancelar: já há fotos salvas nesta visita', false);
+    return;
+  }
+
+  // Persiste o registro de tentativa cancelada para auditoria do gestor
+  const { error: e1 } = await supabase.from('checkin_cancelados').insert({
+    agendamento_id: v.id,
+    funcionario_id: r.funcionario_id,
+    checkin_at:     r.checkin_at,
+    checkin_lat:    r.checkin_lat,
+    checkin_lng:    r.checkin_lng,
+    cancelado_at:   new Date().toISOString(),
+  });
+  if (e1) { toast('Erro ao registrar cancelamento: ' + e1.message, false); return; }
+
+  // Remove o relatório iniciado
+  const { error: e2 } = await supabase.from('relatorios').delete().eq('id', r.id);
+  if (e2) { toast('Erro ao cancelar check-in: ' + e2.message, false); return; }
+
+  // Volta o status da visita para publicado
+  const { error: e3 } = await supabase.from('agenda').update({ status: 'publicado' }).eq('id', v.id);
+  if (e3) { toast('Erro ao resetar visita: ' + e3.message, false); return; }
+
+  // Limpa estado local
+  v.status = 'publicado';
+  st.relatorioSel = null;
+  st.fotos = [];
+  clearInterval(timerInterval);
+  limparEstadoPersistido();
+
+  toast('✓ Check-in cancelado — você pode refazê-lo quando conseguir entrar');
+  st.view = 'detail';
+  renderCurrentView();
 }
 
 // ── Check-out final (só valida + carimba fim) ─────────────────────

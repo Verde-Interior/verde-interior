@@ -19,6 +19,7 @@ import {
   saveFotoObs as agSaveFotoObs, saveReport as agSaveReport,
   sigClear as agSigClear, confirmSign as agConfirmSign, submit as agSubmit,
   retryFoto as agRetryFoto, descartarPending as agDescartaPending,
+  cancelCheckIn as agCancelarCheckin,
 } from './agenda.js';
 
 function tick() {
@@ -129,7 +130,8 @@ window.agendaSigClear      = agSigClear;
 window.agendaConfirmSign   = agConfirmSign;
 window.agendaSubmit        = agSubmit;
 window.agendaRetryFoto     = agRetryFoto;
-window.agendaDescartaPending = agDescartaPending;
+window.agendaDescartaPending  = agDescartaPending;
+window.agendaCancelarCheckin  = agCancelarCheckin;
 
 tick();
 setInterval(tick, 1000);

@@ -21,6 +21,7 @@ function formatarData(iso) {
 export default function ModalRelatorioVisita({ visita, onFechar }) {
   const [relatorio, setRelatorio] = useState(null);
   const [fotos, setFotos] = useState([]);
+  const [cancelados, setCancelados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
 
@@ -30,15 +31,14 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
       setLoading(true);
       setErro(null);
       try {
-        const { data: rels, error: e1 } = await supabase
-          .from('relatorios')
-          .select('*')
-          .eq('agendamento_id', visita.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
+        const [{ data: rels, error: e1 }, { data: cans }] = await Promise.all([
+          supabase.from('relatorios').select('*').eq('agendamento_id', visita.id).order('created_at', { ascending: false }).limit(1),
+          supabase.from('checkin_cancelados').select('*').eq('agendamento_id', visita.id).order('cancelado_at', { ascending: true }),
+        ]);
         if (e1) throw e1;
         const rel = rels?.[0] ?? null;
         setRelatorio(rel);
+        setCancelados(cans ?? []);
 
         if (rel?.id) {
           const { data: fts, error: e2 } = await supabase
@@ -107,6 +107,31 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
               <p>⏳ Este relatório ainda não foi iniciado pelo colaborador em campo.</p>
               <p className="ec-hint">Assim que ele fizer check-in no App Ponto, o relatório aparece aqui.</p>
             </div>
+          )}
+
+          {!loading && cancelados.length > 0 && (
+            <section className="ec-relatorio__sec ec-relatorio__sec--cancelados">
+              <h4>⚠ Tentativas de check-in canceladas <span className="ec-hint">({cancelados.length})</span></h4>
+              <div className="ec-relatorio__cancelados-lista">
+                {cancelados.map((c, i) => (
+                  <div key={c.id} className="ec-relatorio__cancelado-item">
+                    <span className="ec-relatorio__cancelado-num">{i + 1}</span>
+                    <span>Check-in às <strong>{formatarHora(c.checkin_at)}</strong> — cancelado às <strong>{formatarHora(c.cancelado_at)}</strong></span>
+                    {(c.checkin_lat && c.checkin_lng) && (
+                      <a
+                        href={`https://www.google.com/maps?q=${c.checkin_lat},${c.checkin_lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ec-relatorio__cancelado-mapa"
+                        title="Ver localização do check-in cancelado"
+                      >
+                        📍
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
 
           {!loading && relatorio && (
