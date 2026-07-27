@@ -1106,6 +1106,25 @@ export async function checkIn() {
 
   checkinEmAndamento = true;
   try {
+    // Bloqueio: não permite iniciar nova visita se já há uma em execução
+    // (relatorio com checkin_at preenchido e checkout_at nulo em outra agenda).
+    // Regra pedida pelo Roberto — colab não pode "pular" entre empresas sem checkout.
+    const { data: emAberto } = await supabase
+      .from('relatorios')
+      .select('id, agendamento_id, agenda:agendamento_id(clientes(nome_empresa))')
+      .eq('funcionario_id', String(ses.employee_id))
+      .is('checkout_at', null)
+      .neq('agendamento_id', v.id)
+      .limit(1);
+    if (emAberto && emAberto.length > 0) {
+      const nomeOutraEmpresa = emAberto[0].agenda?.clientes?.nome_empresa ?? 'outra visita';
+      alert(
+        `Você já está em execução em "${nomeOutraEmpresa}".\n\n` +
+        `Faça o check-out dessa visita antes de iniciar uma nova.`
+      );
+      return;
+    }
+
     const existente = await loadRelatorio(v.id);
     if (existente) {
       st.relatorioSel = existente;

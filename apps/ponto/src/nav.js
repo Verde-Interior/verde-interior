@@ -38,7 +38,7 @@ export function buildBars() {
   else       _removerModoRua();
 }
 
-const ABAS_OCULTAS_RUA = ['ponto', 'espelho', 'banco', 'just'];
+const ABAS_OCULTAS_RUA = ['espelho', 'banco', 'just'];
 
 function _aplicarModoRua() {
   // Ocultar botões de aba desnecessários
