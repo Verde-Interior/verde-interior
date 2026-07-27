@@ -1,7 +1,11 @@
 // src/agenda.js — Sistema de Campo: Minha Agenda (funcionário)
 import { supabase } from './supabase.js';
 import { AUTH } from './auth.js';
-import { toast, F, getHoje, esc } from './utils.js';
+import { toast, F, getHoje, esc, distanciaMetros } from './utils.js';
+
+// Raio máximo em metros para permitir check-in a partir da localização do cliente.
+// Se o colab estiver mais longe que isso, o check-in é bloqueado (evita batidas remotas).
+const RAIO_CHECKIN_METROS = 300;
 
 const DIAS_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -1141,6 +1145,23 @@ export async function checkIn() {
     const gps = await captureGPS();
     const gpsFalhou = gps.lat == null || gps.lng == null;
     const now = new Date().toISOString();
+
+    // Regra: check-in só é permitido dentro de RAIO_CHECKIN_METROS do cliente.
+    // Se GPS não capturou OU o cliente não tem lat/lng cadastrada, deixa passar
+    // (não dá pra validar sem ambos). Do contrário, calcula e bloqueia se longe.
+    const cliLat = v.cliente?.lat;
+    const cliLng = v.cliente?.lng;
+    if (!gpsFalhou && cliLat != null && cliLng != null) {
+      const dist = distanciaMetros(gps.lat, gps.lng, cliLat, cliLng);
+      if (dist != null && dist > RAIO_CHECKIN_METROS) {
+        alert(
+          `Você está a ${dist}m do local do cliente "${v.cliente?.nome_empresa ?? '—'}".\n\n` +
+          `O check-in só é permitido dentro de ${RAIO_CHECKIN_METROS}m.\n` +
+          `Aproxime-se do endereço e tente novamente.`
+        );
+        return;
+      }
+    }
 
     const { data: rel, error: err1 } = await supabase
       .from('relatorios')
