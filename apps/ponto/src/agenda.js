@@ -164,37 +164,33 @@ async function comprimirImagem(file, maxDim = 1024, quality = 0.75) {
     const nome = (file.name || 'foto').replace(/\.(heic|heif)$/i, '.jpg');
     file = new File([blob], nome, { type: 'image/jpeg' });
   }
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
-          else                { width  = Math.round(width  * maxDim / height); height = maxDim; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
 
-        // Tenta WebP primeiro
-        canvas.toBlob(blob => {
-          if (blob && blob.type === 'image/webp') {
-            const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.webp';
-            return resolve(new File([blob], nome, { type: 'image/webp' }));
-          }
-          // Fallback: WebP não suportado → JPEG
-          canvas.toBlob(jpegBlob => {
-            if (!jpegBlob) return reject(new Error('toBlob retornou null'));
-            const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg';
-            resolve(new File([jpegBlob], nome, { type: 'image/jpeg' }));
-          }, 'image/jpeg', quality);
-        }, 'image/webp', quality);
-      } catch (e) { reject(e); }
-    };
-    img.onerror = () => reject(new Error('Falha ao ler imagem'));
-    img.src = URL.createObjectURL(file);
+  // createImageBitmap é mais rápido que new Image()+onload: async nativo,
+  // decode otimizado, sem criar elemento DOM.
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  if (width > maxDim || height > maxDim) {
+    if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+    else                { width  = Math.round(width  * maxDim / height); height = maxDim; }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const nome = (file.name || 'foto').replace(/\.[^.]+$/, '');
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob && blob.type === 'image/webp') {
+        return resolve(new File([blob], nome + '.webp', { type: 'image/webp' }));
+      }
+      // Fallback: WebP não suportado → JPEG
+      canvas.toBlob(jpegBlob => {
+        if (!jpegBlob) return reject(new Error('toBlob retornou null'));
+        resolve(new File([jpegBlob], nome + '.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    }, 'image/webp', quality);
   });
 }
 
@@ -706,6 +702,18 @@ function photoItem(f, i) {
 
 function photoPending(p) {
   const previewUrl = p._previewUrl || (p._previewUrl = URL.createObjectURL(p.file));
+  if (p._comprimindo) {
+    return `
+      <div class="ag-photo-item ag-photo-item--pending" data-tid="${p.tempId}">
+        <img src="${previewUrl}" alt="foto pendente">
+        <div class="ag-photo-item__body">
+          <div class="ag-photo-item__msg">
+            <i class="fa-solid fa-compress"></i> Comprimindo...
+          </div>
+        </div>
+      </div>
+    `;
+  }
   return `
     <div class="ag-photo-item ag-photo-item--pending" data-tid="${p.tempId}">
       <img src="${previewUrl}" alt="foto pendente">
@@ -1326,23 +1334,29 @@ export async function addPhoto(input) {
   if (!r) { toast('Erro: sem relatório ativo', false); return; }
   input.value = '';
 
-  toast(files.length > 1 ? `Comprimindo ${files.length} fotos...` : 'Comprimindo foto...');
-  for (const original of files) {
-    let file = original;
-    try { file = await comprimirImagem(original); }
-    catch (e) { console.warn('Falha na compressão, usando original:', e); }
-    const b64 = await fileToBase64(file).catch(() => null);
-    st.pendingFotos.push({
-      tempId: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      relatorioId: r.id,
-      file,
-      fileB64: b64,
-      error: null,
-      tentando: false,
-    });
+  // Adiciona ao estado com o original — photoPending já usa URL.createObjectURL para preview,
+  // então a foto aparece instantaneamente sem precisar esperar pela compressão.
+  const novos = files.map(original => ({
+    tempId: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    relatorioId: r.id,
+    file: original,
+    _comprimindo: true,
+    error: null,
+    tentando: false,
+  }));
+  st.pendingFotos.push(...novos);
+  renderCurrentView();
+
+  // Comprime em background, um por um, e inicia upload ao terminar
+  for (const p of novos) {
+    try {
+      p.file = await comprimirImagem(p.file);
+    } catch (e) {
+      console.warn('Compressão falhou, usando original:', e);
+    }
+    p._comprimindo = false;
   }
   await persistPending();
-  renderCurrentView();
   processarFilaUpload();
 }
 
