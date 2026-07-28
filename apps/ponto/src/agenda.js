@@ -3,6 +3,14 @@ import { supabase } from './supabase.js';
 import { AUTH } from './auth.js';
 import { toast, F, getHoje, esc, distanciaMetros } from './utils.js';
 
+// heic2any é carregado dinamicamente só quando aparece uma foto HEIC.
+// Evita ~250KB no bundle inicial que 99% dos usuários (Android/web) nunca precisam.
+let _heic2anyPromise = null;
+function loadHeic2any() {
+  if (!_heic2anyPromise) _heic2anyPromise = import('heic2any').then(m => m.default);
+  return _heic2anyPromise;
+}
+
 // Raio máximo em metros para permitir check-in a partir da localização do cliente.
 // Se o colab estiver mais longe que isso, o check-in é bloqueado (evita batidas remotas).
 const RAIO_CHECKIN_METROS = 300;
@@ -146,6 +154,16 @@ function limparPending() {
 // Ainda mantém detalhes suficientes para avaliar saúde da planta (folhas, cor, pragas).
 // Fallback JPEG 0.75 se browser não suportar WebP canvas.
 async function comprimirImagem(file, maxDim = 1024, quality = 0.75) {
+  // iPhone tira fotos em HEIC por padrão — nenhum browser decodifica nativamente.
+  // Converte pra JPEG antes de passar ao canvas.
+  const isHeic = /^image\/(heic|heif)$/i.test(file.type) || /\.(heic|heif)$/i.test(file.name || '');
+  if (isHeic) {
+    const heic2any = await loadHeic2any();
+    const jpegBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    const blob = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
+    const nome = (file.name || 'foto').replace(/\.(heic|heif)$/i, '.jpg');
+    file = new File([blob], nome, { type: 'image/jpeg' });
+  }
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
