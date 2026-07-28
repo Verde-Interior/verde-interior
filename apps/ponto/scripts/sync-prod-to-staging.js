@@ -8,11 +8,15 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-const PROD_URL = 'https://mcaqxfogzvrqqnoixptv.supabase.co';
-const PROD_SR  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jYXF4Zm9nenZycXFub2l4cHR2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTExMDMzMiwiZXhwIjoyMDk2Njg2MzMyfQ.sk62pxMNzwivOtFu-j54OvUQ1OJQZvQDKcRfsyaKyvk';
+const PROD_URL = process.env.SUPABASE_PROD_URL;
+const PROD_SR  = process.env.SUPABASE_PROD_SERVICE_KEY;
+const STG_URL  = process.env.SUPABASE_STAGING_URL;
+const STG_SR   = process.env.SUPABASE_STAGING_SERVICE_KEY;
 
-const STG_URL = 'https://geyyxjbnnmiejssqjrwl.supabase.co';
-const STG_SR  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdleXl4amJubm1pZWpzc3FqcndsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTE2MDg3NSwiZXhwIjoyMTAwNzM2ODc1fQ.Lk-Wf9boH2Coiagk14F8sqojno_eybNk5cbCcmQ_HRQ';
+if (!PROD_URL || !PROD_SR || !STG_URL || !STG_SR) {
+  console.error('❌ Variáveis de ambiente faltando. Rode com: node --env-file=.env scripts/sync-prod-to-staging.js');
+  process.exit(1);
+}
 
 const prod = createClient(PROD_URL, PROD_SR, { auth: { persistSession: false } });
 const stg  = createClient(STG_URL,  STG_SR,  { auth: { persistSession: false } });

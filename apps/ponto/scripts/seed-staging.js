@@ -8,8 +8,13 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-const STAGING_URL = 'https://geyyxjbnnmiejssqjrwl.supabase.co';
-const STAGING_SERVICE_ROLE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdleXl4amJubm1pZWpzc3FqcndsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTE2MDg3NSwiZXhwIjoyMTAwNzM2ODc1fQ.Lk-Wf9boH2Coiagk14F8sqojno_eybNk5cbCcmQ_HRQ';
+const STAGING_URL          = process.env.SUPABASE_STAGING_URL;
+const STAGING_SERVICE_ROLE = process.env.SUPABASE_STAGING_SERVICE_KEY;
+
+if (!STAGING_URL || !STAGING_SERVICE_ROLE) {
+  console.error('❌ Variáveis de ambiente faltando. Rode com: node --env-file=.env scripts/seed-staging.js');
+  process.exit(1);
+}
 
 // Snapshot dos users em produção — 27/07/2026.
 const USERS = [
