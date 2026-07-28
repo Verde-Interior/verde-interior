@@ -17,7 +17,7 @@ async function loadAgendaHoje() {
       id, hora_estimada_chegada, duracao_estimada_min,
       ordem_rota, status, funcionario_id,
       cliente:clientes(id, nome_empresa, lat, lng),
-      lead:leads(id, nome_empresa),
+      lead:leads(id, empresa, lat, lng),
       relatorio:relatorios(
         checkin_at, checkin_lat, checkin_lng,
         checkout_at, checkout_lat, checkout_lng, status
@@ -31,7 +31,7 @@ async function loadAgendaHoje() {
 
 // Retorna o nome exibível — cliente ou lead ou fallback
 function nomeVisita(v) {
-  return v.cliente?.nome_empresa || v.lead?.nome_empresa || '—';
+  return v.cliente?.nome_empresa || v.lead?.empresa || '—';
 }
 
 async function loadFuncionarios() {
@@ -123,19 +123,25 @@ function getLocation(visitas) {
   }
   const sorted = [...visitas].sort((a, b) => (a.ordem_rota ?? 999) - (b.ordem_rota ?? 999));
   const proxima = sorted.find(v => v.status === 'publicado');
-  if (proxima?.cliente?.lat != null && proxima?.cliente?.lng != null) {
-    return { lat: proxima.cliente.lat, lng: proxima.cliente.lng, source: 'proxima' };
-  }
+  const proxCoord = coordDeVisita(proxima);
+  if (proxCoord) return { ...proxCoord, source: 'proxima' };
+
   const concluidas = sorted.filter(v => v.status === 'concluido').reverse();
   for (const c of concluidas) {
     const rC = rel(c);
     if (rC?.checkout_lat != null && rC?.checkout_lng != null) {
       return { lat: rC.checkout_lat, lng: rC.checkout_lng, source: 'ultima' };
     }
-    if (c.cliente?.lat != null && c.cliente?.lng != null) {
-      return { lat: c.cliente.lat, lng: c.cliente.lng, source: 'ultima' };
-    }
+    const coord = coordDeVisita(c);
+    if (coord) return { ...coord, source: 'ultima' };
   }
+  return null;
+}
+
+function coordDeVisita(v) {
+  if (!v) return null;
+  if (v.cliente?.lat != null && v.cliente?.lng != null) return { lat: v.cliente.lat, lng: v.cliente.lng };
+  if (v.lead?.lat != null && v.lead?.lng != null)       return { lat: v.lead.lat, lng: v.lead.lng };
   return null;
 }
 
