@@ -1181,7 +1181,8 @@ export async function checkIn() {
     // (não dá pra validar sem ambos). Do contrário, calcula e bloqueia se longe.
     const cliLat = v.cliente?.lat;
     const cliLng = v.cliente?.lng;
-    if (!gpsFalhou && cliLat != null && cliLng != null) {
+    const bypassRaio = ses.name === 'beto'; // gestor testando remotamente
+    if (!bypassRaio && !gpsFalhou && cliLat != null && cliLng != null) {
       const dist = distanciaMetros(gps.lat, gps.lng, cliLat, cliLng);
       if (dist != null && dist > RAIO_CHECKIN_METROS) {
         alert(
