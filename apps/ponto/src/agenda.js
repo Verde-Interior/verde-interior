@@ -1475,7 +1475,7 @@ async function uploadSignature(canvas, relatorioId) {
 export async function confirmSign() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
-  if (!v || !r) return;
+  if (!v || !r) { toast('Recarregue o app e tente novamente', false); return; }
 
   // Nome vem do contato do cliente (hidden input pré-preenchido); fallback genérico
   const nomeInput = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
