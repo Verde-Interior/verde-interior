@@ -21,6 +21,7 @@ import {
   retryFoto as agRetryFoto, descartarPending as agDescartaPending,
   cancelCheckIn as agCancelarCheckin,
 } from './agenda.js';
+import { renderEquipe } from './equipe.js';
 
 function tick() {
   const n = new Date();
@@ -132,6 +133,7 @@ window.agendaSubmit        = agSubmit;
 window.agendaRetryFoto     = agRetryFoto;
 window.agendaDescartaPending  = agDescartaPending;
 window.agendaCancelarCheckin  = agCancelarCheckin;
+window.agendaRenderEquipe     = renderEquipe;
 
 tick();
 setInterval(tick, 1000);
