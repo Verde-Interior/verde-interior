@@ -6,8 +6,13 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://mcaqxfogzvrqqnoixptv.supabase.co';
-const SERVICE_KEY  = 'sb_secret_ZsJcpghIzaHy_ldir1ib5A_69-BpVjU';
+const SUPABASE_URL = process.env.SUPABASE_PROD_URL;
+const SERVICE_KEY  = process.env.SUPABASE_PROD_SERVICE_KEY;
+
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  console.error('❌ Variáveis de ambiente faltando. Rode com: node --env-file=.env apps/ponto/scripts/seed.js');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
