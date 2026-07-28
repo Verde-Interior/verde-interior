@@ -285,6 +285,18 @@ async function loadRelatorio(agendaId) {
     .select('*')
     .eq('agendamento_id', agendaId)
     .maybeSingle();
+
+  // Visita pode ter sido reatribuída após o check-in de outro colaborador.
+  // Corrige o funcionario_id para refletir quem está executando agora.
+  if (data) {
+    const ses = AUTH.getSession();
+    if (ses?.employee_id && String(data.funcionario_id) !== String(ses.employee_id)) {
+      await supabase.from('relatorios')
+        .update({ funcionario_id: String(ses.employee_id) })
+        .eq('id', data.id);
+      data.funcionario_id = String(ses.employee_id);
+    }
+  }
   return data;
 }
 
