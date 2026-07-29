@@ -84,13 +84,15 @@ export function doPunch() {
   const np  = getNext(state.PS, state.cu);
   const btn = document.getElementById('pbtn');
 
-  // Confirmação para horários fora do expediente normal (< 7h ou ≥ 21h)
   const agora = new Date();
   const hora  = agora.getHours();
-  if (hora < 7 || hora >= 21) {
-    const hStr = F(hora) + ':' + F(agora.getMinutes());
-    if (!confirm(`São ${hStr} — fora do horário habitual.\nConfirmar "${np.lbl}"?`)) return;
-  }
+
+  const offHours = hora < 7 || hora >= 21;
+  const horaStr  = F(hora) + ':' + F(agora.getMinutes());
+  const msg = offHours
+    ? `São ${horaStr} — fora do horário habitual.\nConfirmar "${np.lbl}"?`
+    : `Confirmar "${np.lbl}"?`;
+  if (!confirm(msg)) return;
 
   btn.classList.add('act');
   const n = new Date();
@@ -114,6 +116,7 @@ export function doPunch() {
 }
 
 export function doExit() {
+  if (!confirm('Finalizar expediente agora?')) return;
   const n = new Date();
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
   if (!state.PS[state.cu]) state.PS[state.cu] = [];
