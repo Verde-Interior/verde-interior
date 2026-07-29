@@ -2,6 +2,7 @@
 // Modal de editar visita — extraído de EscalaCampo.jsx (Fase 3.2)
 import { useState, useMemo } from 'react';
 import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario } from '../../utils/escalaHelpers';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onDuplicarFuncionario }) {
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
@@ -61,8 +62,10 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
   const dataFmt = new Date(visita.data_agendada + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', weekday: 'short' });
   const publicada = visita.status === 'publicado';
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal">
         <header className="ec-modal__header">
           <div>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
+import { useOverlayClose } from '../../../hooks/useOverlayClose';
 
 const TIPOS = [
   { id: 'entrada',          label: '📦 Chegou do fornecedor', grupo: 'ciclo' },
@@ -137,8 +138,10 @@ export default function ModalEventoPatrimonio({ patrimonio, especies, onFechar, 
     onSalvo?.();
   }
 
+  const overlayClose = useOverlayClose(() => !salvando && onFechar());
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !salvando && onFechar()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal">
         <header className="modal__header">
           <div className="modal__header-info">

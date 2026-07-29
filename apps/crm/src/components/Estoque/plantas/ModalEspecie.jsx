@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
+import { useOverlayClose } from '../../../hooks/useOverlayClose';
 
 export default function ModalEspecie({ especie = null, onFechar, onSalvo }) {
   const toast = useToast();
@@ -35,8 +36,10 @@ export default function ModalEspecie({ especie = null, onFechar, onSalvo }) {
     onFechar?.();
   }
 
+  const overlayClose = useOverlayClose(() => !salvando && onFechar());
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !salvando && onFechar()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal">
         <header className="modal__header">
           <div className="modal__header-info">

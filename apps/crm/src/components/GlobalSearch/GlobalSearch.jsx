@@ -1,6 +1,7 @@
 // src/components/GlobalSearch/GlobalSearch.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './GlobalSearch.css';
 
 export default function GlobalSearch({ onFechar, onNavegar }) {
@@ -39,8 +40,10 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
   const cor = (id) => ESTAGIOS.find((e) => e.id === id)?.cor ?? '#6B7280';
   const label = (id) => ESTAGIOS.find((e) => e.id === id)?.label ?? id;
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="gsearch-overlay" onClick={(e) => e.target === e.currentTarget && onFechar()}>
+    <div className="gsearch-overlay" {...overlayClose}>
       <div className="gsearch" role="dialog" aria-modal="true">
 
         {/* Input */}

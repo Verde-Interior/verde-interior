@@ -1,6 +1,7 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
 import {
@@ -105,7 +106,7 @@ export default function EscalaCampo() {
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
       .neq('status', 'cancelado')
-      .order('ordem_rota');
+      .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
     setLoading(false);
     if (!error) {
       // Compat: cartões e modais da Escala esperam sempre `v.clientes`.
@@ -170,7 +171,11 @@ export default function EscalaCampo() {
       org[d][eid].push(v);
     });
     Object.values(org).forEach(empMap =>
-      Object.values(empMap).forEach(lista => lista.sort((a, b) => a.ordem_rota - b.ordem_rota))
+      Object.values(empMap).forEach(lista => lista.sort((a, b) => {
+        const ta = a.hora_estimada_chegada ?? 'ZZ';
+        const tb = b.hora_estimada_chegada ?? 'ZZ';
+        return ta < tb ? -1 : ta > tb ? 1 : 0;
+      }))
     );
     return org;
   }, [agenda, semana, employees]);
@@ -622,6 +627,8 @@ export default function EscalaCampo() {
   const temSelecionavel = agenda.some(v => v.data_agendada === diaSel && (v.status === 'rascunho' || v.status === 'publicado'));
   const qtdSel          = selecionadas.size;
 
+  const pickerOverlay = useOverlayClose(() => setPickerDup(null));
+
   return (
     <div className="ec">
 
@@ -961,7 +968,7 @@ export default function EscalaCampo() {
 
       {/* ── Picker "+ Funcionário": lista clicável em vez de prompt() ── */}
       {pickerDup && (
-        <div className="ec-overlay" onClick={e => e.target === e.currentTarget && setPickerDup(null)}>
+        <div className="ec-overlay" {...pickerOverlay}>
           <div className="ec-modal" style={{ maxWidth: 380 }}>
             <header className="ec-modal__header">
               <div>

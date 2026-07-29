@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './ModalMaterial.css';
 
 const CATEGORIAS = [
@@ -99,8 +100,10 @@ export default function ModalMaterial({ material = null, onFechar, onSalvo }) {
     onFechar?.();
   }
 
+  const overlayClose = useOverlayClose(() => !salvando && onFechar?.());
+
   return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !salvando) onFechar?.(); }}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal mm">
         <header className="modal__header">
           <div className="modal__header-info">

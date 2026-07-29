@@ -2,6 +2,7 @@
 // Modal de bloqueios (férias/folga) — extraído de EscalaCampo.jsx (Fase 3.3)
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalBloqueios({ funcionarioId, funcionarioNome, bloqueios, onFechar, onMudou }) {
   const hoje = new Date().toISOString().split('T')[0];
@@ -42,8 +43,10 @@ export default function ModalBloqueios({ funcionarioId, funcionarioNome, bloquei
 
   const ordenados = [...bloqueios].sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal">
         <header className="ec-modal__header">
           <div>

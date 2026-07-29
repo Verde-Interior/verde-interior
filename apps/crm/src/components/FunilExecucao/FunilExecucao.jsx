@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './FunilExecucao.css';
 
 const ICONE_SERVICO = {
@@ -445,8 +446,10 @@ function ModalMateriais({ lead, saldos, onFechar, onSalvar }) {
     return s + Math.max(0, Number(i.quantidade) - saldo);
   }, 0);
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="fe-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="fe-overlay" {...overlayClose}>
       <div className="fe-modal">
         <header className="fe-modal__header">
           <div>
@@ -607,8 +610,10 @@ function ModalAgendarServico({ lead, employees, onFechar, onSalvo }) {
     }
   }
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="fe-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="fe-overlay" {...overlayClose}>
       <div className="fe-modal fe-modal--sm">
         <header className="fe-modal__header">
           <div>

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './OrdensServico.css';
 
 const STATUS_LABEL = {
@@ -257,8 +258,10 @@ function ModalDetalhesOS({ os, onFechar }) {
     modo: 'execucao',
   })}`;
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="os-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="os-overlay" {...overlayClose}>
       <div className="os-modal">
         <header className="os-modal__header">
           <div>

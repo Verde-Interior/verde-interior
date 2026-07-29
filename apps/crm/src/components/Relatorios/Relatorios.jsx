@@ -5,6 +5,7 @@ import { formatarDataHora, formatarData } from '../../utils/dateUtils';
 import { distanciaMetros } from '../../utils/geoUtils';
 import { formatarDuracao } from '../../utils/formatUtils';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './Relatorios.css';
 
 function duracaoEntre(inicio, fim) {
@@ -398,8 +399,10 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
     ? `https://www.google.com/maps?q=${r.checkin_lat},${r.checkin_lng}`
     : null;
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="rel-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="rel-overlay" {...overlayClose}>
       <div className="rel-modal">
         <header className="rel-modal__header">
           <div>

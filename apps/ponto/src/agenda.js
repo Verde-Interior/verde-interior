@@ -269,7 +269,7 @@ async function loadVisitas() {
     // concluído. Rascunho (ainda não publicado) e cancelado (gestor cancelou)
     // ficam invisíveis pro colaborador.
     .in('status', ['publicado', 'em_execucao', 'concluido'])
-    .order('ordem_rota', { ascending: true });
+    .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
 
   if (error) { console.error(error); toast('Erro ao carregar agenda', false); return []; }
   return data ?? [];

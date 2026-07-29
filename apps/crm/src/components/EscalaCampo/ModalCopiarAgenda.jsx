@@ -2,6 +2,7 @@
 // Modal de copiar agenda — extraído de EscalaCampo.jsx (Fase 3.3)
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFechar, onCopiado }) {
   const clienteMap = useMemo(() => {
@@ -51,7 +52,7 @@ export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFecha
         .select('id, cliente_id, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, tipos_tarefa, status')
         .eq('funcionario_id', origemFunc)
         .eq('data_agendada', origemData)
-        .order('ordem_rota', { ascending: true });
+        .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
       if (error) throw error;
       setPreview(data ?? []);
       setSelecionadas(new Set((data ?? []).map(v => v.id))); // marca todas por default
@@ -99,8 +100,10 @@ export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFecha
   const nomeOrigem  = employees.find(e => String(e.id) === String(origemFunc))?.name  ?? '—';
   const nomeDestino = employees.find(e => String(e.id) === String(destinoFunc))?.name ?? '—';
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal ec-modal--copiar">
         <header className="ec-modal__header">
           <h3 className="ec-modal__titulo">↺ Copiar agenda</h3>

@@ -5,6 +5,7 @@ import {
   TIPO_LABEL, TIPOS_TAREFA,
   textoObsDeTipos, verificarConflitos, verificarHorario,
 } from '../../utils/escalaHelpers';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInicial, clienteIdPre, onSalvar, onFechar, salvando }) {
   const idInicial = funcionarioIdInicial ?? (funcionarios[0]?.id?.toString() ?? '');
@@ -96,8 +97,10 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
   const podeSubmit = camposMinimos && semErros;
   const podeForcarSubmit = camposMinimos && !semErros;
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal">
         <header className="ec-modal__header">
           <h3 className="ec-modal__titulo">Adicionar Visita</h3>

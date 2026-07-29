@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import { tempoRelativo } from '../../utils/formatUtils';
 import { geocodeEndereco } from '../../utils/geoUtils';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './Clientes.css';
 
 const DIAS_SEMANA = [
@@ -355,6 +356,8 @@ export default function Clientes() {
 
   // ── Render ─────────────────────────────────────────────────────
 
+  const overlayClose = useOverlayClose(fecharModal);
+
   return (
     <div className="clientes">
 
@@ -569,7 +572,7 @@ export default function Clientes() {
 
       {/* ── Modal de edição ── */}
       {modal && form && (
-        <div className="cl-modal-overlay" onClick={e => e.target === e.currentTarget && fecharModal()}>
+        <div className="cl-modal-overlay" {...overlayClose}>
           <div className="cl-modal">
 
             <header className="cl-modal__header">

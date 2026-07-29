@@ -1,6 +1,7 @@
 // src/components/Estoque/plantas/ModalHistorico.jsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useOverlayClose } from '../../../hooks/useOverlayClose';
 
 const TIPO_LABEL = {
   cadastro:         'Cadastro',
@@ -61,8 +62,10 @@ export default function ModalHistorico({ patrimonio, onFechar }) {
       .then(({ data }) => { setEventos(data ?? []); setLoading(false); });
   }, [patrimonio.id]);
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal modal--largo">
         <header className="modal__header">
           <div className="modal__header-info">

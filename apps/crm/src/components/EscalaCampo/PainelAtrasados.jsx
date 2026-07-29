@@ -2,13 +2,16 @@
 // Painel de clientes atrasados — extraído de EscalaCampo.jsx (Fase 3.3)
 import { useState } from 'react';
 import { FREQ_LABEL_LOCAL } from '../../utils/escalaHelpers';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function PainelAtrasados({ atrasados, onFechar, onAgendar }) {
   const [aba, setAba] = useState('atrasado');
   const lista = aba === 'atrasado' ? atrasados.atrasado : atrasados.vencendo;
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal ec-modal--atras">
         <header className="ec-modal__header">
           <div>

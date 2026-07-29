@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
 import ModalHistorico from '../plantas/ModalHistorico';
 import ModalEventoPatrimonio from '../plantas/ModalEventoPatrimonio';
+import { useOverlayClose } from '../../../hooks/useOverlayClose';
 
 const CRM_URL = 'https://verde-interior-crm.vercel.app';
 const LAYOUT_KEY = 'estoque-qr-layout';
@@ -55,8 +56,9 @@ function QRCard({ p, layout, onAbrir }) {
 
 function ModalAcoes({ patrimonio, onFechar, onHistorico, onEvento, onAtribuir, onImprimir }) {
   const semEspecie = !patrimonio.especie_nome;
+  const overlayClose = useOverlayClose(onFechar);
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal" style={{ maxWidth: 380 }}>
         <header className="modal__header">
           <div className="modal__header-info">
@@ -123,8 +125,10 @@ function ModalAtribuir({ patrimonio, especies, onFechar, onSalvo }) {
     onSalvo?.();
   }
 
+  const overlayClose = useOverlayClose(() => !salvando && onFechar());
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !salvando && onFechar()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal">
         <header className="modal__header">
           <div className="modal__header-info">
@@ -175,8 +179,10 @@ function ModalImprimir({ patrimonio, onFechar }) {
     setTimeout(() => { win.print(); win.close(); }, 300);
   }
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal" style={{ maxWidth: 340 }}>
         <header className="modal__header">
           <div className="modal__header-info">

@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
+import { useOverlayClose } from '../../../hooks/useOverlayClose';
 
 const TIPOS = [
   { id: 'entrada',       label: 'Entrada',       icone: '⬇', cor: '#16A34A' },
@@ -101,8 +102,10 @@ export default function ModalMovimentoItem({ categoriaFixa, onFechar, onSalvo })
 
   const tipoAtual = TIPOS.find(t => t.id === form.tipo);
 
+  const overlayClose = useOverlayClose(() => !salvando && onFechar?.());
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !salvando && onFechar?.()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal mv">
         <header className="modal__header">
           <div className="modal__header-info">
