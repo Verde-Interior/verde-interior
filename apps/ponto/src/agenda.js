@@ -38,6 +38,17 @@ const st = {
 let _lastRenderedUserId = null;
 let _visListenerInstalado = false;
 
+// Timer do autosave do relato — em escopo de módulo pra poder ser cancelado
+// em qualquer transição de view (evita salvar com textarea inexistente e
+// apagar o relato do supabase — BUG histórico do "checkout apaga relatório").
+let _relatoAutosaveTimer = null;
+function cancelarAutosaveRelato() {
+  if (_relatoAutosaveTimer) {
+    clearTimeout(_relatoAutosaveTimer);
+    _relatoAutosaveTimer = null;
+  }
+}
+
 function resetAgendaState() {
   st.view          = 'list';
   st.data          = getHoje();
@@ -793,10 +804,12 @@ function wireReportInputs() {
   const relato = document.getElementById('ag-relato');
   const obs = document.getElementById('ag-obs');
   if (!relato || !obs) return;
-  let timer;
   function agendarSave() {
-    clearTimeout(timer);
-    timer = setTimeout(() => saveRelatoObs(true), 1200);
+    cancelarAutosaveRelato();
+    _relatoAutosaveTimer = setTimeout(() => {
+      _relatoAutosaveTimer = null;
+      saveRelatoObs(true);
+    }, 1200);
   }
   relato.addEventListener('input', agendarSave);
   obs.addEventListener('input', agendarSave);
@@ -1077,6 +1090,10 @@ function viewDone() {
 export async function goTo(view) {
   // Autosalva relato/obs ao sair da tela de relato
   if (st.view === 'report' && view !== 'report') {
+    // Cancela qualquer autosave debounced pendente ANTES do save síncrono —
+    // senão o timer stale rodaria depois com a textarea já fora do DOM e
+    // sobrescreveria o relato com null.
+    cancelarAutosaveRelato();
     await saveRelatoObs(true);
   }
   st.view = view;
@@ -1085,6 +1102,7 @@ export async function goTo(view) {
 }
 
 export function back() {
+  cancelarAutosaveRelato();
   if (st.view === 'detail') { st.view = 'list'; st.visitaSel = null; renderCurrentView(); return; }
   if (['exec','photos','report','sign','review'].includes(st.view)) { st.view = 'detail'; renderCurrentView(); return; }
   st.view = 'list';
@@ -1092,6 +1110,7 @@ export function back() {
 }
 
 export async function backToList() {
+  cancelarAutosaveRelato();
   st.view = 'list';
   st.visitaSel = null;
   st.relatorioSel = null;
@@ -1431,14 +1450,23 @@ async function sincronizarLegendasNoRelato() {
 async function saveRelatoObs(silent = false) {
   const r = st.relatorioSel;
   if (!r) return;
-  const relatoRaw = document.getElementById('ag-relato')?.value ?? '';
+
+  // Guard crítico: se as textareas não estão no DOM, o usuário já saiu da tela
+  // de relato. Ler .value retornaria '' e apagaria o relato salvo no supabase.
+  // (Cenário: usuário digita → clica em "Revisar" → view muda → timer stale
+  // do autosave dispara depois de 1200ms com o DOM já re-renderizado.)
+  const relatoEl = document.getElementById('ag-relato');
+  const obsEl = document.getElementById('ag-obs');
+  if (!relatoEl || !obsEl) return;
+
+  const relatoRaw = relatoEl.value ?? '';
   // Blindagem: se o usuário digitar/colar o marker no relato, ainda joga fora
   // (legendas vivem só em observacoes agora)
   const relato = relatoRaw.split(RELATO_MARKER)[0].trim();
 
   // Textarea de obs contém APENAS o texto do usuário. Também blinda contra
   // colagens do marker (dados legados que possam ter sido colados).
-  const obsRaw = document.getElementById('ag-obs')?.value ?? '';
+  const obsRaw = obsEl.value ?? '';
   const textoUsuario = obsRaw.split(/\n*— Fotos —\n[\s\S]*$/)[0].replace(/\s+$/, '');
 
   // Legendas: reconstrói SEMPRE a partir de st.fotos (fonte da verdade).
@@ -1468,6 +1496,7 @@ async function saveRelatoObs(silent = false) {
 
 // Botão "Salvar e voltar" no viewReport
 export async function saveReport() {
+  cancelarAutosaveRelato();
   await saveRelatoObs(false);
   st.view = 'exec';
   renderCurrentView();
@@ -1641,6 +1670,11 @@ export async function submit() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
   if (!v || !r) return;
+
+  // Cancela qualquer autosave pendente — o relato JÁ foi salvo pelo autosave
+  // ao sair da view de report. Deixar timer rodar depois do checkout apagaria
+  // o relato do relatório recém-concluído.
+  cancelarAutosaveRelato();
 
   if (!r.assinatura_responsavel_img) {
     toast('Assinatura ainda não coletada', false); return;
