@@ -22,7 +22,7 @@ const VAZIO = {
 };
 
 export default function CeasaHolambra() {
-  const { showToast } = useToast();
+  const toast = useToast();
   const [prospects, setProspects] = useState([]);
   const [busca, setBusca]         = useState('');
   const [modal, setModal]         = useState(null); // null | { modo: 'add'|'edit', dados }
@@ -33,9 +33,9 @@ export default function CeasaHolambra() {
       .from('ceasa_prospects')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) { showToast('Erro ao carregar prospects', false); return; }
+    if (error) { toast.erro('Erro ao carregar prospects'); return; }
     setProspects(data ?? []);
-  }, [showToast]);
+  }, [toast]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -55,7 +55,7 @@ export default function CeasaHolambra() {
 
   async function salvar() {
     const d = modal.dados;
-    if (!d.nome_loja.trim()) { showToast('Informe o nome da loja', false); return; }
+    if (!d.nome_loja.trim()) { toast.erro('Informe o nome da loja'); return; }
     setSalvando(true);
     try {
       if (modal.modo === 'add') {
@@ -67,7 +67,7 @@ export default function CeasaHolambra() {
           etapa: d.etapa,
         });
         if (error) throw error;
-        showToast(`✓ ${d.nome_loja} adicionada`);
+        toast.ok(`${d.nome_loja} adicionada`);
       } else {
         const { error } = await supabase.from('ceasa_prospects').update({
           nome_loja: d.nome_loja.trim(), responsavel: d.responsavel || null,
@@ -77,12 +77,12 @@ export default function CeasaHolambra() {
           etapa: d.etapa,
         }).eq('id', d.id);
         if (error) throw error;
-        showToast(`✓ ${d.nome_loja} atualizada`);
+        toast.ok(`${d.nome_loja} atualizada`);
       }
       fechar();
       carregar();
     } catch (e) {
-      showToast('Erro ao salvar: ' + e.message, false);
+      toast.erro('Erro ao salvar: ' + e.message);
     } finally {
       setSalvando(false);
     }
@@ -91,8 +91,8 @@ export default function CeasaHolambra() {
   async function excluir() {
     if (!confirm(`Excluir "${modal.dados.nome_loja}"?`)) return;
     const { error } = await supabase.from('ceasa_prospects').delete().eq('id', modal.dados.id);
-    if (error) { showToast('Erro ao excluir', false); return; }
-    showToast('Prospect excluído');
+    if (error) { toast.erro('Erro ao excluir'); return; }
+    toast.ok('Prospect excluído');
     fechar();
     carregar();
   }
