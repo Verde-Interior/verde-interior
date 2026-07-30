@@ -183,10 +183,11 @@ export function doExit() {
 export function delTR(idx) {
   if (AUTH.getSession()?.role !== 'gestor') { toast('Sem permissão para remover registros', false); return; }
   if (!confirm('Remover este registro?')) return;
-  const rec = state.PS[state.cu][idx];
+  const empIdx = myIdx();
+  const rec = state.PS[empIdx][idx];
   (async () => {
     await dbDeletePunch(rec);
-    state.PS[state.cu].splice(idx, 1);
+    state.PS[empIdx].splice(idx, 1);
     renderPunch();
     save();
     toast('Registro removido');

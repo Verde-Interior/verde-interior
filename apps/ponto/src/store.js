@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { getHoje } from './utils.js';
+import { getHoje, calcWorkClosed, F } from './utils.js';
 
 export const state = {
   EMP: [],
@@ -79,6 +79,62 @@ export async function load() {
       const idx = state.EMP.findIndex(e => e.id === j.employee_id);
       return { _id: j.id, user: idx, date: j.date, type: j.type, desc: j.description, status: j.status, files: [] };
     });
+  }
+
+  await closeOpenShifts();
+}
+
+async function closeOpenShifts() {
+  const hoje = getHoje();
+  for (let idx = 0; idx < state.EMP.length; idx++) {
+    const emp = state.EMP[idx];
+    if (!emp?.id) continue;
+
+    const hist = state.HIST[idx] || [];
+    const openDays = hist.filter(dh => {
+      if (dh.date === hoje) return false;
+      const recs = dh.records || [];
+      return recs.some(r => r.type === 'entry') && !recs.some(r => r.type === 'exit');
+    });
+
+    for (const dh of openDays) {
+      let closeTime = '17:00';
+
+      const { data: agendas } = await supabase
+        .from('agenda')
+        .select('id')
+        .eq('funcionario_id', emp.id)
+        .eq('data_agendada', dh.date);
+
+      if (agendas?.length) {
+        const { data: rels } = await supabase
+          .from('relatorios')
+          .select('checkout_at')
+          .in('agendamento_id', agendas.map(a => a.id))
+          .not('checkout_at', 'is', null)
+          .order('checkout_at', { ascending: false })
+          .limit(1);
+        if (rels?.[0]?.checkout_at) {
+          const d = new Date(rels[0].checkout_at);
+          closeTime = F(d.getHours()) + ':' + F(d.getMinutes());
+        }
+      }
+
+      const exitRec = { type: 'exit', time: closeTime, obs: 'auto' };
+      const dbRec = await dbAddPunch(idx, exitRec, dh.date);
+      if (dbRec) exitRec._id = dbRec.id;
+      dh.records.push(exitRec);
+
+      const workedMin  = calcWorkClosed(dh.records);
+      const dailySaldo = workedMin - emp.j * 60;
+      emp.bank   += dailySaldo;
+      emp.days   += 1;
+      emp.worked  = Number((emp.worked + workedMin / 60).toFixed(2));
+      if (dailySaldo > 0) emp.extra = Number((emp.extra + dailySaldo / 60).toFixed(2));
+      else                emp.due   = Number((emp.due   - dailySaldo / 60).toFixed(2));
+    }
+
+    if (openDays.length > 0) await dbUpdateEmployeeStats(idx);
   }
 }
 
