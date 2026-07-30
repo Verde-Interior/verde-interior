@@ -1,6 +1,7 @@
 // src/components/Tarefas/Tarefas.jsx
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './Tarefas.css';
 
 const PRIORIDADES = {
@@ -192,6 +193,8 @@ export default function Tarefas() {
     const l = leads.find((l) => l.id === id);
     return l ? l.empresa : null;
   };
+
+  const overlayClose = useOverlayClose(() => setModalAberto(false));
 
   return (
     <div className="tarefas">
@@ -458,7 +461,7 @@ export default function Tarefas() {
 
       {/* ── Modal de criação/edição ── */}
       {modalAberto && (
-        <div className="tarefa-modal-overlay" onClick={(e) => e.target === e.currentTarget && setModalAberto(false)}>
+        <div className="tarefa-modal-overlay" {...overlayClose}>
           <div className="tarefa-modal">
             <header className="tarefa-modal__header">
               <h3 className="tarefa-modal__titulo">

@@ -1,7 +1,19 @@
 // src/agenda.js — Sistema de Campo: Minha Agenda (funcionário)
 import { supabase } from './supabase.js';
 import { AUTH } from './auth.js';
-import { toast, F, getHoje, esc } from './utils.js';
+import { toast, F, getHoje, esc, distanciaMetros } from './utils.js';
+
+// heic2any é carregado dinamicamente só quando aparece uma foto HEIC.
+// Evita ~250KB no bundle inicial que 99% dos usuários (Android/web) nunca precisam.
+let _heic2anyPromise = null;
+function loadHeic2any() {
+  if (!_heic2anyPromise) _heic2anyPromise = import('heic2any').then(m => m.default);
+  return _heic2anyPromise;
+}
+
+// Raio máximo em metros para permitir check-in a partir da localização do cliente.
+// Se o colab estiver mais longe que isso, o check-in é bloqueado (evita batidas remotas).
+const RAIO_CHECKIN_METROS = 300;
 
 const DIAS_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -25,6 +37,17 @@ const st = {
 // Rastreio de sessão pra detectar troca de conta e zerar estado stale
 let _lastRenderedUserId = null;
 let _visListenerInstalado = false;
+
+// Timer do autosave do relato — em escopo de módulo pra poder ser cancelado
+// em qualquer transição de view (evita salvar com textarea inexistente e
+// apagar o relato do supabase — BUG histórico do "checkout apaga relatório").
+let _relatoAutosaveTimer = null;
+function cancelarAutosaveRelato() {
+  if (_relatoAutosaveTimer) {
+    clearTimeout(_relatoAutosaveTimer);
+    _relatoAutosaveTimer = null;
+  }
+}
 
 function resetAgendaState() {
   st.view          = 'list';
@@ -142,37 +165,43 @@ function limparPending() {
 // Ainda mantém detalhes suficientes para avaliar saúde da planta (folhas, cor, pragas).
 // Fallback JPEG 0.75 se browser não suportar WebP canvas.
 async function comprimirImagem(file, maxDim = 1024, quality = 0.75) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
-          else                { width  = Math.round(width  * maxDim / height); height = maxDim; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+  // iPhone tira fotos em HEIC por padrão — nenhum browser decodifica nativamente.
+  // Converte pra JPEG antes de passar ao canvas.
+  const isHeic = /^image\/(heic|heif)$/i.test(file.type) || /\.(heic|heif)$/i.test(file.name || '');
+  if (isHeic) {
+    const heic2any = await loadHeic2any();
+    const jpegBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    const blob = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
+    const nome = (file.name || 'foto').replace(/\.(heic|heif)$/i, '.jpg');
+    file = new File([blob], nome, { type: 'image/jpeg' });
+  }
 
-        // Tenta WebP primeiro
-        canvas.toBlob(blob => {
-          if (blob && blob.type === 'image/webp') {
-            const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.webp';
-            return resolve(new File([blob], nome, { type: 'image/webp' }));
-          }
-          // Fallback: WebP não suportado → JPEG
-          canvas.toBlob(jpegBlob => {
-            if (!jpegBlob) return reject(new Error('toBlob retornou null'));
-            const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg';
-            resolve(new File([jpegBlob], nome, { type: 'image/jpeg' }));
-          }, 'image/jpeg', quality);
-        }, 'image/webp', quality);
-      } catch (e) { reject(e); }
-    };
-    img.onerror = () => reject(new Error('Falha ao ler imagem'));
-    img.src = URL.createObjectURL(file);
+  // createImageBitmap é mais rápido que new Image()+onload: async nativo,
+  // decode otimizado, sem criar elemento DOM.
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  if (width > maxDim || height > maxDim) {
+    if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+    else                { width  = Math.round(width  * maxDim / height); height = maxDim; }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const nome = (file.name || 'foto').replace(/\.[^.]+$/, '');
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob && blob.type === 'image/webp') {
+        return resolve(new File([blob], nome + '.webp', { type: 'image/webp' }));
+      }
+      // Fallback: WebP não suportado → JPEG
+      canvas.toBlob(jpegBlob => {
+        if (!jpegBlob) return reject(new Error('toBlob retornou null'));
+        resolve(new File([jpegBlob], nome + '.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    }, 'image/webp', quality);
   });
 }
 
@@ -251,7 +280,7 @@ async function loadVisitas() {
     // concluído. Rascunho (ainda não publicado) e cancelado (gestor cancelou)
     // ficam invisíveis pro colaborador.
     .in('status', ['publicado', 'em_execucao', 'concluido'])
-    .order('ordem_rota', { ascending: true });
+    .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
 
   if (error) { console.error(error); toast('Erro ao carregar agenda', false); return []; }
   return data ?? [];
@@ -263,6 +292,18 @@ async function loadRelatorio(agendaId) {
     .select('*')
     .eq('agendamento_id', agendaId)
     .maybeSingle();
+
+  // Visita pode ter sido reatribuída após o check-in de outro colaborador.
+  // Corrige o funcionario_id para refletir quem está executando agora.
+  if (data) {
+    const ses = AUTH.getSession();
+    if (ses?.employee_id && String(data.funcionario_id) !== String(ses.employee_id)) {
+      await supabase.from('relatorios')
+        .update({ funcionario_id: String(ses.employee_id) })
+        .eq('id', data.id);
+      data.funcionario_id = String(ses.employee_id);
+    }
+  }
   return data;
 }
 
@@ -672,6 +713,18 @@ function photoItem(f, i) {
 
 function photoPending(p) {
   const previewUrl = p._previewUrl || (p._previewUrl = URL.createObjectURL(p.file));
+  if (p._comprimindo) {
+    return `
+      <div class="ag-photo-item ag-photo-item--pending" data-tid="${p.tempId}">
+        <img src="${previewUrl}" alt="foto pendente">
+        <div class="ag-photo-item__body">
+          <div class="ag-photo-item__msg">
+            <i class="fa-solid fa-compress"></i> Comprimindo...
+          </div>
+        </div>
+      </div>
+    `;
+  }
   return `
     <div class="ag-photo-item ag-photo-item--pending" data-tid="${p.tempId}">
       <img src="${previewUrl}" alt="foto pendente">
@@ -751,10 +804,12 @@ function wireReportInputs() {
   const relato = document.getElementById('ag-relato');
   const obs = document.getElementById('ag-obs');
   if (!relato || !obs) return;
-  let timer;
   function agendarSave() {
-    clearTimeout(timer);
-    timer = setTimeout(() => saveRelatoObs(true), 1200);
+    cancelarAutosaveRelato();
+    _relatoAutosaveTimer = setTimeout(() => {
+      _relatoAutosaveTimer = null;
+      saveRelatoObs(true);
+    }, 1200);
   }
   relato.addEventListener('input', agendarSave);
   obs.addEventListener('input', agendarSave);
@@ -1035,6 +1090,10 @@ function viewDone() {
 export async function goTo(view) {
   // Autosalva relato/obs ao sair da tela de relato
   if (st.view === 'report' && view !== 'report') {
+    // Cancela qualquer autosave debounced pendente ANTES do save síncrono —
+    // senão o timer stale rodaria depois com a textarea já fora do DOM e
+    // sobrescreveria o relato com null.
+    cancelarAutosaveRelato();
     await saveRelatoObs(true);
   }
   st.view = view;
@@ -1043,6 +1102,7 @@ export async function goTo(view) {
 }
 
 export function back() {
+  cancelarAutosaveRelato();
   if (st.view === 'detail') { st.view = 'list'; st.visitaSel = null; renderCurrentView(); return; }
   if (['exec','photos','report','sign','review'].includes(st.view)) { st.view = 'detail'; renderCurrentView(); return; }
   st.view = 'list';
@@ -1050,6 +1110,7 @@ export function back() {
 }
 
 export async function backToList() {
+  cancelarAutosaveRelato();
   st.view = 'list';
   st.visitaSel = null;
   st.relatorioSel = null;
@@ -1106,6 +1167,25 @@ export async function checkIn() {
 
   checkinEmAndamento = true;
   try {
+    // Bloqueio: não permite iniciar nova visita se já há uma em execução
+    // (relatorio com checkin_at preenchido e checkout_at nulo em outra agenda).
+    // Regra pedida pelo Roberto — colab não pode "pular" entre empresas sem checkout.
+    const { data: emAberto } = await supabase
+      .from('relatorios')
+      .select('id, agendamento_id, agenda:agendamento_id(clientes(nome_empresa))')
+      .eq('funcionario_id', String(ses.employee_id))
+      .is('checkout_at', null)
+      .neq('agendamento_id', v.id)
+      .limit(1);
+    if (emAberto && emAberto.length > 0) {
+      const nomeOutraEmpresa = emAberto[0].agenda?.clientes?.nome_empresa ?? 'outra visita';
+      alert(
+        `Você já está em execução em "${nomeOutraEmpresa}".\n\n` +
+        `Faça o check-out dessa visita antes de iniciar uma nova.`
+      );
+      return;
+    }
+
     const existente = await loadRelatorio(v.id);
     if (existente) {
       st.relatorioSel = existente;
@@ -1122,6 +1202,24 @@ export async function checkIn() {
     const gps = await captureGPS();
     const gpsFalhou = gps.lat == null || gps.lng == null;
     const now = new Date().toISOString();
+
+    // Regra: check-in só é permitido dentro de RAIO_CHECKIN_METROS do cliente.
+    // Se GPS não capturou OU o cliente não tem lat/lng cadastrada, deixa passar
+    // (não dá pra validar sem ambos). Do contrário, calcula e bloqueia se longe.
+    const cliLat = v.cliente?.lat;
+    const cliLng = v.cliente?.lng;
+    const bypassRaio = ses.name === 'beto'; // gestor testando remotamente
+    if (!bypassRaio && !gpsFalhou && cliLat != null && cliLng != null) {
+      const dist = distanciaMetros(gps.lat, gps.lng, cliLat, cliLng);
+      if (dist != null && dist > RAIO_CHECKIN_METROS) {
+        alert(
+          `Você está a ${dist}m do local do cliente "${v.cliente?.nome_empresa ?? '—'}".\n\n` +
+          `O check-in só é permitido dentro de ${RAIO_CHECKIN_METROS}m.\n` +
+          `Aproxime-se do endereço e tente novamente.`
+        );
+        return;
+      }
+    }
 
     const { data: rel, error: err1 } = await supabase
       .from('relatorios')
@@ -1255,23 +1353,29 @@ export async function addPhoto(input) {
   if (!r) { toast('Erro: sem relatório ativo', false); return; }
   input.value = '';
 
-  toast(files.length > 1 ? `Comprimindo ${files.length} fotos...` : 'Comprimindo foto...');
-  for (const original of files) {
-    let file = original;
-    try { file = await comprimirImagem(original); }
-    catch (e) { console.warn('Falha na compressão, usando original:', e); }
-    const b64 = await fileToBase64(file).catch(() => null);
-    st.pendingFotos.push({
-      tempId: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      relatorioId: r.id,
-      file,
-      fileB64: b64,
-      error: null,
-      tentando: false,
-    });
+  // Adiciona ao estado com o original — photoPending já usa URL.createObjectURL para preview,
+  // então a foto aparece instantaneamente sem precisar esperar pela compressão.
+  const novos = files.map(original => ({
+    tempId: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    relatorioId: r.id,
+    file: original,
+    _comprimindo: true,
+    error: null,
+    tentando: false,
+  }));
+  st.pendingFotos.push(...novos);
+  renderCurrentView();
+
+  // Comprime em background, um por um, e inicia upload ao terminar
+  for (const p of novos) {
+    try {
+      p.file = await comprimirImagem(p.file);
+    } catch (e) {
+      console.warn('Compressão falhou, usando original:', e);
+    }
+    p._comprimindo = false;
   }
   await persistPending();
-  renderCurrentView();
   processarFilaUpload();
 }
 
@@ -1346,14 +1450,23 @@ async function sincronizarLegendasNoRelato() {
 async function saveRelatoObs(silent = false) {
   const r = st.relatorioSel;
   if (!r) return;
-  const relatoRaw = document.getElementById('ag-relato')?.value ?? '';
+
+  // Guard crítico: se as textareas não estão no DOM, o usuário já saiu da tela
+  // de relato. Ler .value retornaria '' e apagaria o relato salvo no supabase.
+  // (Cenário: usuário digita → clica em "Revisar" → view muda → timer stale
+  // do autosave dispara depois de 1200ms com o DOM já re-renderizado.)
+  const relatoEl = document.getElementById('ag-relato');
+  const obsEl = document.getElementById('ag-obs');
+  if (!relatoEl || !obsEl) return;
+
+  const relatoRaw = relatoEl.value ?? '';
   // Blindagem: se o usuário digitar/colar o marker no relato, ainda joga fora
   // (legendas vivem só em observacoes agora)
   const relato = relatoRaw.split(RELATO_MARKER)[0].trim();
 
   // Textarea de obs contém APENAS o texto do usuário. Também blinda contra
   // colagens do marker (dados legados que possam ter sido colados).
-  const obsRaw = document.getElementById('ag-obs')?.value ?? '';
+  const obsRaw = obsEl.value ?? '';
   const textoUsuario = obsRaw.split(/\n*— Fotos —\n[\s\S]*$/)[0].replace(/\s+$/, '');
 
   // Legendas: reconstrói SEMPRE a partir de st.fotos (fonte da verdade).
@@ -1383,6 +1496,7 @@ async function saveRelatoObs(silent = false) {
 
 // Botão "Salvar e voltar" no viewReport
 export async function saveReport() {
+  cancelarAutosaveRelato();
   await saveRelatoObs(false);
   st.view = 'exec';
   renderCurrentView();
@@ -1435,7 +1549,7 @@ async function uploadSignature(canvas, relatorioId) {
 export async function confirmSign() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
-  if (!v || !r) return;
+  if (!v || !r) { toast('Recarregue o app e tente novamente', false); return; }
 
   // Nome vem do contato do cliente (hidden input pré-preenchido); fallback genérico
   const nomeInput = document.getElementById('ag-sig-nome')?.value?.trim() ?? '';
@@ -1556,6 +1670,11 @@ export async function submit() {
   const v = st.visitaSel;
   const r = st.relatorioSel;
   if (!v || !r) return;
+
+  // Cancela qualquer autosave pendente — o relato JÁ foi salvo pelo autosave
+  // ao sair da view de report. Deixar timer rodar depois do checkout apagaria
+  // o relato do relatório recém-concluído.
+  cancelarAutosaveRelato();
 
   if (!r.assinatura_responsavel_img) {
     toast('Assinatura ainda não coletada', false); return;

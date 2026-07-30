@@ -4,6 +4,7 @@
 // — o usuário escolhe "Salvar como PDF" no diálogo de impressão do browser.
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 function formatarHora(iso) {
   if (!iso) return '—';
@@ -88,8 +89,10 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
     setTimeout(() => { w.focus(); w.print(); }, 800);
   }
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal ec-modal--relatorio" style={{ maxWidth: 720 }}>
         <header className="ec-modal__header">
           <div>

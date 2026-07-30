@@ -7,6 +7,7 @@ dist/
 # Variáveis de ambiente
 .env
 .env.local
+.env.*
 .env.*.local
 
 # Logs de desenvolvimento

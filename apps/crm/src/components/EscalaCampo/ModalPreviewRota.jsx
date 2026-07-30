@@ -1,6 +1,7 @@
 // src/components/EscalaCampo/ModalPreviewRota.jsx
 // Modal de preview da rota otimizada — extraído de EscalaCampo.jsx (Fase 3.3)
 import { minutosParaHora } from '../../utils/otimizadorRota';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalPreviewRota({ resultado, onAplicar, onFechar, aplicando }) {
   const { ordem, ordemGeo, distKmViavel, distKmGeo, timeline, motivos, temViolacao } = resultado;
@@ -8,8 +9,10 @@ export default function ModalPreviewRota({ resultado, onAplicar, onFechar, aplic
 
   const posGeo = new Map(ordemGeo.map((v, i) => [v.id, i + 1]));
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal ec-modal--atras">
         <header className="ec-modal__header">
           <div>

@@ -18,3 +18,27 @@ export function distanciaMetros(lat1, lng1, lat2, lng2) {
   const km = distanciaKm(lat1, lng1, lat2, lng2);
   return km === Infinity ? null : Math.round(km * 1000);
 }
+
+// Geocoding via Nominatim (OpenStreetMap) — grátis, respeitar 1 req/s e enviar User-Agent.
+// Retorna { lat, lng, display_name } ou null se não achou.
+export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo', uf = 'SP' }) {
+  const partes = [endereco, bairro, cidade, uf, 'Brasil'].filter(Boolean).join(', ');
+  if (!partes) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=br&q=${encodeURIComponent(partes)}`;
+  try {
+    const r = await fetch(url, {
+      headers: { 'Accept-Language': 'pt-BR' },
+    });
+    if (!r.ok) return null;
+    const arr = await r.json();
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    const hit = arr[0];
+    return {
+      lat: parseFloat(hit.lat),
+      lng: parseFloat(hit.lon),
+      display_name: hit.display_name,
+    };
+  } catch {
+    return null;
+  }
+}

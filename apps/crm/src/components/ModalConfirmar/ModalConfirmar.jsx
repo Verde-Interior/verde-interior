@@ -1,6 +1,7 @@
 // src/components/ModalConfirmar/ModalConfirmar.jsx
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './ModalConfirmar.css';
 
 export default function ModalConfirmar({
@@ -23,8 +24,10 @@ export default function ModalConfirmar({
     return () => window.removeEventListener('keydown', handleKey);
   }, [onCancelar]);
 
+  const overlayClose = useOverlayClose(onCancelar);
+
   return createPortal(
-    <div className="mc-overlay" onClick={e => e.target === e.currentTarget && onCancelar()}>
+    <div className="mc-overlay" {...overlayClose}>
       <div className="mc-modal" role="alertdialog" aria-modal="true" aria-labelledby="mc-titulo">
         <h3 className="mc-titulo" id="mc-titulo">{titulo}</h3>
         {mensagem && <p className="mc-mensagem">{mensagem}</p>}

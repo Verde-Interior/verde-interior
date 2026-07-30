@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { distanciaKm } from '../../utils/geoUtils';
 import { bloqueioNoDia } from '../../utils/escalaHelpers';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalRedistribuir({ visitas, employees, agendaOrg, bloqueios, onFechar, onMudou }) {
   const [salvando, setSalvando] = useState(false);
@@ -64,8 +65,10 @@ export default function ModalRedistribuir({ visitas, employees, agendaOrg, bloqu
     }
   }
 
+  const overlayClose = useOverlayClose(onFechar);
+
   return (
-    <div className="ec-overlay" onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div className="ec-overlay" {...overlayClose}>
       <div className="ec-modal ec-modal--atras">
         <header className="ec-modal__header">
           <div>

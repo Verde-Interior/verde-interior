@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import { tempoRelativo } from '../../utils/formatUtils';
+import { geocodeEndereco } from '../../utils/geoUtils';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './Clientes.css';
 
 const DIAS_SEMANA = [
@@ -36,6 +38,7 @@ const GRUPO_OPTIONS = [
   { value: 'Manutenção',            label: 'Manutenção'          },
   { value: 'Manutenção com troca',  label: 'Manutenção com troca'},
   { value: 'Somente orquídea',      label: 'Somente orquídea'    },
+  { value: 'Pontual',               label: 'Pontual'             },
 ];
 
 const FREQ_VISITA_OPTIONS = [
@@ -126,6 +129,27 @@ export default function Clientes() {
   const [salvandoServ,    setSalvandoServ]    = useState(false);
   const [editandoServ,    setEditandoServ]    = useState(null); // { id }
   const [formEditServico, setFormEditServico] = useState(FORM_SERVICO_VAZIO);
+  const [geocoding, setGeocoding] = useState(false);
+
+  async function buscarCoordenadas() {
+    if (!form.endereco?.trim()) {
+      toast.erro('Informe o endereço antes de buscar as coordenadas');
+      return;
+    }
+    setGeocoding(true);
+    try {
+      const r = await geocodeEndereco({ endereco: form.endereco, bairro: form.bairro });
+      if (!r) {
+        toast.erro('Endereço não encontrado. Preencha lat/lng manualmente.');
+        return;
+      }
+      setF('lat', r.lat.toFixed(6));
+      setF('lng', r.lng.toFixed(6));
+      toast.ok(`Coordenadas encontradas: ${r.display_name.slice(0, 60)}...`);
+    } finally {
+      setGeocoding(false);
+    }
+  }
 
   // ── Dados ──────────────────────────────────────────────────────
 
@@ -331,6 +355,8 @@ export default function Clientes() {
   }
 
   // ── Render ─────────────────────────────────────────────────────
+
+  const overlayClose = useOverlayClose(fecharModal);
 
   return (
     <div className="clientes">
@@ -546,7 +572,7 @@ export default function Clientes() {
 
       {/* ── Modal de edição ── */}
       {modal && form && (
-        <div className="cl-modal-overlay" onClick={e => e.target === e.currentTarget && fecharModal()}>
+        <div className="cl-modal-overlay" {...overlayClose}>
           <div className="cl-modal">
 
             <header className="cl-modal__header">
@@ -763,6 +789,17 @@ export default function Clientes() {
                       onChange={e => setF('lng', e.target.value)}
                       placeholder="-46.6388"
                     />
+                  </div>
+                  <div className="cl-campo cl-campo--wide">
+                    <button
+                      type="button"
+                      className="cl-btn cl-btn--cancelar"
+                      onClick={buscarCoordenadas}
+                      disabled={geocoding || !form.endereco?.trim()}
+                      title="Buscar latitude/longitude a partir do endereço via OpenStreetMap"
+                    >
+                      {geocoding ? 'Buscando...' : '📍 Buscar coordenadas do endereço'}
+                    </button>
                   </div>
                 </div>
               </section>

@@ -4,6 +4,7 @@ import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import CeasaHolambra from '../CeasaHolambra/CeasaHolambra';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -865,6 +866,9 @@ export default function Dashboard({ onNavegar }) {
     }
   }
 
+  const tarefaOverlay     = useOverlayClose(() => setTarefaSel(null));
+  const arquivadosOverlay = useOverlayClose(() => setArquivadosAberto(false));
+
   return (
     <div className="dashboard">
       <header className="dashboard__topbar">
@@ -953,7 +957,7 @@ export default function Dashboard({ onNavegar }) {
 
       {/* ── Modal detalhe de tarefa ── */}
       {tarefaSelecionada && (
-        <div className="tarefa-detalhe-overlay" onClick={(e) => e.target === e.currentTarget && setTarefaSel(null)}>
+        <div className="tarefa-detalhe-overlay" {...tarefaOverlay}>
           <div className="tarefa-detalhe">
             <header className="tarefa-detalhe__header">
               <div className="tarefa-detalhe__header-info">
@@ -1017,7 +1021,7 @@ export default function Dashboard({ onNavegar }) {
 
       {/* ── Modal de Follow-ups Arquivados ── */}
       {arquivadosAberto && (
-        <div className="fu-arquivo-overlay" onClick={(e) => e.target === e.currentTarget && setArquivadosAberto(false)}>
+        <div className="fu-arquivo-overlay" {...arquivadosOverlay}>
           <div className="fu-arquivo-modal">
             <header className="fu-arquivo-header">
               <div>
@@ -1098,7 +1102,7 @@ function DashboardOperacional({ onNavegar }) {
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
           cliente:clientes(id, nome_empresa, bairro)
-        `).eq('data_agendada', hoje).order('ordem_rota'),
+        `).eq('data_agendada', hoje).order('hora_estimada_chegada', { ascending: true, nullsFirst: false }),
         supabase.from('agenda').select(`
           id, data_agendada, funcionario_id, status, tipos_tarefa,
           cliente:clientes(id, nome_empresa)

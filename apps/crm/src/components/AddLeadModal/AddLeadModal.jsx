@@ -1,6 +1,7 @@
 // src/components/AddLeadModal/AddLeadModal.jsx
 import { useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './AddLeadModal.css';
 
 const EMPTY = {
@@ -83,9 +84,7 @@ export default function AddLeadModal({ aberto, onFechar }) {
     salvar();
   }
 
-  function handleOverlay(e) {
-    if (e.target === e.currentTarget) { setAviso(null); onFechar(); }
-  }
+  const overlayClose = useOverlayClose(() => { setAviso(null); onFechar(); });
 
   const tiposSel            = form.tiposServico ?? [];
   const isRecorrente        = tiposSel.some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente');
@@ -95,7 +94,7 @@ export default function AddLeadModal({ aberto, onFechar }) {
   );
 
   return (
-    <div className="add-modal-overlay" onClick={handleOverlay}>
+    <div className="add-modal-overlay" {...overlayClose}>
       <div className="add-modal">
         <header className="add-modal__header">
           <h2 className="add-modal__titulo">Novo Lead</h2>

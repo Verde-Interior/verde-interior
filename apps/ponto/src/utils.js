@@ -2,6 +2,18 @@ export const F = n => n < 10 ? '0' + n : String(n);
 export const HM = m => { const s = m < 0 ? '-' : ''; const v = Math.abs(Math.round(m)); return s + Math.floor(v / 60) + 'h' + F(v % 60); };
 export const HMh = h => HM(Math.round(h * 60));
 
+// Distância Haversine em metros entre duas coordenadas.
+// Retorna null se algum ponto for inválido.
+export function distanciaMetros(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+  const R = 6371000;
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
 export const TODAY = new Date();
 
 // Sempre retorna a data local ATUAL no formato YYYY-MM-DD.

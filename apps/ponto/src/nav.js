@@ -10,6 +10,7 @@ import { renderJusts } from './justs.js';
 import { renderAdmin, buildEditDates, renderEdit } from './admin.js';
 import { renderConfig } from './config.js';
 import { renderAgenda } from './agenda.js';
+import { renderEquipe, stopEquipeRefresh } from './equipe.js';
 
 // Cargos que só veem Minha Agenda + Meu Perfil
 const CARGOS_RUA = ['Campo', 'Facilities'];
@@ -38,7 +39,7 @@ export function buildBars() {
   else       _removerModoRua();
 }
 
-const ABAS_OCULTAS_RUA = ['ponto', 'espelho', 'banco', 'just'];
+const ABAS_OCULTAS_RUA = ['espelho', 'banco', 'just'];
 
 function _aplicarModoRua() {
   // Ocultar botões de aba desnecessários
@@ -91,12 +92,16 @@ export function setV(v, btn) {
 }
 
 export function setSv(sv, btn) {
+  // Para o refresh da equipe ao sair da aba pra não bater no banco à toa
+  if (sv !== 'equipe') stopEquipeRefresh();
+
   document.querySelectorAll('#vw-colab .sv').forEach(e => e.classList.remove('on'));
   document.querySelectorAll('#ctabs .ch').forEach(e => e.classList.remove('on'));
   document.getElementById('sv-' + sv).classList.add('on');
   btn.classList.add('on');
   if (sv === 'ponto')   renderPunch();
   if (sv === 'agenda')  renderAgenda();
+  if (sv === 'equipe')  renderEquipe();
   if (sv === 'espelho') { buildMirrorMonths(); renderMirror(); }
   if (sv === 'banco')   renderBank();
   if (sv === 'perfil')  renderProfile();

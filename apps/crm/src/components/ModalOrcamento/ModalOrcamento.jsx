@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import SecaoHistorico from './sections/SecaoHistorico';
+import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './ModalOrcamento.css';
 
 const ICONE_CANAL = { WhatsApp: '💬', 'E-mail': '✉️', Telefone: '📞', Indicação: '🤝' };
@@ -655,8 +656,10 @@ export default function ModalOrcamento() {
     if (relatorio) navigator.clipboard.writeText(relatorio);
   }
 
+  const overlayClose = useOverlayClose(fecharModal);
+
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && fecharModal()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal" role="dialog" aria-modal="true">
 
         {/* ── Cabeçalho ── */}

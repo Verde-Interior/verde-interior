@@ -152,7 +152,7 @@ VITE_SUPABASE_URL=https://mcaqxfogzvrqqnoixptv.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_BdweK_WoG6Ecl3dgnOM_Ow_AixKmTVQ
 ```
 
-> ⚠️ A service_role key (`sb_secret_ZsJcpghIzaHy_ldir1ib5A_69-BpVjU`) **nunca vai no frontend**. Só em `scripts/seed.js` e Edge Functions.
+> ⚠️ A service_role key **nunca vai no frontend nem no código**. Fica no `.env` da raiz (git-ignored) e é lida por `scripts/seed.js` via `process.env`. Edge Functions leem da env do Supabase.
 
 ---
 

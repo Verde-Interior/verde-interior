@@ -168,21 +168,21 @@ export async function confirmarAdminResetSenha() {
   const emp = state.EMP[empIdx];
   if (!emp) { showMsg('Colaborador não encontrado.', false); return; }
 
-  // Look up auth user UUID via profiles.employee_id
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('employee_id', emp.id)
+  // Look up auth user UUID direto em employees (fase 2: profiles foi mergeado)
+  const { data: empRow } = await supabase
+    .from('employees')
+    .select('auth_user_id')
+    .eq('id', emp.id)
     .maybeSingle();
 
-  if (!profile) {
-    showMsg('Perfil não encontrado. O colaborador precisa ter feito login ao menos uma vez.', false);
+  if (!empRow?.auth_user_id) {
+    showMsg('Colaborador sem login. Cadastre um login antes de resetar a senha.', false);
     return;
   }
 
   const { data: { session } } = await supabase.auth.getSession();
   const res = await supabase.functions.invoke('admin-reset-password', {
-    body: { user_id: profile.id, nova_senha: novaSenha },
+    body: { user_id: empRow.auth_user_id, nova_senha: novaSenha },
     headers: { Authorization: `Bearer ${session?.access_token}` },
   });
 

@@ -707,3 +707,97 @@ body:has(#net-banner.on) .nav{top:44px}
   .ch  { padding: 8px 14px; }
   .uch { padding: 8px 13px; }
 }
+
+/* ══════════════════════ EQUIPE (aba) ══════════════════════ */
+.eq-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1rem}
+.eq-title{font-size:18px;font-weight:700;color:var(--text);line-height:1.2}
+.eq-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.eq-refresh{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:14px}
+.eq-refresh:hover{background:var(--gb);color:var(--g);border-color:var(--gc)}
+.eq-refresh:active{transform:scale(.94)}
+
+.eq-loading{padding:2rem;text-align:center;color:var(--text3);font-size:13px}
+.eq-empty{padding:1.25rem;text-align:center;color:var(--text3);font-size:13px;background:#fff;border:1px dashed var(--border);border-radius:var(--radius)}
+.eq-empty--err{color:#A32D2D;background:#fef2f2;border-color:#fecaca;border-style:solid}
+
+/* Cards clicáveis — fundo colorido inteiro por status */
+.eq-me,.eq-card{border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:all .15s;border:1px solid transparent}
+.eq-me{padding:14px;margin-bottom:1rem}
+.eq-card{margin-bottom:8px}
+.eq-me:hover,.eq-card:hover{transform:translateY(-1px);box-shadow:0 3px 12px rgba(0,0,0,.08)}
+.eq-me:active,.eq-card:active{transform:translateY(0)}
+
+/* Cores de status:
+   - verde = no horário / em visita
+   - vermelho = atrasado
+   - azul = adiantado
+   - branco apagado = concluído */
+.eq-me--ok,.eq-card--ok,
+.eq-me--trabalhando,.eq-card--trabalhando{
+  background:#e8f5ec;border-color:#b8dcc0;
+}
+.eq-me--atrasado,.eq-card--atrasado{
+  background:#fbe5e5;border-color:#f0b8b8;
+}
+.eq-me--adiantado,.eq-card--adiantado{
+  background:#e2ecf8;border-color:#b6c9df;
+}
+.eq-me--concluido,.eq-card--concluido{
+  background:#fafaf7;border-color:var(--border);color:var(--text2);opacity:.72;
+}
+.eq-me--sem_agenda,.eq-card--sem_agenda{
+  background:#fff;border-color:var(--border);opacity:.6;
+}
+
+.eq-me__head,.eq-card__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.eq-me__lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.eq-me__count,.eq-card__count{font-size:11px;font-weight:600;color:var(--text2);background:rgba(255,255,255,.7);padding:2px 8px;border-radius:10px}
+.eq-me--concluido .eq-me__count,.eq-card--concluido .eq-card__count{background:rgba(0,0,0,.05)}
+
+.eq-me__status,.eq-card__status{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+.eq-me__status{font-size:15px}
+.eq-me__sub,.eq-card__sub{font-size:12px;color:var(--text2);line-height:1.4}
+.eq-me__sub strong,.eq-card__sub strong{color:var(--text);font-weight:600}
+
+.eq-card__name{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.eq-card__cargo{font-size:11px;font-weight:400;color:var(--text3)}
+.eq-card__dist{font-size:11px;color:var(--text3);margin-top:5px;display:flex;align-items:center;gap:4px}
+.eq-card__dist i{color:#a04b4a}
+
+/* Modal com agenda completa do colaborador */
+.eq-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0;animation:eqFadeIn .18s ease-out}
+@keyframes eqFadeIn{from{opacity:0}to{opacity:1}}
+.eq-modal{background:#fff;width:100%;max-width:500px;max-height:88vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;animation:eqSlideUp .22s ease-out}
+@keyframes eqSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media (min-width:600px){
+  .eq-modal-bg{align-items:center;padding:1rem}
+  .eq-modal{border-radius:16px;animation:eqFadeIn .18s ease-out}
+}
+.eq-modal__header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:16px 18px 8px;border-bottom:1px solid var(--border)}
+.eq-modal__title{font-size:17px;font-weight:700;color:var(--text)}
+.eq-modal__cargo{font-size:12px;color:var(--text2);margin-top:2px}
+.eq-modal__close{width:36px;height:36px;border-radius:50%;border:none;background:var(--bg);color:var(--text2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.eq-modal__close:hover{background:var(--border);color:var(--text)}
+.eq-modal__resumo{padding:10px 18px;background:var(--bg);font-size:12px;color:var(--text2);border-bottom:1px solid var(--border)}
+.eq-modal__resumo strong{color:var(--text);font-weight:700}
+.eq-modal__body{padding:12px 18px 20px;overflow-y:auto;flex:1}
+
+.eq-modal__visita{display:flex;gap:12px;padding:12px;border-radius:var(--radius);margin-bottom:8px;border:1px solid var(--border);background:#fff}
+.eq-modal__visita--concluido{background:#fafaf7;opacity:.68}
+.eq-modal__visita--em_execucao{background:#e8f5ec;border-color:#b8dcc0}
+.eq-modal__visita--publicado{background:#fff}
+
+.eq-modal__ord{width:28px;height:28px;background:var(--gb);color:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.eq-modal__visita--concluido .eq-modal__ord{background:#efeee9;color:var(--text3)}
+.eq-modal__visita--em_execucao .eq-modal__ord{background:#c7e3d1;color:#0f7a55}
+
+.eq-modal__vbody{flex:1;min-width:0}
+.eq-modal__vhead{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.eq-modal__vhora{font-size:13px;font-weight:700;color:var(--text)}
+.eq-modal__vstatus{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px}
+.eq-modal__vstatus--concluido{background:#efeee9;color:var(--text3)}
+.eq-modal__vstatus--em_execucao{background:#0f7a55;color:#fff}
+.eq-modal__vstatus--publicado{background:var(--gb);color:var(--g)}
+.eq-modal__vname{font-size:14px;font-weight:600;color:var(--text);line-height:1.3}
+.eq-modal__visita--concluido .eq-modal__vname{color:var(--text2)}
+.eq-modal__vextra{font-size:11px;color:var(--text3);margin-top:3px}

@@ -70,6 +70,16 @@ function getCoords() {
   });
 }
 
+// Retorna sempre o índice do usuário logado, independente de state.cu ter sido
+// alterado pelo seletor de funcionários (selU). Evita que gestor que trocou
+// de aba finalize o expediente do funcionário errado.
+function myIdx() {
+  const ses = AUTH.getSession();
+  if (!ses?.employee_id) return state.cu;
+  const i = state.EMP.findIndex(e => e.id === ses.employee_id);
+  return i >= 0 ? i : state.cu;
+}
+
 function locationToast(reason) {
   const msgs = {
     denied:      'Localização bloqueada — autorize no navegador para registrar a posição',
@@ -81,29 +91,32 @@ function locationToast(reason) {
 }
 
 export function doPunch() {
-  const np  = getNext(state.PS, state.cu);
+  const idx = myIdx();
+  const np  = getNext(state.PS, idx);
   const btn = document.getElementById('pbtn');
 
-  // Confirmação para horários fora do expediente normal (< 7h ou ≥ 21h)
   const agora = new Date();
   const hora  = agora.getHours();
-  if (hora < 7 || hora >= 21) {
-    const hStr = F(hora) + ':' + F(agora.getMinutes());
-    if (!confirm(`São ${hStr} — fora do horário habitual.\nConfirmar "${np.lbl}"?`)) return;
-  }
+
+  const offHours = hora < 7 || hora >= 21;
+  const horaStr  = F(hora) + ':' + F(agora.getMinutes());
+  const msg = offHours
+    ? `São ${horaStr} — fora do horário habitual.\nConfirmar "${np.lbl}"?`
+    : `Confirmar "${np.lbl}"?`;
+  if (!confirm(msg)) return;
 
   btn.classList.add('act');
   const n = new Date();
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
   setTimeout(async () => {
-    if (!state.PS[state.cu]) state.PS[state.cu] = [];
+    if (!state.PS[idx]) state.PS[idx] = [];
     const needsLoc = np.type === 'entry' || np.type === 'exit';
     const geo      = needsLoc ? await getCoords() : { coords: null, reason: null };
     const rec   = { type: np.type, time: t, ...(geo.coords || {}) };
-    const dbRec = await dbAddPunch(state.cu, rec);
+    const dbRec = await dbAddPunch(idx, rec);
     if (dbRec) rec._id = dbRec.id;
-    else queuePendingPunch(state.cu, rec, getHoje());
-    state.PS[state.cu].push(rec);
+    else queuePendingPunch(idx, rec, getHoje());
+    state.PS[idx].push(rec);
     btn.classList.remove('act');
     renderPunch();
     save();
@@ -114,9 +127,11 @@ export function doPunch() {
 }
 
 export function doExit() {
+  if (!confirm('Finalizar expediente agora?')) return;
+  const idx = myIdx();
   const n = new Date();
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
-  if (!state.PS[state.cu]) state.PS[state.cu] = [];
+  if (!state.PS[idx]) state.PS[idx] = [];
   (async () => {
     const geo = await getCoords();
     const rec = { type: 'exit', time: t, ...(geo.coords || {}) };
@@ -125,25 +140,25 @@ export function doExit() {
     let dbRec = null;
     for (let i = 0; i < 3 && !dbRec; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, 1500));
-      dbRec = await dbAddPunch(state.cu, rec);
+      dbRec = await dbAddPunch(idx, rec);
     }
     if (dbRec) rec._id = dbRec.id;
     else {
-      queuePendingPunch(state.cu, rec, getHoje());
+      queuePendingPunch(idx, rec, getHoje());
       toast('Sem conexão — ponto salvo localmente e vai sincronizar ao reconectar', false);
     }
 
-    state.PS[state.cu].push(rec);
-    if (!state.HIST[state.cu]) state.HIST[state.cu] = [];
-    const ex = state.HIST[state.cu].findIndex(d => d.date === getHoje());
-    const en = { date: getHoje(), records: [...state.PS[state.cu]] };
-    if (ex >= 0) state.HIST[state.cu][ex] = en;
-    else state.HIST[state.cu].unshift(en);
+    state.PS[idx].push(rec);
+    if (!state.HIST[idx]) state.HIST[idx] = [];
+    const ex = state.HIST[idx].findIndex(d => d.date === getHoje());
+    const en = { date: getHoje(), records: [...state.PS[idx]] };
+    if (ex >= 0) state.HIST[idx][ex] = en;
+    else state.HIST[idx].unshift(en);
 
     // Atualizar banco de horas com até 3 tentativas
-    const emp = state.EMP[state.cu];
+    const emp = state.EMP[idx];
     if (emp) {
-      const workedMin  = calcWork(state.PS[state.cu]);
+      const workedMin  = calcWork(state.PS[idx]);
       const dailySaldo = workedMin - emp.j * 60;
       emp.bank  += dailySaldo;
       emp.days  += 1;
@@ -153,7 +168,7 @@ export function doExit() {
       let statsOk = false;
       for (let i = 0; i < 3 && !statsOk; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 1500));
-        statsOk = await dbUpdateEmployeeStats(state.cu);
+        statsOk = await dbUpdateEmployeeStats(idx);
       }
       if (!statsOk) toast('Banco de horas salvo localmente — sincroniza ao reconectar', false);
     }

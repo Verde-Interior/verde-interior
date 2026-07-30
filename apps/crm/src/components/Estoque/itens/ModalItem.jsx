@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../Toast/Toast';
+import { useOverlayClose } from '../../../hooks/useOverlayClose';
 
 const UNIDADES = [
   { id: 'un',     label: 'Unidade (un)' },
@@ -76,8 +77,10 @@ export default function ModalItem({ item = null, categoriaFixa, onFechar, onSalv
     onFechar?.();
   }
 
+  const overlayClose = useOverlayClose(() => !salvando && onFechar?.());
+
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !salvando && onFechar?.()}>
+    <div className="modal-overlay" {...overlayClose}>
       <div className="modal mm">
         <header className="modal__header">
           <div className="modal__header-info">
