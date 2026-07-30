@@ -892,7 +892,13 @@ export default function Dashboard({ onNavegar }) {
           className={`dashboard__tab ${aba === 'comercial' ? 'dashboard__tab--ativa' : ''}`}
           onClick={() => setAba('comercial')}
         >
-          💼 Comercial
+          💼 Comercial - Escritórios/Eventos
+        </button>
+        <button
+          className={`dashboard__tab ${aba === 'ceasa' ? 'dashboard__tab--ativa' : ''}`}
+          onClick={() => setAba('ceasa')}
+        >
+          🌱 Comercial - Ceasa/Holambra
         </button>
         <button
           className={`dashboard__tab ${aba === 'operacional' ? 'dashboard__tab--ativa' : ''}`}
@@ -940,6 +946,16 @@ export default function Dashboard({ onNavegar }) {
               );
             })}
           </>
+        )}
+
+        {aba === 'ceasa' && (
+          <section className="dashboard__secao">
+            <h2 className="dashboard__secao-titulo">Ceasa / Holambra — Empresas e Lojas</h2>
+            <p style={{ color: '#6b7280', marginTop: 8 }}>
+              Cadastro de empresas e lojas para prospecção e venda de produtos.
+              Em breve disponível.
+            </p>
+          </section>
         )}
 
         {aba === 'operacional' && <DashboardOperacional onNavegar={onNavegar} />}
