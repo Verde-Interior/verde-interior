@@ -1,0 +1,46 @@
+/* src/components/Pipeline/Pipeline.css */
+
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pipeline__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px 0;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--cream-25, #f9f8f5);
+  flex-shrink: 0;
+}
+
+.pipeline__tab {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+
+.pipeline__tab:hover {
+  color: var(--text-primary);
+}
+
+.pipeline__tab--ativa {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.pipeline__conteudo {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

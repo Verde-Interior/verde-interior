@@ -3,7 +3,7 @@ import { useMemo, useEffect, useRef, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
-import CeasaHolambra from '../CeasaHolambra/CeasaHolambra';
+import DashboardCeasa from '../CeasaHolambra/DashboardCeasa';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './Dashboard.css';
 
@@ -949,7 +949,7 @@ export default function Dashboard({ onNavegar }) {
           </>
         )}
 
-        {aba === 'ceasa' && <CeasaHolambra />}
+        {aba === 'ceasa' && <DashboardCeasa />}
 
         {aba === 'operacional' && <DashboardOperacional onNavegar={onNavegar} />}
 
