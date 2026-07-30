@@ -3,6 +3,7 @@ import { useMemo, useEffect, useRef, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
+import CeasaHolambra from '../CeasaHolambra/CeasaHolambra';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -944,15 +945,7 @@ export default function Dashboard({ onNavegar }) {
           </>
         )}
 
-        {aba === 'ceasa' && (
-          <section className="dashboard__secao">
-            <h2 className="dashboard__secao-titulo">Ceasa / Holambra — Empresas e Lojas</h2>
-            <p style={{ color: '#6b7280', marginTop: 8 }}>
-              Cadastro de empresas e lojas para prospecção e venda de produtos.
-              Em breve disponível.
-            </p>
-          </section>
-        )}
+        {aba === 'ceasa' && <CeasaHolambra />}
 
         {aba === 'operacional' && <DashboardOperacional onNavegar={onNavegar} />}
 
