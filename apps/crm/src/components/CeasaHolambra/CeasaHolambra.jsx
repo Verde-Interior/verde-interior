@@ -1,5 +1,5 @@
 // src/components/CeasaHolambra/CeasaHolambra.jsx
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import CeasaCard from './CeasaCard';
@@ -46,6 +46,13 @@ export default function CeasaHolambra() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Garante que o estado de drag seja limpo se o mouse soltar fora de uma coluna
+  useEffect(() => {
+    function cleanup() { setDragId(null); setDragOver(null); }
+    document.addEventListener('dragend', cleanup);
+    return () => document.removeEventListener('dragend', cleanup);
+  }, []);
 
   const filtrados = prospects.filter(p => {
     const q = busca.toLowerCase();

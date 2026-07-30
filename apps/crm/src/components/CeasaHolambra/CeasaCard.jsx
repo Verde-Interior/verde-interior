@@ -87,17 +87,15 @@ export default function CeasaCard({ prospect, dragId, setDragId, onEditar, onAtu
       {/* Ações */}
       {(prospect.whatsapp || prospect.telefone) && (
         <div className="lead-card__acoes">
-          {(prospect.whatsapp || prospect.telefone) && (
-            <a
-              className="lead-card__whatsapp"
-              href={wppUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              💬 WhatsApp
-            </a>
-          )}
+          <a
+            className="lead-card__whatsapp"
+            href={wppUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            💬 WhatsApp
+          </a>
           {prospect.telefone && (
             <a
               className="lead-card__ligar"
