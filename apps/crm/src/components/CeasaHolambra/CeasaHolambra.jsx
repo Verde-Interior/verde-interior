@@ -119,6 +119,7 @@ export default function CeasaHolambra() {
   function handleColDrop(e, etapaId) {
     e.preventDefault();
     setDragOver(null);
+    setDragId(null);
     const id = e.dataTransfer.getData('ceasaId');
     if (id) moverParaEtapa(id, etapaId);
   }
