@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast/Toast';
 import Login from './components/Login/Login';
 import LogoMarca from './components/LogoMarca/LogoMarca';
-import KanbanBoard from './components/KanbanBoard/KanbanBoard';
+import Pipeline from './components/Pipeline/Pipeline';
 import ModalOrcamento from './components/ModalOrcamento/ModalOrcamento';
 import Dashboard from './components/Dashboard/Dashboard';
 import GlobalSearch from './components/GlobalSearch/GlobalSearch';
@@ -253,7 +253,7 @@ function AppLayout() {
       {/* ── Main ── */}
       <main className="app__main" key={tela}>
         {tela === 'dashboard'     && <Dashboard onNavegar={setTela} />}
-        {tela === 'kanban'        && <KanbanBoard />}
+        {tela === 'kanban'        && <Pipeline />}
         {tela === 'execucao'      && <FunilExecucao />}
         {tela === 'os'            && <OrdensServico />}
         {tela === 'clientes'      && <Clientes />}

@@ -1,0 +1,336 @@
+/* src/components/CeasaHolambra/CeasaHolambra.css */
+
+.ceasa {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+.ceasa__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ceasa__titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ceasa__sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.ceasa__topbar-acoes {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ceasa__busca {
+  padding: 7px 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-bg);
+  width: 200px;
+  outline: none;
+}
+.ceasa__busca:focus {
+  border-color: var(--color-primary);
+}
+
+.ceasa__btn-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ceasa__btn-add:hover { opacity: 0.88; }
+
+/* ── Kanban ── */
+.ceasa__kanban {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+}
+
+.ceasa__coluna {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-width: 220px;
+  background: var(--cream-25, #f9f8f5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-border);
+  overflow: hidden;
+}
+
+.ceasa__col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.ceasa__col-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ceasa__col-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ceasa__col-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-border);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.ceasa__col-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── Card ── */
+.ceasa__card {
+  background: #fff;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.ceasa__card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-color: var(--color-primary);
+}
+
+.ceasa__card-nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ceasa__card-tipo {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  margin-bottom: 6px;
+}
+
+.ceasa__card-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Modal ── */
+.ceasa__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.ceasa__modal {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+}
+
+.ceasa__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.ceasa__modal-titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ceasa__modal-fechar {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+}
+.ceasa__modal-fechar:hover { background: var(--surface-border); }
+
+.ceasa__modal-corpo {
+  overflow-y: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ceasa__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ceasa__campo label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ceasa__campo input,
+.ceasa__campo select,
+.ceasa__campo textarea {
+  padding: 8px 11px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-bg);
+  outline: none;
+  font-family: inherit;
+}
+.ceasa__campo input:focus,
+.ceasa__campo select:focus,
+.ceasa__campo textarea:focus {
+  border-color: var(--color-primary);
+}
+
+.ceasa__campo textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.ceasa__grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ceasa__modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  border-top: 1px solid var(--surface-border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.ceasa__btn-salvar {
+  padding: 8px 20px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ceasa__btn-salvar:hover { opacity: 0.88; }
+
+.ceasa__btn-cancelar {
+  padding: 8px 16px;
+  background: none;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ceasa__btn-cancelar:hover { background: var(--surface-border); }
+
+.ceasa__btn-excluir {
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: #dc2626;
+  cursor: pointer;
+}
+.ceasa__btn-excluir:hover { background: #fef2f2; }
+
+.ceasa__vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  gap: 6px;
+  padding: 20px 10px;
+}

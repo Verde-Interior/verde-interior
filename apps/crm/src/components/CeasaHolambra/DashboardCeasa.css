@@ -1,0 +1,186 @@
+/* src/components/CeasaHolambra/DashboardCeasa.css */
+
+.dceasa {
+  padding: 24px 28px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.dceasa__loading {
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.dceasa__header {
+  margin-bottom: 24px;
+}
+
+.dceasa__titulo {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.dceasa__sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* KPIs */
+.dceasa__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.dceasa__kpi {
+  background: #fff;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dceasa__kpi--destaque {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 5%, #fff);
+}
+
+.dceasa__kpi-valor {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.dceasa__kpi--destaque .dceasa__kpi-valor {
+  color: var(--color-primary);
+}
+
+.dceasa__kpi-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Grid de cards */
+.dceasa__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dceasa__card {
+  background: #fff;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.dceasa__card-titulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+/* Funil */
+.dceasa__funil {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dceasa__funil-linha {
+  display: grid;
+  grid-template-columns: 180px 1fr 30px;
+  align-items: center;
+  gap: 10px;
+}
+
+.dceasa__funil-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dceasa__funil-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dceasa__funil-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dceasa__funil-barra-wrap {
+  background: var(--surface-border);
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.dceasa__funil-barra {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 4px;
+}
+
+.dceasa__funil-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+/* Por tipo */
+.dceasa__tipos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dceasa__tipo-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--cream-25, #f9f8f5);
+  border-radius: var(--radius-md);
+}
+
+.dceasa__tipo-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.dceasa__tipo-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dceasa__vazio {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 0;
+}
+
+@media (max-width: 768px) {
+  .dceasa__kpis { grid-template-columns: repeat(2, 1fr); }
+  .dceasa__grid { grid-template-columns: 1fr; }
+  .dceasa__funil-linha { grid-template-columns: 130px 1fr 24px; }
+}
