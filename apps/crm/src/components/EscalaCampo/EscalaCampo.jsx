@@ -385,10 +385,8 @@ export default function EscalaCampo() {
         const proximaOrdem = visitasEmpDia.length > 0
           ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
           : 0;
-        return {
+        const row = {
           cliente_id:            form.clienteId || null,
-          nome_cliente:          form.nomeCliente || null,
-          endereco_tarefa:       form.enderecoTarefa || null,
           funcionario_id:        String(funcId),
           cliente_servico_id:    idServicoParaBanco(form.servicoId),
           data_agendada:         form.data,
@@ -399,6 +397,11 @@ export default function EscalaCampo() {
           ordem_rota:            proximaOrdem,
           status:                'rascunho',
         };
+        // Só inclui colunas novas quando têm valor — evita erro de schema cache
+        // antes da migration 030 ser aplicada e o PostgREST recarregado.
+        if (form.nomeCliente)    row.nome_cliente    = form.nomeCliente;
+        if (form.enderecoTarefa) row.endereco_tarefa = form.enderecoTarefa;
+        return row;
       });
       const { error } = await supabase.from('agenda').insert(rows);
       if (error) throw error;
