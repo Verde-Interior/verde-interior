@@ -102,7 +102,7 @@ export default function EscalaCampo() {
     // é a fonte de dados exibidos no cartão.
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
+      .select('*, nome_cliente, endereco_tarefa, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[5])
       .neq('status', 'cancelado')
@@ -115,6 +115,23 @@ export default function EscalaCampo() {
       // marcamos `__isLead` e fabricamos um id sintético com prefixo `lead-`
       // pra distinguir claramente de ids reais de cliente cadastrado.
       const enriched = (data ?? []).map((v) => {
+        // Tarefa interna: sem cliente nem lead — usa nome_cliente/endereco_tarefa
+        if (!v.clientes && !v.leads && v.nome_cliente) {
+          return {
+            ...v,
+            __isTarefa: true,
+            clientes: {
+              id:           null,
+              __isTarefa:   true,
+              nome_empresa: v.nome_cliente,
+              endereco:     v.endereco_tarefa ?? '',
+              bairro:       '',
+              lat:          null,
+              lng:          null,
+              cliente_servicos: [],
+            },
+          };
+        }
         if (!v.clientes && v.leads) {
           const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
             ? v.leads.tipos_servico[0]
@@ -369,7 +386,9 @@ export default function EscalaCampo() {
           ? Math.max(...visitasEmpDia.map(v => v.ordem_rota)) + 1
           : 0;
         return {
-          cliente_id:            form.clienteId,
+          cliente_id:            form.clienteId || null,
+          nome_cliente:          form.nomeCliente || null,
+          endereco_tarefa:       form.enderecoTarefa || null,
           funcionario_id:        String(funcId),
           cliente_servico_id:    idServicoParaBanco(form.servicoId),
           data_agendada:         form.data,
@@ -724,7 +743,7 @@ export default function EscalaCampo() {
                 <button className="ec__btn-sel" onClick={ativarModoSelecao}>☑ Selecionar</button>
               )}
               <button className="ec__btn-add" onClick={() => setModal({ funcionarioId: employees[0]?.id?.toString() ?? '' })}>
-                + Adicionar Visita
+                + Adicionar Tarefa
               </button>
             </>
           ) : (
@@ -864,7 +883,7 @@ export default function EscalaCampo() {
                     className="ec__add-inline"
                     onClick={() => setModal({ funcionarioId: emp.id.toString() })}
                   >
-                    + Adicionar visita
+                    + Adicionar tarefa
                   </button>
                 )}
               </div>

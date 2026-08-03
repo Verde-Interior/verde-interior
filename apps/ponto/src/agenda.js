@@ -267,6 +267,7 @@ async function loadVisitas() {
       id, data_agendada, hora_estimada_chegada, duracao_estimada_min,
       ordem_rota, status, publicado_em, observacoes_gestor,
       funcionario_id, cliente_id, cliente_servico_id,
+      nome_cliente, endereco_tarefa,
       cliente:clientes(
         id, nome_empresa, endereco, complemento, bairro,
         lat, lng, contato_nome, contato_telefone,
@@ -457,7 +458,10 @@ function dateNavHTML() {
 }
 
 function cardVisitaLista(v, idx) {
-  const c = v.cliente;
+  const c        = v.cliente;
+  const nome     = c?.nome_empresa ?? v.nome_cliente ?? '—';
+  const endereco = c?.endereco     ?? v.endereco_tarefa ?? '';
+  const bairro   = c?.bairro       ?? '';
   const s = statusLabel(v.status);
   const podeIniciar = v.status === 'publicado';
   const emExec = v.status === 'em_execucao';
@@ -467,10 +471,10 @@ function cardVisitaLista(v, idx) {
     <div class="ag-card ag-card--${v.status}" onclick="agendaOpenDetail('${v.id}')">
       <div class="ag-card__ord">${(v.ordem_rota ?? idx) + 1}</div>
       <div class="ag-card__info">
-        <div class="ag-card__nome">${esc(c?.nome_empresa) || '—'}</div>
+        <div class="ag-card__nome">${esc(nome)}</div>
         <div class="ag-card__end">
-          ${c?.bairro ? `<i class="fa-solid fa-location-dot"></i> ${esc(c.bairro)}` : ''}
-          ${c?.endereco ? ` · ${esc(c.endereco)}` : ''}
+          ${bairro   ? `<i class="fa-solid fa-location-dot"></i> ${esc(bairro)}` : ''}
+          ${endereco ? ` · ${esc(endereco)}` : ''}
         </div>
         <div class="ag-card__meta">
           <span><i class="fa-regular fa-clock"></i> ${fmtHora(v.hora_estimada_chegada)}</span>
@@ -492,18 +496,20 @@ function cardVisitaLista(v, idx) {
 function viewDetail() {
   const v = st.visitaSel;
   if (!v) return viewList();
-  const c = v.cliente;
+  const c        = v.cliente;
+  const nome     = c?.nome_empresa ?? v.nome_cliente ?? '—';
+  const endereco = c?.endereco     ?? v.endereco_tarefa ?? '';
   const s = statusLabel(v.status);
 
   const mapaUrl = c?.lat && c?.lng
     ? `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`
-    : (c?.endereco ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.endereco)}` : null);
+    : (endereco ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}` : null);
 
   return `
     <div class="ag-header ag-header--sub">
       <button class="ag-back" onclick="agendaBack()"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
-        <div class="ag-title">${esc(c?.nome_empresa) || '—'}</div>
+        <div class="ag-title">${esc(nome)}</div>
         <div class="ag-sub">Visita ${v.ordem_rota ?? '—'} · <span class="ag-badge ${s.cls}">${s.txt}</span></div>
       </div>
     </div>
@@ -512,7 +518,7 @@ function viewDetail() {
       <section class="ag-sec">
         <div class="ag-sec__title"><i class="fa-solid fa-location-dot"></i> Endereço</div>
         <div class="ag-sec__body">
-          <div><strong>${esc(c?.endereco) || '—'}</strong></div>
+          <div><strong>${esc(endereco) || '—'}</strong></div>
           ${c?.complemento ? `<div class="ag-sec__hint">${esc(c.complemento)}</div>` : ''}
           ${c?.bairro ? `<div class="ag-sec__hint">${esc(c.bairro)}</div>` : ''}
           ${mapaUrl ? `<a class="ag-linkbtn" href="${mapaUrl}" target="_blank" rel="noopener"><i class="fa-solid fa-diamond-turn-right"></i> Abrir no mapa</a>` : ''}
@@ -660,7 +666,7 @@ function viewPhotos() {
       <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
         <div class="ag-title">Fotos</div>
-        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa ?? v.nome_cliente) || '—'}</div>
       </div>
     </div>
 
@@ -768,7 +774,7 @@ function viewReport() {
       <button class="ag-back" onclick="agendaGoTo('exec')"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
         <div class="ag-title">Relato da tarefa</div>
-        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa ?? v.nome_cliente) || '—'}</div>
       </div>
     </div>
 
@@ -994,7 +1000,7 @@ function viewReview() {
       <button class="ag-back" onclick="${voltar}"><i class="fa-solid fa-arrow-left"></i></button>
       <div>
         <div class="ag-title">${readOnly ? 'Relatório finalizado' : 'Revisar e finalizar'}</div>
-        <div class="ag-sub">${esc(v.cliente?.nome_empresa) || '—'}</div>
+        <div class="ag-sub">${esc(v.cliente?.nome_empresa ?? v.nome_cliente) || '—'}</div>
       </div>
     </div>
 
