@@ -210,7 +210,10 @@
 }
 
 .os-modal {
-  background: #fff;
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: 14px;
   width: min(480px, 100%);
   max-height: 85vh;
@@ -225,7 +228,7 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 1.25rem 1.25rem .75rem;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid var(--glass-light-border);
   gap: .75rem;
 }
 
@@ -274,6 +277,6 @@
   display: flex;
   gap: 8px;
   padding: .875rem 1.25rem;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid var(--glass-light-border);
   flex-wrap: wrap;
 }

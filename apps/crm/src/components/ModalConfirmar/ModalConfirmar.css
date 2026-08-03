@@ -12,7 +12,10 @@
 }
 
 .mc-modal {
-  background: var(--surface, #fff);
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,.18);
   padding: 28px 28px 22px;
@@ -62,7 +65,7 @@
   color: var(--text-primary, #1a1a1a);
 }
 
-.mc-btn--cancelar:hover { background: var(--surface-hover, #f3f4f6); }
+.mc-btn--cancelar:hover { background: var(--cream-100); }
 
 .mc-btn--confirmar.mc-btn--normal {
   background: var(--accent, #3B82F6);

@@ -5,24 +5,27 @@
   flex-direction: column;
   min-width: 272px;
   max-width: 290px;
-  background: var(--cream-100);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   border-radius: var(--radius-xl);
-  border: 1.5px solid var(--surface-border);
+  border: 1.5px solid var(--glass-light-border);
   flex-shrink: 0;
   transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: var(--glass-shadow);
 }
 
 /* Estado de drop ativo */
 .kanban-column--drag-over {
   border-color: var(--vinho-500);
-  background: color-mix(in srgb, var(--vinho-700) 5%, var(--cream-100));
+  background: color-mix(in srgb, var(--vinho-700) 5%, var(--glass-light));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--vinho-700) 15%, transparent);
 }
 
 /* ── Header ── */
 .kanban-column__header {
   padding: 13px 14px 10px;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--glass-light-border);
 }
 
 .kanban-column__titulo-row {

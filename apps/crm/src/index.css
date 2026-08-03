@@ -91,6 +91,20 @@
   --estagio-enviado:  #2563EB;
   --estagio-aprovado: #1A7A4A;
   --estagio-perdido:  #C23B3B;
+
+  /* ── Vidro (glassmorphism) ── */
+  --glass-light:        rgba(255,255,255,0.55);
+  --glass-light-strong: rgba(255,255,255,0.78);
+  --glass-light-soft:   rgba(255,255,255,0.34);
+  --glass-light-border: rgba(255,255,255,0.65);
+  --glass-dark:         rgba(13,32,7,0.58);
+  --glass-dark-strong:  rgba(9,23,5,0.80);
+  --glass-dark-border:  rgba(255,255,255,0.09);
+  --glass-blur-sm: 12px;
+  --glass-blur:    22px;
+  --glass-blur-lg: 38px;
+  --glass-shadow:      0 8px 32px rgba(44,10,10,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
+  --glass-shadow-dark: 0 8px 40px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 /* ── Reset ── */
@@ -99,7 +113,13 @@ html, body, #root { height: 100%; }
 
 body {
   font-family: var(--font-body);
-  background: var(--surface-bg);
+  background:
+    radial-gradient(circle at 10% 15%, rgba(74,136,40,0.28) 0%, transparent 42%),
+    radial-gradient(circle at 90% 8%,  rgba(123,26,26,0.22) 0%, transparent 40%),
+    radial-gradient(circle at 82% 85%, rgba(45,80,22,0.24) 0%, transparent 46%),
+    radial-gradient(circle at 12% 90%, rgba(196,122,26,0.15) 0%, transparent 42%),
+    var(--surface-bg);
+  background-attachment: fixed;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

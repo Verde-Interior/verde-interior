@@ -19,7 +19,10 @@
 }
 
 .add-modal {
-  background: var(--cream-25);
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-xl);
   animation: modalIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   width: 100%;
@@ -41,7 +44,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--glass-light-border);
   flex-shrink: 0;
 }
 
@@ -251,7 +254,7 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--glass-light-border);
   flex-shrink: 0;
 }
 

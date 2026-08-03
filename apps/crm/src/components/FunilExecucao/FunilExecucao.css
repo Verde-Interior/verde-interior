@@ -46,10 +46,13 @@
   flex-direction: column;
   min-width: 220px;
   flex: 1;
-  background: var(--surface-bg);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-xl);
   overflow: hidden;
+  box-shadow: var(--glass-shadow);
 }
 
 .funil-exec__col-header {
@@ -57,7 +60,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: color-mix(in srgb, var(--etapa-cor) 8%, var(--cream-25));
+  background: color-mix(in srgb, var(--etapa-cor) 8%, var(--glass-light-soft));
   border-bottom: 2px solid color-mix(in srgb, var(--etapa-cor) 30%, transparent);
 }
 
@@ -100,8 +103,10 @@
 
 /* ── Card ── */
 .funil-exec__card {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-lg);
   padding: 12px 13px 10px;
   cursor: grab;
@@ -110,7 +115,7 @@
   gap: 6px;
   position: relative;
   transition: box-shadow var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--glass-shadow);
 }
 
 .funil-exec__card:hover {
@@ -356,7 +361,10 @@
   padding: 20px;
 }
 .fe-modal {
-  background: var(--surface-card, white);
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: 14px;
   max-width: 700px;
   width: 100%;
@@ -368,7 +376,7 @@
 .fe-modal--sm { max-width: 480px; }
 .fe-modal__header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--glass-light-border);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -387,7 +395,7 @@
 .fe-modal__corpo { padding: 20px; overflow: auto; flex: 1; }
 .fe-modal__footer {
   padding: 12px 20px;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--glass-light-border);
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -404,7 +412,7 @@
   font-weight: 600;
   font-family: var(--font-body);
 }
-.fe-btn:hover:not(:disabled) { background: var(--surface-alt, #F5F5F0); }
+.fe-btn:hover:not(:disabled) { background: var(--cream-100); }
 .fe-btn:disabled { opacity: .55; cursor: not-allowed; }
 .fe-btn--primario {
   background: var(--forest-700, #1A7A4A);
@@ -442,7 +450,7 @@
   font-size: 12.5px;
 }
 .fe-mat__tabela thead th {
-  background: var(--surface-alt, #F5F5F0);
+  background: var(--cream-50);
   padding: 8px 10px;
   text-align: left;
   border-bottom: 1px solid var(--surface-border);
@@ -470,7 +478,7 @@
   text-align: center;
   color: var(--text-secondary);
   font-size: 13px;
-  background: var(--surface-alt, #F5F5F0);
+  background: var(--cream-50);
   border-radius: 8px;
 }
 .fe-mat__aviso {

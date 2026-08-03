@@ -44,10 +44,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--surface-bg);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur-sm)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-md);
   padding: 4px 10px;
+  box-shadow: var(--glass-shadow);
 }
 
 .agenda__nav-btn {
@@ -231,7 +234,9 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  background: var(--surface-bg);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   position: relative;
   min-width: 200px;
   max-width: min(520px, 42%);
@@ -331,8 +336,8 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light-soft);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-md);
   padding: 10px 12px;
   cursor: pointer;
@@ -399,7 +404,7 @@
 }
 
 .agenda__painel-tarefa-card--exp {
-  background: color-mix(in srgb, var(--forest-500) 4%, var(--surface-card));
+  background: color-mix(in srgb, var(--forest-500) 4%, var(--glass-light-soft));
 }
 
 .agenda__painel-tarefa-desc {
@@ -484,8 +489,8 @@
 }
 
 .agenda__painel-acao {
-  background: var(--surface-card);
-  border: 1.5px solid var(--surface-border);
+  background: var(--glass-light-soft);
+  border: 1.5px solid var(--glass-light-border);
   border-radius: var(--radius-md);
   padding: 10px 14px;
   font-size: 13px;
@@ -499,7 +504,7 @@
 
 .agenda__painel-acao:hover {
   border-color: var(--vinho-500);
-  background: color-mix(in srgb, var(--vinho-700) 5%, var(--surface-card));
+  background: color-mix(in srgb, var(--vinho-700) 5%, var(--glass-light-soft));
 }
 
 .agenda__painel-acao--followup {
@@ -507,7 +512,7 @@
 }
 .agenda__painel-acao--followup:hover {
   border-color: #3B82F6;
-  background: color-mix(in srgb, #3B82F6 5%, var(--surface-card));
+  background: color-mix(in srgb, #3B82F6 5%, var(--glass-light-soft));
 }
 
 .agenda__painel-acao--lead {
@@ -515,7 +520,7 @@
 }
 .agenda__painel-acao--lead:hover {
   border-color: var(--forest-500);
-  background: color-mix(in srgb, var(--forest-500) 5%, var(--surface-card));
+  background: color-mix(in srgb, var(--forest-500) 5%, var(--glass-light-soft));
 }
 
 /* ── Responsivo ── */

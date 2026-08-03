@@ -38,18 +38,21 @@
 }
 
 .dceasa__kpi {
-  background: #fff;
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow: var(--glass-shadow);
 }
 
 .dceasa__kpi--destaque {
   border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-  background: color-mix(in srgb, var(--color-primary) 5%, #fff);
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--glass-light));
 }
 
 .dceasa__kpi-valor {
@@ -76,10 +79,13 @@
 }
 
 .dceasa__card {
-  background: #fff;
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-lg);
   padding: 20px;
+  box-shadow: var(--glass-shadow);
 }
 
 .dceasa__card-titulo {
@@ -157,7 +163,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background: var(--cream-25, #f9f8f5);
+  background: var(--glass-light-soft);
   border-radius: var(--radius-md);
 }
 

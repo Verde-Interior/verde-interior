@@ -12,8 +12,10 @@
 /* ── Cabeçalho ── */
 .clientes__header {
   padding: 24px 28px 0;
-  background: var(--surface-bg);
-  border-bottom: 1px solid var(--surface-border);
+  background: var(--glass-light-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border-bottom: 1px solid var(--glass-light-border);
   flex-shrink: 0;
 }
 
@@ -67,14 +69,17 @@
 }
 
 .clientes__kpi {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-md);
   padding: 12px 18px;
   min-width: 110px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  box-shadow: var(--glass-shadow);
 }
 .clientes__kpi--verde  { border-color: var(--forest-300); background: var(--forest-50); }
 .clientes__kpi--muted  { opacity: 0.7; }
@@ -111,8 +116,10 @@
   align-items: center;
   gap: 10px;
   padding: 14px 28px;
-  background: var(--surface-bg);
-  border-bottom: 1px solid var(--surface-border);
+  background: var(--glass-light-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border-bottom: 1px solid var(--glass-light-border);
   flex-wrap: wrap;
   flex-shrink: 0;
 }
@@ -392,7 +399,10 @@
 }
 
 .cl-modal {
-  background: var(--surface-bg);
+  background: var(--glass-light-strong);
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(160%);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   width: 100%;
@@ -408,7 +418,7 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 22px 26px 18px;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--glass-light-border);
   flex-shrink: 0;
 }
 
@@ -445,7 +455,7 @@
 /* ── Seções ── */
 .cl-sec {
   padding: 18px 26px;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--glass-light-border);
 }
 .cl-sec:last-child { border-bottom: none; }
 
@@ -590,8 +600,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-light-soft);
+  border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-md);
   flex-wrap: wrap;
 }
@@ -643,7 +653,7 @@
   transition: background .12s;
 }
 
-.cl-servico__btn:hover { background: var(--surface-hover, #f3f4f6); }
+.cl-servico__btn:hover { background: var(--cream-100); }
 
 .cl-servico__btn--desativar { color: #b45309; border-color: #fde68a; }
 .cl-servico__btn--desativar:hover { background: #fef9c3; }
@@ -658,8 +668,8 @@
 
 /* ── Novo contrato form ── */
 .cl-novo-servico {
-  background: var(--surface-card);
-  border: 1px dashed var(--surface-border);
+  background: var(--glass-light-soft);
+  border: 1px dashed var(--glass-light-border);
   border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
@@ -687,8 +697,8 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 26px;
-  border-top: 1px solid var(--surface-border);
-  background: var(--surface-card);
+  border-top: 1px solid var(--glass-light-border);
+  background: var(--glass-light-soft);
   flex-shrink: 0;
 }
 
@@ -744,11 +754,14 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 4px 10px;
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
+    background: var(--glass-light);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--glass-light-border);
     border-radius: var(--radius-lg);
     padding: 10px 12px;
     align-items: start;
+    box-shadow: var(--glass-shadow);
   }
   .clientes__tabela tr:hover { box-shadow: var(--shadow-sm); }
   .clientes__tabela td { display: block; padding: 0; border: none; }
