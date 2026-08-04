@@ -574,6 +574,42 @@
   border-radius: 8px;
 }
 
+.rel-lightbox__seta {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  color: white;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.rel-lightbox__seta:hover { background: rgba(255,255,255,0.24); }
+.rel-lightbox__seta--esq { left: 16px; }
+.rel-lightbox__seta--dir { right: 16px; }
+
+.rel-lightbox__contador {
+  color: white;
+  font-size: 12px;
+  background: rgba(0,0,0,0.5);
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 720px) {
+  .rel-lightbox__seta { width: 40px; height: 40px; font-size: 22px; }
+  .rel-lightbox__seta--esq { left: 6px; }
+  .rel-lightbox__seta--dir { right: 6px; }
+}
+
 @media (max-width: 720px) {
   .rel__header { padding: 12px 14px; flex-direction: column; align-items: stretch; gap: 10px; }
   .rel__titulo { font-size: 17px; }

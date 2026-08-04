@@ -305,7 +305,7 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
 // ── Modal de detalhe ──────────────────────────────────────────────
 function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
   const c = r.agenda?.cliente;
-  const [fotoAmp, setFotoAmp] = useState(null); // { url, observacao }
+  const [fotoAmpIdx, setFotoAmpIdx] = useState(null); // índice em r.fotos, ou null se fechado
   const [urlsFotos, setUrlsFotos] = useState({}); // fotoId -> signed url
   const [assinUrl, setAssinUrl] = useState(null);
   const [removendo, setRemovendo] = useState(false);
@@ -390,6 +390,24 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
       setLoadingEnd(false);
     })();
   }, [r]);
+
+  function navegarFoto(delta) {
+    const n = r.fotos?.length ?? 0;
+    if (n === 0) return;
+    setFotoAmpIdx((i) => (i == null ? i : (i + delta + n) % n));
+  }
+
+  useEffect(() => {
+    if (fotoAmpIdx == null) return;
+    function onKey(e) {
+      if (e.key === 'ArrowRight') navegarFoto(1);
+      else if (e.key === 'ArrowLeft') navegarFoto(-1);
+      else if (e.key === 'Escape') setFotoAmpIdx(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fotoAmpIdx]);
 
   const dur = duracaoEntre(r.checkin_at, r.checkout_at);
   const dist = distanciaMetros(r.checkin_lat, r.checkin_lng, c?.lat, c?.lng);
@@ -512,8 +530,8 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
             <section className="rel-sec">
               <h4 className="rel-sec__titulo">Fotos ({r.fotos.length})</h4>
               <div className="rel-fotos">
-                {r.fotos.map(f => (
-                  <div key={f.id} className="rel-foto" onClick={() => setFotoAmp({ url: urlsFotos[f.id], observacao: f.observacao })}>
+                {r.fotos.map((f, i) => (
+                  <div key={f.id} className="rel-foto" onClick={() => setFotoAmpIdx(i)}>
                     {urlsFotos[f.id]
                       ? <img src={urlsFotos[f.id]} alt="foto" />
                       : <div className="rel-foto__load">carregando...</div>}
@@ -553,12 +571,39 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
         </footer>
       </div>
 
-      {fotoAmp && (
-        <div className="rel-lightbox" onClick={() => setFotoAmp(null)}>
-          <img src={fotoAmp.url} alt="foto ampliada" />
-          {fotoAmp.observacao && <div className="rel-lightbox__obs">{fotoAmp.observacao}</div>}
-        </div>
-      )}
+      {fotoAmpIdx != null && (() => {
+        const fotoAtual = r.fotos[fotoAmpIdx];
+        const temVarias = r.fotos.length > 1;
+        return (
+          <div className="rel-lightbox" onClick={() => setFotoAmpIdx(null)}>
+            {temVarias && (
+              <button
+                className="rel-lightbox__seta rel-lightbox__seta--esq"
+                onClick={(e) => { e.stopPropagation(); navegarFoto(-1); }}
+                title="Foto anterior"
+                aria-label="Foto anterior"
+              >
+                ‹
+              </button>
+            )}
+            <img src={urlsFotos[fotoAtual.id]} alt="foto ampliada" />
+            {temVarias && (
+              <button
+                className="rel-lightbox__seta rel-lightbox__seta--dir"
+                onClick={(e) => { e.stopPropagation(); navegarFoto(1); }}
+                title="Próxima foto"
+                aria-label="Próxima foto"
+              >
+                ›
+              </button>
+            )}
+            {fotoAtual.observacao && <div className="rel-lightbox__obs">{fotoAtual.observacao}</div>}
+            {temVarias && (
+              <div className="rel-lightbox__contador">{fotoAmpIdx + 1} / {r.fotos.length}</div>
+            )}
+          </div>
+        );
+      })()}
 
       {confirmar && (
         <ModalConfirmar
