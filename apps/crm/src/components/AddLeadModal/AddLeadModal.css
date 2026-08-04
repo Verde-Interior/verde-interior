@@ -77,7 +77,7 @@
   flex: 1;
 }
 
-.add-modal__body::-webkit-scrollbar { width: 4px; }
+.add-modal__body::-webkit-scrollbar { width: 9px; }
 .add-modal__body::-webkit-scrollbar-thumb { background: var(--cream-300); border-radius: 99px; }
 
 .add-modal__grupo {

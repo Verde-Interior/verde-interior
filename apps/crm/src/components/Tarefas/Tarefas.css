@@ -595,7 +595,7 @@
   gap: 14px 16px;
 }
 
-.tarefa-modal__corpo::-webkit-scrollbar { width: 4px; }
+.tarefa-modal__corpo::-webkit-scrollbar { width: 9px; }
 .tarefa-modal__corpo::-webkit-scrollbar-thumb { background: var(--cream-300); border-radius: 99px; }
 
 .tarefa-modal__campo {

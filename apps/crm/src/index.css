@@ -133,7 +133,9 @@ button { cursor: pointer; font-family: var(--font-body); }
 a { text-decoration: none; color: inherit; }
 input, textarea, select { font-family: var(--font-body); }
 
-/* Scrollbar global */
-::-webkit-scrollbar       { width: 4px; height: 4px; }
+/* Scrollbar global — um pouco mais grossa que o padrão fino do navegador,
+   sem virar uma barra grande, pra facilitar pegar com o mouse. */
+::-webkit-scrollbar       { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--cream-300); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cream-500); }
