@@ -1112,7 +1112,7 @@ function DashboardOperacional({ onNavegar }) {
           id, funcionario_id, checkin_at,
           agenda:agenda(cliente:clientes(nome_empresa, bairro))
         `).order('checkin_at', { ascending: false }).limit(6),
-        supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visitas, ativo').eq('ativo', true),
+        supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
       ]);
 
@@ -1147,7 +1147,7 @@ function DashboardOperacional({ onNavegar }) {
   const freqMap = useMemo(() => {
     const map = { Semanal: 0, Quinzenal: 0, Mensal: 0, Outro: 0 };
     dados.clientes.forEach(c => {
-      const f = c.frequencia_visitas;
+      const f = c.frequencia_visita;
       if (f === 'semanal') map.Semanal++;
       else if (f === 'quinzenal') map.Quinzenal++;
       else if (f === 'mensal') map.Mensal++;
