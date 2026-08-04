@@ -1,9 +1,13 @@
 /* src/components/LeadCard/LeadCard.css */
 
 .lead-card {
+  /* Sem backdrop-filter aqui de propósito: o card se repete N vezes por
+     coluna (uma vez por lead) e a coluna-mãe (.kanban-column) já aplica
+     blur no fundo. Blur por card empilhado sobre o blur da coluna faz o
+     custo de composição do navegador crescer com o nº de leads — some
+     usuários travavam/ficavam com a tela em branco ao adicionar um novo
+     lead num pipeline com muitos cards. */
   background: var(--glass-light);
-  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-lg);
   padding: 14px 15px 11px;

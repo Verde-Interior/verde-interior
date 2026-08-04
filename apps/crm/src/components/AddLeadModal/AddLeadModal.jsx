@@ -16,6 +16,7 @@ export default function AddLeadModal({ aberto, onFechar }) {
   const [form, setForm]               = useState(EMPTY);
   const [erros, setErros]             = useState({});
   const [avisoEmpresa, setAviso]      = useState(null); // duplicata
+  const overlayClose = useOverlayClose(() => { setAviso(null); onFechar(); });
 
   if (!aberto) return null;
 
@@ -83,8 +84,6 @@ export default function AddLeadModal({ aberto, onFechar }) {
 
     salvar();
   }
-
-  const overlayClose = useOverlayClose(() => { setAviso(null); onFechar(); });
 
   const tiposSel            = form.tiposServico ?? [];
   const isRecorrente        = tiposSel.some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente');

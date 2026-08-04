@@ -164,6 +164,8 @@ export default function ModalOrcamento() {
     }
   }, [leadSelecionado]);
 
+  const overlayClose = useOverlayClose(fecharModal);
+
   if (!modalAberto || !leadSelecionado) return null;
 
   const lead   = leadSelecionado;
@@ -655,8 +657,6 @@ export default function ModalOrcamento() {
   function copiarRelatorio() {
     if (relatorio) navigator.clipboard.writeText(relatorio);
   }
-
-  const overlayClose = useOverlayClose(fecharModal);
 
   return (
     <div className="modal-overlay" {...overlayClose}>

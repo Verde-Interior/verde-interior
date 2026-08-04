@@ -15,8 +15,6 @@
   justify-content: space-between;
   padding: 16px 26px 12px;
   background: var(--glass-light-soft);
-  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   border-bottom: 1px solid var(--glass-light-border);
   flex-shrink: 0;
   gap: 16px;
@@ -104,8 +102,6 @@
   gap: 8px;
   padding: 10px 26px;
   background: var(--glass-light-soft);
-  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   border-bottom: 1px solid var(--glass-light-border);
   flex-shrink: 0;
   flex-wrap: wrap;
@@ -219,8 +215,6 @@
   border-collapse: collapse;
   font-size: 13px;
   background: var(--glass-light);
-  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--glass-shadow);
