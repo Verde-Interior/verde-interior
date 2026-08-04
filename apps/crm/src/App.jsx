@@ -137,8 +137,14 @@ const NAV_ITEMS_TOP = [
 
 const NAV_ITEM_CONFIG = { id: 'configuracoes', Icon: IconConfig, label: 'Configurações' };
 
+const TELAS_VALIDAS = [...NAV_ITEMS_TOP.map(i => i.id), NAV_ITEM_CONFIG.id];
+
 function AppLayout() {
-  const [tela, setTela]               = useState('dashboard');
+  const [tela, setTela]               = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('tela');
+    return TELAS_VALIDAS.includes(t) ? t : 'dashboard';
+  });
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [drawerAberto, setDrawerAberto] = useState(false);
   const [qrScan,      setQrScan]      = useState(() => {

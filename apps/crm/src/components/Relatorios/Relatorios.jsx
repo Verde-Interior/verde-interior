@@ -20,6 +20,26 @@ async function signedUrl(path, ttlSec = 60 * 60) {
   return data?.signedUrl ?? null;
 }
 
+const SELECT_RELATORIO = `
+  id, funcionario_id, status,
+  checkin_at, checkin_lat, checkin_lng,
+  checkout_at, checkout_lat, checkout_lng,
+  relato, observacoes,
+  assinatura_responsavel_nome, assinatura_responsavel_img, assinatura_storage_path,
+  agendamento_id,
+  agenda:agenda(
+    id, data_agendada, hora_estimada_chegada, duracao_estimada_min,
+    observacoes_gestor, ordem_rota,
+    cliente:clientes(id, nome_empresa, endereco, bairro, lat, lng, contato_nome, grupo_servico)
+  ),
+  fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem)
+`;
+
+// Link direto para um relatório específico (usado no card e no deep-link de abertura)
+function urlRelatorio(id) {
+  return `?tela=relatorios&relatorio=${id}`;
+}
+
 // Reverse geocoding via Nominatim (OpenStreetMap) — free, sem chave de API
 async function reverseGeocode(lat, lng) {
   if (lat == null || lng == null) return null;
@@ -69,20 +89,7 @@ export default function Relatorios() {
     const [relRes, empRes] = await Promise.all([
       supabase
         .from('relatorios')
-        .select(`
-          id, funcionario_id, status,
-          checkin_at, checkin_lat, checkin_lng,
-          checkout_at, checkout_lat, checkout_lng,
-          relato, observacoes,
-          assinatura_responsavel_nome, assinatura_responsavel_img, assinatura_storage_path,
-          agendamento_id,
-          agenda:agenda(
-            id, data_agendada, hora_estimada_chegada, duracao_estimada_min,
-            observacoes_gestor, ordem_rota,
-            cliente:clientes(id, nome_empresa, endereco, bairro, lat, lng, contato_nome, grupo_servico)
-          ),
-          fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem)
-        `)
+        .select(SELECT_RELATORIO)
         .gte('checkin_at', isoInicio)
         .lte('checkin_at', isoFim)
         .order('checkin_at', { ascending: false }),
@@ -97,6 +104,28 @@ export default function Relatorios() {
   // carregar é definida no escopo do componente e depende só de dataInicio/dataFim
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [dataInicio, dataFim]);
+
+  // Deep-link: ?tela=relatorios&relatorio=<id> abre direto o relatório, mesmo
+  // que ele esteja fora do range de datas carregado na lista (busca isolada
+  // por id, sem depender do filtro). Permite abrir o card em nova aba.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('relatorio');
+    if (!id) return;
+    (async () => {
+      const { data } = await supabase.from('relatorios').select(SELECT_RELATORIO).eq('id', id).single();
+      if (data) setDetalhe(data);
+    })();
+  }, []);
+
+  function abrirDetalhe(r) {
+    window.history.pushState({}, '', urlRelatorio(r.id));
+    setDetalhe(r);
+  }
+
+  function fecharDetalhe() {
+    window.history.replaceState({}, '', '?tela=relatorios');
+    setDetalhe(null);
+  }
 
   const empMap = useMemo(() => {
     const m = new Map();
@@ -243,7 +272,7 @@ export default function Relatorios() {
               key={r.id}
               relatorio={r}
               funcNome={empMap.get(String(r.funcionario_id)) ?? '—'}
-              onAbrir={() => setDetalhe(r)}
+              onAbrir={() => abrirDetalhe(r)}
             />
           ))}
         </div>
@@ -253,8 +282,8 @@ export default function Relatorios() {
         <DetalheRelatorio
           relatorio={detalhe}
           funcNome={empMap.get(String(detalhe.funcionario_id)) ?? '—'}
-          onFechar={() => setDetalhe(null)}
-          onRemovido={() => { setDetalhe(null); carregar(); }}
+          onFechar={fecharDetalhe}
+          onRemovido={() => { fecharDetalhe(); carregar(); }}
         />
       )}
     </div>
@@ -272,10 +301,20 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
 
   const nAlertas = (foraLocal ? 1 : 0) + (!nFotos ? 1 : 0) + (!temAssin ? 1 : 0);
 
+  // <a href> de verdade (não <div onClick>): permite clique direito → "Abrir
+  // em nova guia", clique do meio e Ctrl/Cmd+clique nativos do navegador. Um
+  // clique comum continua abrindo o modal na mesma página (SPA).
+  function handleClick(e) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+    e.preventDefault();
+    onAbrir();
+  }
+
   return (
-    <div
+    <a
+      href={urlRelatorio(r.id)}
       className={`rel-card ${r.status === 'concluido' ? 'rel-card--ok' : 'rel-card--pend'} ${nAlertas > 0 ? 'rel-card--alerta' : ''}`}
-      onClick={onAbrir}
+      onClick={handleClick}
     >
       <div className="rel-card__topo">
         <div className="rel-card__nome">{c?.nome_empresa ?? '—'}</div>
@@ -298,7 +337,7 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
         {!nFotos && <span className="rel-tag rel-tag--warn">sem fotos</span>}
         {!temAssin && <span className="rel-tag rel-tag--warn">sem assinatura</span>}
       </div>
-    </div>
+    </a>
   );
 }
 
