@@ -532,6 +532,7 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
               <div className="rel-fotos">
                 {r.fotos.map((f, i) => (
                   <div key={f.id} className="rel-foto" onClick={() => setFotoAmpIdx(i)}>
+                    <span className="rel-foto__num">{i + 1}</span>
                     {urlsFotos[f.id]
                       ? <img src={urlsFotos[f.id]} alt="foto" />
                       : <div className="rel-foto__load">carregando...</div>}

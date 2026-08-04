@@ -436,6 +436,7 @@
 }
 
 .rel-foto {
+  position: relative;
   background: var(--glass-light-soft);
   border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-md);
@@ -445,6 +446,23 @@
 }
 .rel-foto:hover { box-shadow: var(--shadow-md); transform: scale(1.01); }
 .rel-foto img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+.rel-foto__num {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 11px;
+  z-index: 1;
+}
 .rel-foto__obs {
   font-size: 12px;
   padding: 7px 10px;
