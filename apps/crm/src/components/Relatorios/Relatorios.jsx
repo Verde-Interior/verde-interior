@@ -84,6 +84,8 @@ export default function Relatorios() {
   const [flagsAlerta, setFlagsAlerta] = useState({ semFotos: false, semAssin: false, foraLocal: false });
   const [detalhe,    setDetalhe]    = useState(null); // relatorio expandido
   const [consumoAberto, setConsumoAberto] = useState(false);
+  const [backfillRodando, setBackfillRodando] = useState(false);
+  const [backfillResultado, setBackfillResultado] = useState(null);
 
   async function carregar() {
     setLoading(true);
@@ -106,6 +108,67 @@ export default function Relatorios() {
     setEmployees(empRes.data ?? []);
     setRelatorios(relRes.data ?? []);
     setLoading(false);
+  }
+
+  // Preenche tamanho_bytes de fotos enviadas antes da migration 031 — os
+  // arquivos já existem no Storage, só falta o metadado na tabela. Busca o
+  // tamanho via storage.list() (agrupado por pasta = relatorio_id) e
+  // atualiza cada linha. Idempotente: só olha fotos com tamanho_bytes NULL,
+  // então pode ser clicado de novo sem problema (ex: se algum lote falhar).
+  async function recalcularTamanhosAntigos() {
+    setBackfillRodando(true);
+    setBackfillResultado(null);
+    try {
+      // Paginado: o Supabase limita a ~1000 linhas por request, e há mais
+      // fotos que isso no total.
+      const fotos = [];
+      const PAGINA = 1000;
+      for (let offset = 0; ; offset += PAGINA) {
+        const { data: lote, error } = await supabase
+          .from('fotos_relatorio')
+          .select('id, storage_path')
+          .is('tamanho_bytes', null)
+          .not('storage_path', 'is', null)
+          .range(offset, offset + PAGINA - 1);
+        if (error) throw error;
+        fotos.push(...(lote ?? []));
+        if (!lote || lote.length < PAGINA) break;
+      }
+
+      const porPasta = new Map();
+      (fotos ?? []).forEach(f => {
+        const pasta = f.storage_path.split('/')[0];
+        if (!porPasta.has(pasta)) porPasta.set(pasta, []);
+        porPasta.get(pasta).push(f);
+      });
+
+      let atualizadas = 0, falhas = 0;
+      for (const [pasta, itens] of porPasta) {
+        const { data: arquivos, error: listErr } = await supabase.storage.from('field-photos').list(pasta, { limit: 1000 });
+        if (listErr || !arquivos) { falhas += itens.length; continue; }
+        const tamanhoPorNome = new Map(arquivos.map(a => [a.name, a.metadata?.size ?? null]));
+
+        const resultados = await Promise.all(itens.map(async (foto) => {
+          const nomeArquivo = foto.storage_path.split('/')[1];
+          const tamanho = tamanhoPorNome.get(nomeArquivo);
+          if (tamanho == null) return false;
+          const { error: updErr } = await supabase
+            .from('fotos_relatorio')
+            .update({ tamanho_bytes: tamanho })
+            .eq('id', foto.id);
+          return !updErr;
+        }));
+        atualizadas += resultados.filter(Boolean).length;
+        falhas += resultados.filter(r => !r).length;
+      }
+
+      setBackfillResultado({ total: fotos.length, atualizadas, falhas });
+      await carregar();
+    } catch (e) {
+      setBackfillResultado({ erro: e.message });
+    } finally {
+      setBackfillRodando(false);
+    }
   }
 
   // carregar é definida no escopo do componente e depende só de dataInicio/dataFim
@@ -220,24 +283,45 @@ export default function Relatorios() {
           📶 Consumo de dados por colaborador {consumoAberto ? '▲' : '▼'}
         </button>
         {consumoAberto && (
-          usoPorFuncionario.length === 0 ? (
-            <p className="rel__consumo-vazio">Sem fotos no período selecionado.</p>
-          ) : (
-            <table className="rel__consumo-tabela">
-              <thead>
-                <tr><th>Colaborador</th><th>Fotos</th><th>Dados (estimado)</th></tr>
-              </thead>
-              <tbody>
-                {usoPorFuncionario.map(u => (
-                  <tr key={u.nome}>
-                    <td>{u.nome}</td>
-                    <td>{u.fotos}</td>
-                    <td>{formatarBytes(u.bytes)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
+          <>
+            <div className="rel__consumo-backfill">
+              <button
+                className="rel__consumo-toggle"
+                onClick={recalcularTamanhosAntigos}
+                disabled={backfillRodando}
+                title="Preenche o tamanho das fotos enviadas antes desse recurso existir, lendo direto do Storage"
+              >
+                {backfillRodando ? '⏳ Calculando...' : '🔄 Calcular fotos antigas (sem tamanho)'}
+              </button>
+              {backfillResultado && (
+                backfillResultado.erro
+                  ? <span className="rel__consumo-backfill-msg rel__consumo-backfill-msg--erro">Erro: {backfillResultado.erro}</span>
+                  : <span className="rel__consumo-backfill-msg">
+                      {backfillResultado.atualizadas} foto{backfillResultado.atualizadas !== 1 ? 's' : ''} atualizada{backfillResultado.atualizadas !== 1 ? 's' : ''}
+                      {backfillResultado.falhas > 0 && ` · ${backfillResultado.falhas} não encontrada(s) no Storage`}
+                      {backfillResultado.total === 0 && ' · nada pendente'}
+                    </span>
+              )}
+            </div>
+            {usoPorFuncionario.length === 0 ? (
+              <p className="rel__consumo-vazio">Sem fotos no período selecionado.</p>
+            ) : (
+              <table className="rel__consumo-tabela">
+                <thead>
+                  <tr><th>Colaborador</th><th>Fotos</th><th>Dados (estimado)</th></tr>
+                </thead>
+                <tbody>
+                  {usoPorFuncionario.map(u => (
+                    <tr key={u.nome}>
+                      <td>{u.nome}</td>
+                      <td>{u.fotos}</td>
+                      <td>{formatarBytes(u.bytes)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
         )}
       </div>
 

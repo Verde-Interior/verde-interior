@@ -583,6 +583,16 @@
   font-family: var(--font-body);
 }
 .rel__consumo-toggle:hover { border-color: var(--text-secondary); background: var(--cream-50); }
+.rel__consumo-toggle:disabled { opacity: 0.6; cursor: default; }
+.rel__consumo-backfill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.rel__consumo-backfill-msg { font-size: 12px; color: var(--text-secondary); }
+.rel__consumo-backfill-msg--erro { color: var(--color-danger, #B91C1C); }
 .rel__consumo-vazio {
   font-size: 12px;
   color: var(--text-muted);
