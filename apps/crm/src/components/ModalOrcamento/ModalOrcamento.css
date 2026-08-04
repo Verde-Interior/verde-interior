@@ -171,7 +171,7 @@
 }
 
 .modal__body::-webkit-scrollbar { width: 9px; }
-.modal__body::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 99px; }
+.modal__body::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 99px; }
 
 /* ── Seção ── */
 .modal__secao {
