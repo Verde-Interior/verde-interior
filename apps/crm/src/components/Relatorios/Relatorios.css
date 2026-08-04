@@ -565,6 +565,54 @@
 }
 .rel__flag--on:hover { background: #FDE68A; }
 
+/* Consumo de dados por colaborador */
+.rel__consumo {
+  padding: 0 26px;
+  margin-top: -4px;
+}
+.rel__consumo-toggle {
+  background: white;
+  border: 1px solid var(--surface-border);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+.rel__consumo-toggle:hover { border-color: var(--text-secondary); background: var(--cream-50); }
+.rel__consumo-vazio {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 8px 0 0;
+}
+.rel__consumo-tabela {
+  width: 100%;
+  max-width: 420px;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+  background: white;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.rel__consumo-tabela th, .rel__consumo-tabela td {
+  padding: 8px 12px;
+  text-align: left;
+}
+.rel__consumo-tabela th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--surface-border);
+}
+.rel__consumo-tabela td { border-top: 1px solid var(--surface-border); }
+.rel__consumo-tabela tr:first-child td { border-top: none; }
+
 /* Lightbox */
 .rel-lightbox {
   position: fixed;

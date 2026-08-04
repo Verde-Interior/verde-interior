@@ -32,8 +32,14 @@ const SELECT_RELATORIO = `
     observacoes_gestor, ordem_rota,
     cliente:clientes(id, nome_empresa, endereco, bairro, lat, lng, contato_nome, grupo_servico)
   ),
-  fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem)
+  fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem, tamanho_bytes)
 `;
+
+function formatarBytes(n) {
+  if (!n) return '0 KB';
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 // Link direto para um relatório específico (usado no card e no deep-link de abertura)
 function urlRelatorio(id) {
@@ -77,6 +83,7 @@ export default function Relatorios() {
   const [dataFim,    setDataFim]    = useState(hojeStr);
   const [flagsAlerta, setFlagsAlerta] = useState({ semFotos: false, semAssin: false, foraLocal: false });
   const [detalhe,    setDetalhe]    = useState(null); // relatorio expandido
+  const [consumoAberto, setConsumoAberto] = useState(false);
 
   async function carregar() {
     setLoading(true);
@@ -160,6 +167,23 @@ export default function Relatorios() {
     assinados: filtrados.filter(r => r.assinatura_responsavel_img).length,
   }), [filtrados]);
 
+  // Consumo estimado de dados por colaborador (fotos, já comprimidas, são o
+  // grosso do tráfego — ver migração 031_fotos_tamanho_bytes). Usa o range de
+  // datas selecionado, independente de busca/flags (é um resumo do período).
+  const usoPorFuncionario = useMemo(() => {
+    const m = new Map();
+    relatorios.forEach(r => {
+      const nome = empMap.get(String(r.funcionario_id)) ?? '—';
+      const atual = m.get(nome) ?? { nome, fotos: 0, bytes: 0 };
+      (r.fotos ?? []).forEach(f => {
+        atual.fotos += 1;
+        atual.bytes += f.tamanho_bytes ?? 0;
+      });
+      m.set(nome, atual);
+    });
+    return [...m.values()].filter(u => u.fotos > 0).sort((a, b) => b.bytes - a.bytes);
+  }, [relatorios, empMap]);
+
   return (
     <div className="rel">
       <header className="rel__header">
@@ -186,6 +210,36 @@ export default function Relatorios() {
           </div>
         </div>
       </header>
+
+      <div className="rel__consumo">
+        <button
+          className="rel__consumo-toggle"
+          onClick={() => setConsumoAberto(v => !v)}
+          title="Estimativa de dados consumidos (fotos) por colaborador, no período selecionado"
+        >
+          📶 Consumo de dados por colaborador {consumoAberto ? '▲' : '▼'}
+        </button>
+        {consumoAberto && (
+          usoPorFuncionario.length === 0 ? (
+            <p className="rel__consumo-vazio">Sem fotos no período selecionado.</p>
+          ) : (
+            <table className="rel__consumo-tabela">
+              <thead>
+                <tr><th>Colaborador</th><th>Fotos</th><th>Dados (estimado)</th></tr>
+              </thead>
+              <tbody>
+                {usoPorFuncionario.map(u => (
+                  <tr key={u.nome}>
+                    <td>{u.nome}</td>
+                    <td>{u.fotos}</td>
+                    <td>{formatarBytes(u.bytes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        )}
+      </div>
 
       <div className="rel__filtros">
         <div className="rel__busca-wrap">

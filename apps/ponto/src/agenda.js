@@ -1305,12 +1305,13 @@ async function tentarUploadFoto(file, relatorioId) {
     const { data: rec, error: recErr } = await supabase
       .from('fotos_relatorio')
       .insert({
-        relatorio_id: relatorioId,
-        url:          signed?.signedUrl ?? path,
-        storage_path: path,
-        observacao:   null,
-        tipo:         'geral',
-        ordem:        st.fotos.length + 1,
+        relatorio_id:  relatorioId,
+        url:           signed?.signedUrl ?? path,
+        storage_path:  path,
+        observacao:    null,
+        tipo:          'geral',
+        ordem:         st.fotos.length + 1,
+        tamanho_bytes: file.size,
       })
       .select()
       .single();
