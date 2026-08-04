@@ -15,6 +15,7 @@ import FunilExecucao from './components/FunilExecucao/FunilExecucao';
 import SidebarCalendario from './components/SidebarCalendario/SidebarCalendario';
 import Agenda from './components/Agenda/Agenda';
 import Clientes from './components/Clientes/Clientes';
+import Mapa from './components/Mapa/Mapa';
 import EscalaCampo from './components/EscalaCampo/EscalaCampo';
 import Relatorios from './components/Relatorios/Relatorios';
 import Estoque from './components/Estoque/Estoque';
@@ -87,6 +88,13 @@ const IconClientes = () => (
   </svg>
 );
 
+const IconMapa = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M8 1.5c-2.5 0-4.5 2-4.5 4.5 0 3.4 4.5 8.5 4.5 8.5s4.5-5.1 4.5-8.5c0-2.5-2-4.5-4.5-4.5z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
+    <circle cx="8" cy="6" r="1.8" fill="currentColor"/>
+  </svg>
+);
+
 const IconEscala = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
     <rect x="1" y="3" width="14" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
@@ -128,6 +136,7 @@ const NAV_ITEMS_TOP = [
   { id: 'execucao',   Icon: IconExecucao,  label: 'Execução'  },
   { id: 'os',         Icon: IconOS,        label: 'Ordens OS' },
   { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
+  { id: 'mapa',       Icon: IconMapa,      label: 'Mapa'      },
   { id: 'escala',     Icon: IconEscala,    label: 'Escala'    },
   { id: 'relatorios', Icon: IconRelatorios,label: 'Relatórios'},
   { id: 'estoque',    Icon: IconEstoque,   label: 'Estoque'   },
@@ -263,6 +272,7 @@ function AppLayout() {
         {tela === 'execucao'      && <FunilExecucao />}
         {tela === 'os'            && <OrdensServico />}
         {tela === 'clientes'      && <Clientes />}
+        {tela === 'mapa'          && <Mapa />}
         {tela === 'escala'        && <EscalaCampo />}
         {tela === 'relatorios'    && <Relatorios />}
         {tela === 'estoque'       && <Estoque />}
