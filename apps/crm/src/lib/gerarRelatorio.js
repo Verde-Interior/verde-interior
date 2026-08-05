@@ -219,27 +219,31 @@ export async function baixarPDF(params) {
 
   const html = gerarHtmlImprimivel(params);
 
-  // Usa iframe para que o documento completo (head + estilos) seja carregado
-  // corretamente antes de o html2canvas renderizar
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:0;left:0;width:794px;height:1123px;border:none;opacity:0;pointer-events:none;';
-  document.body.appendChild(iframe);
+  // Extrai CSS e body separadamente — html2canvas só consegue renderizar
+  // elementos no documento principal, não dentro de iframes ou com innerHTML
+  // de documento completo (o browser descarta <head>/<style> ao injetar em div)
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const cssText = Array.from(parsed.querySelectorAll('style')).map((s) => s.textContent).join('\n');
 
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
+  const styleEl = document.createElement('style');
+  styleEl.textContent = cssText;
+  document.head.appendChild(styleEl);
 
-  // Aguarda imagens carregarem
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#fff;z-index:-1;pointer-events:none;';
+  container.innerHTML = parsed.body.innerHTML;
+  document.body.appendChild(container);
+
+  // Aguarda todas as imagens (fotos do relatório) carregarem
   await new Promise((resolve) => {
-    const imgs = iframe.contentDocument.querySelectorAll('img');
+    const imgs = container.querySelectorAll('img');
     if (!imgs.length) { resolve(); return; }
     let pending = imgs.length;
     const done = () => { if (--pending === 0) resolve(); };
     imgs.forEach((img) => {
-      if (img.complete) { done(); }
+      if (img.complete) done();
       else { img.onload = done; img.onerror = done; }
     });
-    // Timeout de segurança
     setTimeout(resolve, 8000);
   });
 
@@ -251,8 +255,9 @@ export async function baixarPDF(params) {
       html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
       jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak:   { mode: 'avoid-all' },
-    }).from(iframe.contentDocument.body).save();
+    }).from(container).save();
   } finally {
-    document.body.removeChild(iframe);
+    document.head.removeChild(styleEl);
+    document.body.removeChild(container);
   }
 }
