@@ -231,6 +231,41 @@
   border-color: rgba(255,255,255,0.25);
 }
 
+/* ── Toggle de tema (claro/escuro) ── */
+.app__tema-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  font-family: inherit;
+}
+
+.app__tema-toggle:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.85);
+}
+
+.app__tema-toggle--ativo {
+  background: linear-gradient(135deg, rgba(74,136,40,0.40), rgba(45,80,22,0.22));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  color: #ffffff;
+}
+
+.app__tema-toggle--ativo .app__nav-icon {
+  opacity: 1;
+  color: var(--forest-300);
+}
+
 /* ── Main ── */
 .app__main {
   flex: 1;

@@ -107,6 +107,35 @@
   --glass-shadow-dark: 0 8px 40px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
+/* ── Tema escuro ──────────────────────────────────────────────────────────
+   Redefine só os tokens semânticos (superfícies, texto, vidro, sombras) —
+   como o app inteiro consome esses nomes via var(...), a maioria das telas
+   se adapta sozinha. Cores de marca (--color-primary, --forest-*, --vinho-*)
+   e cores semânticas de status (badges, estágios do funil) ficam intactas. */
+[data-theme="dark"] {
+  --surface-bg:      var(--forest-900);
+  --surface-card:    var(--forest-800);
+  --surface-sidebar: #0A1804;
+  --surface-border:  rgba(255,255,255,0.10);
+
+  --text-primary:    var(--cream-50);
+  --text-secondary:  rgba(245,239,232,0.75);
+  --text-muted:      rgba(245,239,232,0.48);
+  --text-inverse:    var(--vinho-950);
+
+  --glass-light:        var(--glass-dark);
+  --glass-light-strong: var(--glass-dark-strong);
+  --glass-light-soft:   rgba(255,255,255,0.045);
+  --glass-light-border: var(--glass-dark-border);
+  --glass-shadow: var(--glass-shadow-dark);
+
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.24);
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.28);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.32);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.38);
+  --shadow-xl:  0 20px 60px rgba(0,0,0,0.45);
+}
+
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
@@ -125,6 +154,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
   line-height: 1.5;
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+/* Glows mais discretos no escuro — sobre um fundo já verde-escuro, os mesmos
+   tons na intensidade do claro deixariam tudo abafado. */
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 10% 15%, rgba(74,136,40,0.14) 0%, transparent 42%),
+    radial-gradient(circle at 90% 8%,  rgba(123,26,26,0.12) 0%, transparent 40%),
+    radial-gradient(circle at 82% 85%, rgba(107,168,67,0.10) 0%, transparent 46%),
+    radial-gradient(circle at 12% 90%, rgba(196,122,26,0.08) 0%, transparent 42%),
+    var(--surface-bg);
+  background-attachment: fixed;
 }
 
 h1, h2, h3 { font-family: var(--font-body); }

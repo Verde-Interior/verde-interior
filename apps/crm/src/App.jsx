@@ -57,6 +57,12 @@ const IconConfig = () => (
   </svg>
 );
 
+const IconLua = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M13.5 9.8A6 6 0 1 1 6.2 2.5a5 5 0 0 0 7.3 7.3z" fill="currentColor"/>
+  </svg>
+);
+
 const IconAgenda = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
     <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
@@ -148,7 +154,7 @@ const NAV_ITEM_CONFIG = { id: 'configuracoes', Icon: IconConfig, label: 'Configu
 
 const TELAS_VALIDAS = [...NAV_ITEMS_TOP.map(i => i.id), NAV_ITEM_CONFIG.id];
 
-function AppLayout() {
+function AppLayout({ tema, onToggleTema }) {
   const [tela, setTela]               = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get('tela');
@@ -253,6 +259,13 @@ function AppLayout() {
         {/* Configurações — sempre no rodapé */}
         <div className="app__sidebar-footer">
           <NavItem item={NAV_ITEM_CONFIG} />
+          <button
+            className={`app__tema-toggle ${tema === 'dark' ? 'app__tema-toggle--ativo' : ''}`}
+            onClick={onToggleTema}
+          >
+            <span className="app__nav-icon"><IconLua /></span>
+            {tema === 'dark' ? 'Modo Escuro' : 'Modo Claro'}
+          </button>
           {usuario && (
             <div className="app__usuario">
               <span className="app__usuario-nome">👤 {usuario.nome}</span>
@@ -299,7 +312,7 @@ function AppLayout() {
   );
 }
 
-function AppGate({ fontScale }) {
+function AppGate({ fontScale, tema, onToggleTema }) {
   const { usuario, loading } = useAuth();
 
   if (loading) {
@@ -315,7 +328,7 @@ function AppGate({ fontScale }) {
   return (
     <CRMProvider>
       <div style={{ zoom: fontScale }}>
-        <AppLayout />
+        <AppLayout tema={tema} onToggleTema={onToggleTema} />
       </div>
     </CRMProvider>
   );
@@ -325,6 +338,7 @@ export default function App() {
   const [fontScale, setFontScale] = useState(() =>
     parseFloat(localStorage.getItem('crm-font-scale') || '1')
   );
+  const [tema, setTema] = useState(() => localStorage.getItem('crm-theme') || 'light');
 
   useEffect(() => {
     function onScale(e) { setFontScale(e.detail); }
@@ -332,10 +346,19 @@ export default function App() {
     return () => window.removeEventListener('crm-font-scale-change', onScale);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = tema;
+    localStorage.setItem('crm-theme', tema);
+  }, [tema]);
+
+  function alternarTema() {
+    setTema((t) => (t === 'dark' ? 'light' : 'dark'));
+  }
+
   return (
     <ToastProvider>
       <AuthProvider>
-        <AppGate fontScale={fontScale} />
+        <AppGate fontScale={fontScale} tema={tema} onToggleTema={alternarTema} />
       </AuthProvider>
     </ToastProvider>
   );
