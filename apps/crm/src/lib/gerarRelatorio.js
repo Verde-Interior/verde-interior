@@ -211,30 +211,52 @@ export function gerarHtmlImprimivel({
 </html>`;
 }
 
+async function urlParaDataUrl(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url; // mantém URL original se fetch falhar
+  }
+}
+
 export async function baixarPDF(params) {
-  const html2pdf = (await import('html2pdf.js')).default;
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
 
   const nomeArquivo = `Relatorio-${(params.cliente || 'Verde-Interior').replace(/[^\w\s-]/g, '').trim()}-${params.data || ''}.pdf`
     .replace(/\s+/g, '-');
 
   const html = gerarHtmlImprimivel(params);
-
-  // Extrai CSS e body separadamente — html2canvas só consegue renderizar
-  // elementos no documento principal, não dentro de iframes ou com innerHTML
-  // de documento completo (o browser descarta <head>/<style> ao injetar em div)
   const parsed = new DOMParser().parseFromString(html, 'text/html');
-  const cssText = Array.from(parsed.querySelectorAll('style')).map((s) => s.textContent).join('\n');
 
+  // Pré-carrega imagens como data URLs para evitar CORS taint no canvas.
+  // Imagens carregadas pelo browser sem crossOrigin ficam em cache sem headers
+  // CORS — quando html2canvas tenta redesenhá-las o canvas fica em branco.
+  const imgEls = Array.from(parsed.querySelectorAll('img'));
+  await Promise.all(imgEls.map(async (img) => {
+    img.src = await urlParaDataUrl(img.src);
+  }));
+
+  const cssText = Array.from(parsed.querySelectorAll('style')).map((s) => s.textContent).join('\n');
   const styleEl = document.createElement('style');
   styleEl.textContent = cssText;
   document.head.appendChild(styleEl);
 
   const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;min-height:100vh;background:#fff;z-index:99999;overflow:auto;';
+  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#fff;z-index:99999;';
   container.innerHTML = parsed.body.innerHTML;
   document.body.appendChild(container);
 
-  // Aguarda todas as imagens (fotos do relatório) carregarem
+  // Aguarda imagens renderizarem no DOM
   await new Promise((resolve) => {
     const imgs = container.querySelectorAll('img');
     if (!imgs.length) { resolve(); return; }
@@ -244,18 +266,40 @@ export async function baixarPDF(params) {
       if (img.complete) done();
       else { img.onload = done; img.onerror = done; }
     });
-    setTimeout(resolve, 8000);
+    setTimeout(resolve, 5000);
   });
 
+  await new Promise((r) => requestAnimationFrame(r));
+
   try {
-    await html2pdf().set({
-      margin:      [18, 14, 18, 14],
-      filename:    nomeArquivo,
-      image:       { type: 'jpeg', quality: 0.92 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
-      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:   { mode: 'avoid-all' },
-    }).from(container).save();
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: false, // imagens já são data URLs, CORS não é necessário
+      allowTaint: false,
+      logging: false,
+      backgroundColor: '#ffffff',
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * pageW) / canvas.width;
+
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+    }
+
+    pdf.save(nomeArquivo);
   } finally {
     document.head.removeChild(styleEl);
     document.body.removeChild(container);
