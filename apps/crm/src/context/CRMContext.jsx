@@ -102,7 +102,7 @@ const LEAD_CORE_FIELDS = [
   'bairro', 'endereco', 'lat', 'lng',
   'estagioId', 'tiposServico', 'canalOrigem',
   'quantidadeVasos', 'valorEstimado', 'frequenciaVisita',
-  'dataEntrada', 'ultimoContato', 'proximoFollowUp',
+  'dataEntrada', 'ultimoContato', 'proximoFollowUp', 'dataAprovacao',
   'responsavel', 'observacoes', 'motivoPerda', 'clienteSupabaseId',
 ];
 
@@ -120,6 +120,15 @@ export function getTiposServico(lead) {
 // só (ex: promoverParaCliente cria N contratos, mas cor de card é do primário).
 export function getTipoPrimario(lead) {
   return getTiposServico(lead)[0] ?? null;
+}
+
+// Categoria do lead para segmentar a aba Comercial (Escritórios/Eventos).
+// Só é "evento" quando o lead é *exclusivamente* locação para eventos —
+// qualquer combinação com outros tipos de serviço vai para "escritorio".
+export function getCategoria(lead) {
+  const tipos = getTiposServico(lead);
+  const isEvento = tipos.length === 1 && tipos[0] === 'locacao_evento';
+  return isEvento ? 'evento' : 'escritorio';
 }
 
 const camelToSnake = (s) => s.replace(/[A-Z]/g, (l) => '_' + l.toLowerCase());
@@ -372,8 +381,9 @@ export function CRMProvider({ children }) {
         if (['orcamento_pendente', 'orcamento_enviado'].includes(novoEstagioId) && !leadAtualizado.fluxoOrcamento) {
           leadAtualizado.fluxoOrcamento = criarFluxoOrcamento(leadAtualizado, hoje);
         }
-        if (novoEstagioId === 'orcamento_aprovado' && !leadAtualizado.funilExecucao) {
-          leadAtualizado.funilExecucao = criarFunilExecucao(hoje);
+        if (novoEstagioId === 'orcamento_aprovado') {
+          if (!leadAtualizado.funilExecucao) leadAtualizado.funilExecucao = criarFunilExecucao(hoje);
+          leadAtualizado.dataAprovacao = hoje;
         }
         return leadAtualizado;
       })
@@ -660,6 +670,7 @@ export function CRMProvider({ children }) {
         // Helpers
         getTiposServico,
         getTipoPrimario,
+        getCategoria,
       }}
     >
       {children}

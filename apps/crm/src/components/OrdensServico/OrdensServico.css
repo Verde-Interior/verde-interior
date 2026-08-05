@@ -187,14 +187,14 @@
 .os-vazio {
   padding: 3rem 1rem;
   text-align: center;
-  color: #9CA3AF;
+  color: #111827;
   font-size: 14px;
 }
 
 .os-vazio__hint {
   font-size: 12px;
   margin-top: 6px;
-  color: #D1D5DB;
+  color: #111827;
 }
 
 /* Overlay / Modal */

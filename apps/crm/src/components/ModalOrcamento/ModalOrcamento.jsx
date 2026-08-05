@@ -599,6 +599,7 @@ export default function ModalOrcamento() {
   }
 
   function registrarAprovado() {
+    const hoje = new Date().toISOString().split('T')[0];
     const historico = fluxo.cicloAprovacao.historico;
     const ultima = { ...historico[historico.length - 1], resultado: 'aprovado' };
     const novoFluxo = {
@@ -607,7 +608,7 @@ export default function ModalOrcamento() {
     };
     setFluxo(novoFluxo);
     setEstagioId('orcamento_aprovado');
-    atualizarLead(lead.id, { fluxoOrcamento: novoFluxo, estagioId: 'orcamento_aprovado' });
+    atualizarLead(lead.id, { fluxoOrcamento: novoFluxo, estagioId: 'orcamento_aprovado', dataAprovacao: hoje });
     setSalvo(true);
     setTimeout(() => { setSalvo(false); fecharModal(); }, 900);
   }

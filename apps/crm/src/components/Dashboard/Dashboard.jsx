@@ -116,7 +116,7 @@ const STORAGE_ORDEM = 'crm-verde-dashboard-ordem';
 const STORAGE_ABA = 'crm-verde-dashboard-aba';
 
 export default function Dashboard({ onNavegar }) {
-  const { leads, ESTAGIOS, TIPOS_SERVICO, metricas, abrirModal, tarefas, atualizarLead, getTiposServico } = useCRM();
+  const { leads, ESTAGIOS, TIPOS_SERVICO, abrirModal, tarefas, atualizarLead, getTiposServico, getCategoria } = useCRM();
   const toast = useToast();
   const [aba, setAba] = useState(() => localStorage.getItem(STORAGE_ABA) || 'comercial');
   useEffect(() => { localStorage.setItem(STORAGE_ABA, aba); }, [aba]);
@@ -211,10 +211,59 @@ export default function Dashboard({ onNavegar }) {
     style: 'currency', currency: 'BRL', minimumFractionDigits: 0,
   }).format(n);
 
-  const animLeads       = useContador(metricas.totalLeads);
-  const animPipeline    = useContador(metricas.valorPipeline);
-  const animRecorrencia = useContador(metricas.recorrenciaMensal);
-  const animConversao   = useContador(metricas.taxaConversao);
+  // ── Métricas segmentadas: Escritórios × Eventos ────────────────────────────
+  // Evento = lead cujo único tipo de serviço é locação para eventos; qualquer
+  // combinação com outros tipos conta como Escritório.
+  const metricasEscritorios = useMemo(() => {
+    const grupo = leads.filter((l) => getCategoria(l) === 'escritorio');
+    const valorPipeline = grupo
+      .filter((l) => !['orcamento_aprovado', 'orcamento_nao_aprovado'].includes(l.estagioId))
+      .reduce((s, l) => s + (l.valorEstimado ?? 0), 0);
+    const recorrenciaMensal = grupo
+      .filter((l) =>
+        l.estagioId === 'orcamento_aprovado' &&
+        getTiposServico(l).some((t) => TIPOS_SERVICO[t]?.faturamento === 'recorrente') &&
+        l.frequenciaVisita !== 'Pontual'
+      )
+      .reduce((s, l) => s + (l.valorEstimado ?? 0), 0);
+    const finalizados = grupo.filter((l) => ['orcamento_aprovado', 'orcamento_nao_aprovado'].includes(l.estagioId)).length;
+    const aprovados   = grupo.filter((l) => l.estagioId === 'orcamento_aprovado').length;
+    return {
+      totalLeads: grupo.length,
+      valorPipeline,
+      recorrenciaMensal,
+      taxaConversao: finalizados > 0 ? Math.round((aprovados / finalizados) * 100) : 0,
+    };
+  }, [leads, getCategoria, getTiposServico, TIPOS_SERVICO]);
+
+  const metricasEventos = useMemo(() => {
+    const grupo = leads.filter((l) => getCategoria(l) === 'evento');
+    const valorPipeline = grupo
+      .filter((l) => !['orcamento_aprovado', 'orcamento_nao_aprovado'].includes(l.estagioId))
+      .reduce((s, l) => s + (l.valorEstimado ?? 0), 0);
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    const fechadosNoMes = grupo.filter((l) =>
+      l.estagioId === 'orcamento_aprovado' && l.dataAprovacao?.slice(0, 7) === mesAtual
+    );
+    return {
+      totalLeads: grupo.length,
+      valorPipeline,
+      eventosConfirmadosMes: fechadosNoMes.length,
+      ticketMedio: fechadosNoMes.length > 0
+        ? fechadosNoMes.reduce((s, l) => s + (l.valorEstimado ?? 0), 0) / fechadosNoMes.length
+        : 0,
+    };
+  }, [leads, getCategoria]);
+
+  const animLeadsEsc       = useContador(metricasEscritorios.totalLeads);
+  const animPipelineEsc    = useContador(metricasEscritorios.valorPipeline);
+  const animRecorrenciaEsc = useContador(metricasEscritorios.recorrenciaMensal);
+  const animConversaoEsc   = useContador(metricasEscritorios.taxaConversao);
+
+  const animLeadsEvt       = useContador(metricasEventos.totalLeads);
+  const animPipelineEvt    = useContador(metricasEventos.valorPipeline);
+  const animTicketEvt      = useContador(Math.round(metricasEventos.ticketMedio));
+  const animConfirmadosEvt = useContador(metricasEventos.eventosConfirmadosMes);
 
   // ── Auto-arquivamento (executa 1× no mount) ───────────────────────────────
   useEffect(() => {
@@ -915,12 +964,22 @@ export default function Dashboard({ onNavegar }) {
           <>
             {/* ── KPIs — sempre no topo, não reordenável ── */}
             <section className="dashboard__secao">
-              <h2 className="dashboard__secao-titulo">Visão Geral</h2>
+              <h2 className="dashboard__secao-titulo">Escritórios</h2>
               <div className="dashboard__kpis">
-                <KpiCard label="Leads no Pipeline"   valor={animLeads}            sub="total de contatos" />
-                <KpiCard label="Valor em Aberto"      valor={fmt(animPipeline)}    sub="orçamentos não fechados" onClick={() => onNavegar('kanban')} />
-                <KpiCard label="Recorrência Mensal"   valor={fmt(animRecorrencia)} sub="contratos ativos/mês" destaque />
-                <KpiCard label="Taxa de Conversão"    valor={`${animConversao}%`}  sub="aprovados vs finalizados" />
+                <KpiCard label="Leads no Pipeline"  valor={animLeadsEsc}            sub="total de contatos" />
+                <KpiCard label="Valor em Aberto"    valor={fmt(animPipelineEsc)}    sub="orçamentos não fechados" onClick={() => onNavegar('kanban')} />
+                <KpiCard label="Recorrência Mensal" valor={fmt(animRecorrenciaEsc)} sub="contratos ativos/mês" destaque />
+                <KpiCard label="Taxa de Conversão"  valor={`${animConversaoEsc}%`}  sub="aprovados vs finalizados" />
+              </div>
+            </section>
+
+            <section className="dashboard__secao">
+              <h2 className="dashboard__secao-titulo">Eventos</h2>
+              <div className="dashboard__kpis">
+                <KpiCard label="Leads no Pipeline"          valor={animLeadsEvt}         sub="total de contatos" />
+                <KpiCard label="Valor em Aberto"            valor={fmt(animPipelineEvt)} sub="orçamentos não fechados" onClick={() => onNavegar('kanban')} />
+                <KpiCard label="Ticket Médio"                valor={fmt(animTicketEvt)}   sub="eventos fechados no mês" destaque />
+                <KpiCard label="Eventos Confirmados no Mês" valor={animConfirmadosEvt}   sub="fechados este mês" />
               </div>
             </section>
 
