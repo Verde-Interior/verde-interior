@@ -230,7 +230,7 @@ export async function baixarPDF(params) {
   document.head.appendChild(styleEl);
 
   const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#fff;z-index:-1;pointer-events:none;';
+  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;min-height:100vh;background:#fff;z-index:99999;overflow:auto;';
   container.innerHTML = parsed.body.innerHTML;
   document.body.appendChild(container);
 
