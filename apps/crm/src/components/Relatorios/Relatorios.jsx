@@ -73,6 +73,7 @@ export default function Relatorios() {
   const [loading,    setLoading]    = useState(true);
   const [busca,      setBusca]      = useState('');
   const [filtroFunc, setFiltroFunc] = useState('todos');
+  const [filtroGrupo, setFiltroGrupo] = useState('todos');
   // Range de datas (defaults: últimos 30 dias)
   const hojeStr = new Date().toISOString().split('T')[0];
   const trintaAtrasStr = (() => {
@@ -204,10 +205,16 @@ export default function Relatorios() {
     return m;
   }, [employees]);
 
+  const grupos = useMemo(() => {
+    const set = new Set(relatorios.map(r => r.agenda?.cliente?.grupo_servico).filter(Boolean));
+    return [...set].sort();
+  }, [relatorios]);
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
     return relatorios.filter(r => {
       if (filtroFunc !== 'todos' && String(r.funcionario_id) !== filtroFunc) return false;
+      if (filtroGrupo !== 'todos' && r.agenda?.cliente?.grupo_servico !== filtroGrupo) return false;
       if (q) {
         const nomeEmp = r.agenda?.cliente?.nome_empresa?.toLowerCase() ?? '';
         const bairro  = r.agenda?.cliente?.bairro?.toLowerCase() ?? '';
@@ -222,7 +229,7 @@ export default function Relatorios() {
       }
       return true;
     });
-  }, [relatorios, busca, filtroFunc, flagsAlerta]);
+  }, [relatorios, busca, filtroFunc, filtroGrupo, flagsAlerta]);
 
   const metricas = useMemo(() => ({
     total:    filtrados.length,
@@ -342,6 +349,13 @@ export default function Relatorios() {
           <option value="todos">Todos funcionários</option>
           {employees.map(e => (
             <option key={e.id} value={String(e.id)}>{e.name}</option>
+          ))}
+        </select>
+
+        <select className="rel__select" value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)}>
+          <option value="todos">Todos os grupos</option>
+          {grupos.map(g => (
+            <option key={g} value={g}>{g}</option>
           ))}
         </select>
 

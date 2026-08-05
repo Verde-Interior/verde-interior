@@ -39,6 +39,7 @@ const GRUPO_OPTIONS = [
   { value: 'Manutenção com troca',  label: 'Manutenção com troca'},
   { value: 'Somente orquídea',      label: 'Somente orquídea'    },
   { value: 'Pontual',               label: 'Pontual'             },
+  { value: 'Outros Serviços',       label: 'Outros Serviços'     },
 ];
 
 const FREQ_VISITA_OPTIONS = [
