@@ -6,6 +6,7 @@ import { distanciaMetros } from '../../utils/geoUtils';
 import { formatarDuracao } from '../../utils/formatUtils';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import { gerarHtmlImprimivel, abrirJanelaImpressao } from '../../lib/gerarRelatorio';
 import './Relatorios.css';
 
 function duracaoEntre(inicio, fim) {
@@ -491,6 +492,29 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
   const [enderecoOut, setEnderecoOut] = useState(null); // rua+num do check-out
   const [loadingEnd,  setLoadingEnd]  = useState(false);
 
+  function exportarPDF() {
+    const c = r.agenda?.cliente;
+    const fotosComUrl = (r.fotos ?? []).map((f) => ({
+      url: urlsFotos[f.id] ?? f.url ?? '',
+      observacao: f.observacao ?? '',
+    })).filter((f) => f.url);
+
+    abrirJanelaImpressao(gerarHtmlImprimivel({
+      cliente:      c?.nome_empresa ?? r.agenda?.nome_cliente ?? '—',
+      bairro:       c?.bairro ?? '',
+      data:         formatarData(r.agenda?.data_agendada),
+      status:       { em_execucao: 'Em execução', concluido: 'Concluída' }[r.status] ?? r.status,
+      checkin:      r.checkin_at  ? new Date(r.checkin_at).toLocaleTimeString('pt-BR',  { hour: '2-digit', minute: '2-digit' }) : '—',
+      checkout:     r.checkout_at ? new Date(r.checkout_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—',
+      obsGestor:    r.agenda?.observacoes_gestor ?? '',
+      relato:       (r.relato || '').split('\n\n— Fotos —\n')[0].trim(),
+      obsRelatorio: r.observacoes ?? '',
+      assinatura:   assinUrl,
+      responsavel:  r.assinatura_responsavel_nome ?? '',
+      fotos:        fotosComUrl,
+    }));
+  }
+
   function remover() {
     const nome = c?.nome_empresa ?? 'este relatório';
     setConfirmar({
@@ -745,6 +769,9 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
             {removendo ? 'Removendo...' : '✕ Remover relatório'}
           </button>
           <span style={{ flex: 1 }} />
+          <button className="rel-btn rel-btn--pdf" onClick={exportarPDF} title="Exportar como PDF">
+            📄 Exportar PDF
+          </button>
           <button className="rel-btn" onClick={onFechar}>Fechar</button>
         </footer>
       </div>

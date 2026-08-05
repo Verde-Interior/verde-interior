@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import { gerarHtmlImprimivel, abrirJanelaImpressao } from '../../lib/gerarRelatorio';
 
 function formatarHora(iso) {
   if (!iso) return '—';
@@ -66,11 +67,7 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
 
   function exportarPDF() {
     if (!relatorio) return;
-    // Abre uma janela nova com o relatório formatado pra impressão.
-    // O usuário salva como PDF pelo diálogo padrão do browser.
-    const w = window.open('', '_blank', 'width=900,height=1000');
-    if (!w) { alert('Bloqueio de pop-up — libere no browser pra exportar.'); return; }
-    w.document.write(gerarHtmlImprimivel({
+    abrirJanelaImpressao(gerarHtmlImprimivel({
       cliente: nomeCliente,
       bairro: visita.clientes?.bairro ?? '',
       data: dataFmt,
@@ -84,9 +81,6 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
       responsavel: relatorio.assinatura_responsavel_nome ?? '',
       fotos,
     }));
-    w.document.close();
-    // Auto-abre o diálogo de impressão após um instante pra fotos carregarem
-    setTimeout(() => { w.focus(); w.print(); }, 800);
   }
 
   const overlayClose = useOverlayClose(onFechar);
@@ -211,77 +205,3 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
   );
 }
 
-// ─── HTML da página de impressão (usado por exportarPDF) ──────────────────────
-function gerarHtmlImprimivel({ cliente, bairro, data, status, checkin, checkout, obsGestor, relato, obsRelatorio, assinatura, responsavel, fotos }) {
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  })[c]);
-  const fotosHtml = fotos.map(f => `
-    <div class="foto">
-      <img src="${esc(f.url)}" alt=""/>
-      ${f.observacao ? `<p class="foto-obs">${esc(f.observacao)}</p>` : ''}
-    </div>
-  `).join('');
-  return `<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<title>Relatório - ${esc(cliente)} - ${esc(data)}</title>
-<style>
-  @page { size: A4; margin: 18mm 14mm; }
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 0; padding: 0; line-height: 1.5; }
-  header { border-bottom: 3px solid #1a3d10; padding-bottom: 14px; margin-bottom: 20px; }
-  h1 { font-size: 22px; color: #1a3d10; margin: 0 0 4px; }
-  .sub { font-size: 13px; color: #6b7280; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: #d1fae5; color: #065f46; }
-  .info { display: flex; gap: 24px; margin: 14px 0 22px; font-size: 13px; }
-  .info div { flex: 1; }
-  .info span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; margin-bottom: 2px; }
-  section { margin-bottom: 22px; page-break-inside: avoid; }
-  section h2 { font-size: 15px; color: #1a3d10; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin-bottom: 10px; }
-  .relato { white-space: pre-wrap; font-size: 13px; }
-  .fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .foto { border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; page-break-inside: avoid; }
-  .foto img { width: 100%; height: auto; display: block; }
-  .foto-obs { padding: 6px 8px; font-size: 12px; color: #4b5563; background: #f9fafb; margin: 0; }
-  .assinatura-wrap { max-width: 260px; }
-  .assinatura-wrap img { max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 4px; }
-  footer { position: fixed; bottom: 10mm; left: 14mm; right: 14mm; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 5px; }
-  @media print {
-    body { font-size: 11pt; }
-  }
-</style>
-</head>
-<body>
-  <header>
-    <h1>Relatório de visita técnica</h1>
-    <div class="sub">Verde Interior — Paisagismo Corporativo</div>
-  </header>
-
-  <div class="info">
-    <div><span>Cliente</span>${esc(cliente)}${bairro ? ` · ${esc(bairro)}` : ''}</div>
-    <div><span>Data</span>${esc(data)}</div>
-    <div><span>Status</span><span class="badge">${esc(status)}</span></div>
-  </div>
-
-  <div class="info">
-    <div><span>Check-in</span>${esc(checkin)}</div>
-    <div><span>Check-out</span>${esc(checkout)}</div>
-    ${responsavel ? `<div><span>Responsável</span>${esc(responsavel)}</div>` : '<div></div>'}
-  </div>
-
-  ${obsGestor ? `<section><h2>Observações do gestor</h2><p class="relato">${esc(obsGestor)}</p></section>` : ''}
-
-  ${relato ? `<section><h2>Relato da tarefa</h2><p class="relato">${esc(relato)}</p></section>` : ''}
-
-  ${obsRelatorio ? `<section><h2>Observações gerais</h2><p class="relato">${esc(obsRelatorio)}</p></section>` : ''}
-
-  ${fotos.length ? `<section><h2>Fotos (${fotos.length})</h2><div class="fotos">${fotosHtml}</div></section>` : ''}
-
-  ${assinatura ? `<section><h2>Assinatura do responsável</h2><div class="assinatura-wrap"><img src="${esc(assinatura)}" alt="Assinatura"/></div></section>` : ''}
-
-  <footer>Verde Interior — Relatório gerado em ${esc(new Date().toLocaleString('pt-BR'))}</footer>
-</body>
-</html>`;
-}
