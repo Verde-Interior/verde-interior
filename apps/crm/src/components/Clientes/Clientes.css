@@ -112,6 +112,10 @@
 
 /* ── Filtros ── */
 .clientes__filtros {
+  position: relative;
+  z-index: 10; /* backdrop-filter cria um stacking context próprio — sem
+                  z-index aqui, o dropdown de sugestões fica preso nele e a
+                  tabela (que vem depois no DOM) pinta por cima */
   display: flex;
   align-items: center;
   gap: 10px;

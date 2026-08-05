@@ -113,7 +113,13 @@ function PopupAcoes({ onAbrirCliente }) {
     function onPopupOpen(e) {
       const btn = e.popup.getElement()?.querySelector('.mapa-popup__abrir');
       if (!btn) return;
-      btn.addEventListener('click', () => onAbrirCliente(btn.dataset.clienteId), { once: true });
+      btn.addEventListener('click', () => {
+        // Fecha o popup do Leaflet ao abrir o modal — sem isso ele continua
+        // "aberto" por trás com o mesmo botão, cujo listener (once) já foi
+        // consumido, e um segundo clique não faz mais nada.
+        map.closePopup();
+        onAbrirCliente(btn.dataset.clienteId);
+      }, { once: true });
     }
     map.on('popupopen', onPopupOpen);
     return () => map.off('popupopen', onPopupOpen);
