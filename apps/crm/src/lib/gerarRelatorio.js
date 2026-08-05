@@ -217,22 +217,42 @@ export async function baixarPDF(params) {
   const nomeArquivo = `Relatorio-${(params.cliente || 'Verde-Interior').replace(/[^\w\s-]/g, '').trim()}-${params.data || ''}.pdf`
     .replace(/\s+/g, '-');
 
-  // Cria um container temporário fora da tela para renderizar o HTML
-  const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;';
-  // Injeta apenas o body do HTML gerado (html2pdf aplica estilos via opt)
   const html = gerarHtmlImprimivel(params);
-  container.innerHTML = html;
-  document.body.appendChild(container);
 
-  await html2pdf().set({
-    margin:      [18, 14, 18, 14],
-    filename:    nomeArquivo,
-    image:       { type: 'jpeg', quality: 0.92 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak:   { mode: 'avoid-all' },
-  }).from(container).save();
+  // Usa iframe para que o documento completo (head + estilos) seja carregado
+  // corretamente antes de o html2canvas renderizar
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:0;left:0;width:794px;height:1123px;border:none;opacity:0;pointer-events:none;';
+  document.body.appendChild(iframe);
 
-  document.body.removeChild(container);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
+  // Aguarda imagens carregarem
+  await new Promise((resolve) => {
+    const imgs = iframe.contentDocument.querySelectorAll('img');
+    if (!imgs.length) { resolve(); return; }
+    let pending = imgs.length;
+    const done = () => { if (--pending === 0) resolve(); };
+    imgs.forEach((img) => {
+      if (img.complete) { done(); }
+      else { img.onload = done; img.onerror = done; }
+    });
+    // Timeout de segurança
+    setTimeout(resolve, 8000);
+  });
+
+  try {
+    await html2pdf().set({
+      margin:      [18, 14, 18, 14],
+      filename:    nomeArquivo,
+      image:       { type: 'jpeg', quality: 0.92 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:   { mode: 'avoid-all' },
+    }).from(iframe.contentDocument.body).save();
+  } finally {
+    document.body.removeChild(iframe);
+  }
 }
