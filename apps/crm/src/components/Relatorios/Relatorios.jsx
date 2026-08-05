@@ -6,7 +6,7 @@ import { distanciaMetros } from '../../utils/geoUtils';
 import { formatarDuracao } from '../../utils/formatUtils';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
-import { gerarHtmlImprimivel, abrirJanelaImpressao } from '../../lib/gerarRelatorio';
+import { baixarPDF } from '../../lib/gerarRelatorio';
 import './Relatorios.css';
 
 function duracaoEntre(inicio, fim) {
@@ -513,7 +513,7 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
       observacao: f.observacao ?? '',
     })).filter((f) => f.url);
 
-    abrirJanelaImpressao(gerarHtmlImprimivel({
+    baixarPDF({
       cliente:      c?.nome_empresa ?? r.agenda?.nome_cliente ?? '—',
       bairro:       c?.bairro ?? '',
       data:         formatarData(r.agenda?.data_agendada),
@@ -526,7 +526,7 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
       assinatura:   assinUrl,
       responsavel:  r.assinatura_responsavel_nome ?? '',
       fotos:        fotosComUrl,
-    }));
+    });
   }
 
   function remover() {

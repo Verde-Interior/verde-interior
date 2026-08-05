@@ -211,10 +211,28 @@ export function gerarHtmlImprimivel({
 </html>`;
 }
 
-export function abrirJanelaImpressao(html) {
-  const w = window.open('', '_blank', 'width=900,height=1000');
-  if (!w) { alert('Bloqueio de pop-up — libere no browser pra exportar.'); return; }
-  w.document.write(html);
-  w.document.close();
-  setTimeout(() => { w.focus(); w.print(); }, 800);
+export async function baixarPDF(params) {
+  const html2pdf = (await import('html2pdf.js')).default;
+
+  const nomeArquivo = `Relatorio-${(params.cliente || 'Verde-Interior').replace(/[^\w\s-]/g, '').trim()}-${params.data || ''}.pdf`
+    .replace(/\s+/g, '-');
+
+  // Cria um container temporário fora da tela para renderizar o HTML
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;';
+  // Injeta apenas o body do HTML gerado (html2pdf aplica estilos via opt)
+  const html = gerarHtmlImprimivel(params);
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  await html2pdf().set({
+    margin:      [18, 14, 18, 14],
+    filename:    nomeArquivo,
+    image:       { type: 'jpeg', quality: 0.92 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak:   { mode: 'avoid-all' },
+  }).from(container).save();
+
+  document.body.removeChild(container);
 }

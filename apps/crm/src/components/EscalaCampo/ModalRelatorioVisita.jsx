@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
-import { gerarHtmlImprimivel, abrirJanelaImpressao } from '../../lib/gerarRelatorio';
+import { baixarPDF } from '../../lib/gerarRelatorio';
 
 function formatarHora(iso) {
   if (!iso) return '—';
@@ -67,20 +67,20 @@ export default function ModalRelatorioVisita({ visita, onFechar }) {
 
   function exportarPDF() {
     if (!relatorio) return;
-    abrirJanelaImpressao(gerarHtmlImprimivel({
-      cliente: nomeCliente,
-      bairro: visita.clientes?.bairro ?? '',
-      data: dataFmt,
-      status: statusLabel,
-      checkin: formatarHora(relatorio.checkin_at),
-      checkout: formatarHora(relatorio.checkout_at),
-      obsGestor: visita.observacoes_gestor ?? '',
-      relato: relatorio.relato ?? '',
+    baixarPDF({
+      cliente:      nomeCliente,
+      bairro:       visita.clientes?.bairro ?? '',
+      data:         dataFmt,
+      status:       statusLabel,
+      checkin:      formatarHora(relatorio.checkin_at),
+      checkout:     formatarHora(relatorio.checkout_at),
+      obsGestor:    visita.observacoes_gestor ?? '',
+      relato:       relatorio.relato ?? '',
       obsRelatorio: relatorio.observacoes ?? '',
-      assinatura: relatorio.assinatura_responsavel_img ?? null,
-      responsavel: relatorio.assinatura_responsavel_nome ?? '',
+      assinatura:   relatorio.assinatura_responsavel_img ?? null,
+      responsavel:  relatorio.assinatura_responsavel_nome ?? '',
       fotos,
-    }));
+    });
   }
 
   const overlayClose = useOverlayClose(onFechar);
