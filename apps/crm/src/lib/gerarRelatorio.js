@@ -11,6 +11,9 @@ export function gerarHtmlImprimivel({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[c]);
 
+  const relatoLimpo      = (relato      || '').split('\n\n— Fotos —\n')[0].trim();
+  const obsRelatorioLimpo = (obsRelatorio || '').split('\n\n— Fotos —\n')[0].trim();
+
   const fotosHtml = fotos.map((f) => `
     <div class="foto">
       <img src="${esc(f.url)}" alt=""/>
@@ -84,7 +87,6 @@ export function gerarHtmlImprimivel({
   /* ── Seções ── */
   section {
     margin-bottom: 16px;
-    break-inside: avoid-page;
   }
   section h2 {
     font-size: 11px;
@@ -188,9 +190,9 @@ export function gerarHtmlImprimivel({
 
   ${obsGestor ? `<section><h2>Observações do gestor</h2><p class="relato">${esc(obsGestor)}</p></section>` : ''}
 
-  ${relato ? `<section><h2>Relato da tarefa</h2><p class="relato">${esc(relato)}</p></section>` : ''}
+  ${relatoLimpo ? `<section><h2>Relato da tarefa</h2><p class="relato">${esc(relatoLimpo)}</p></section>` : ''}
 
-  ${obsRelatorio ? `<section><h2>Observações gerais</h2><p class="relato">${esc(obsRelatorio)}</p></section>` : ''}
+  ${obsRelatorioLimpo ? `<section><h2>Observações gerais</h2><p class="relato">${esc(obsRelatorioLimpo)}</p></section>` : ''}
 
   ${fotos.length ? `<section><h2>Fotos (${fotos.length})</h2><div class="fotos">${fotosHtml}</div></section>` : ''}
 
