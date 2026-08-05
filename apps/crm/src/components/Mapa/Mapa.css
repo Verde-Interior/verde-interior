@@ -9,6 +9,8 @@
 
 /* ── Cabeçalho ── */
 .mapa__header {
+  position: relative;
+  z-index: 10; /* fica acima dos panes/controles do Leaflet (.mapa__area) */
   padding: 20px 26px 14px;
   background: var(--glass-light-soft);
   border-bottom: 1px solid var(--glass-light-border);
@@ -92,6 +94,10 @@
 .mapa__area {
   flex: 1;
   position: relative;
+  /* Sem z-index aqui, os panes/controles internos do Leaflet (que chegam a
+     z-index: 1000) escapam pro stacking context raiz e ficam por cima de
+     tudo fora do mapa — isolando com z-index:0 eles ficam contidos aqui. */
+  z-index: 0;
 }
 
 .mapa__leaflet {
