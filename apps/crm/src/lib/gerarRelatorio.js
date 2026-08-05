@@ -252,7 +252,9 @@ export async function baixarPDF(params) {
   document.head.appendChild(styleEl);
 
   const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#fff;z-index:99999;';
+  // Padding interno garante margens no conteúdo capturado pelo html2canvas.
+  // O jsPDF também adiciona margem ao posicionar a imagem na página.
+  container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#fff;z-index:99999;padding:48px 56px;box-sizing:border-box;';
   container.innerHTML = parsed.body.innerHTML;
   document.body.appendChild(container);
 
@@ -285,21 +287,18 @@ export async function baixarPDF(params) {
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
 
-    const mx = 14; // margem horizontal em mm
-    const my = 14; // margem vertical em mm
-    const usableW = pageW - mx * 2;
-    const usableH = pageH - my * 2;
-
-    const imgW = usableW;
-    const imgH = (canvas.height * usableW) / canvas.width;
+    // O padding do container já garante margens no conteúdo.
+    // Aqui apenas paginamos a imagem preenchendo a página inteira.
+    const imgW = pageW;
+    const imgH = (canvas.height * pageW) / canvas.width;
 
     let pageCount = 0;
-    let yScrolled = 0; // quanto da imagem já foi exibido (em mm)
+    let yScrolled = 0;
 
     while (yScrolled < imgH) {
       if (pageCount > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', mx, my - yScrolled, imgW, imgH);
-      yScrolled += usableH;
+      pdf.addImage(imgData, 'JPEG', 0, -yScrolled, imgW, imgH);
+      yScrolled += pageH;
       pageCount++;
     }
 
