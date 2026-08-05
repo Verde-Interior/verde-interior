@@ -111,6 +111,36 @@ export default function Configuracoes() {
     setTimeout(() => setMetasSalvas(false), 2000);
   }
 
+  // ── Metas Ceasa/Holambra ──────────────────────────────────────────────────
+  const METAS_CEASA_CAMPOS = [
+    { id: 'valorVendido',     label: 'Valor Vendido no Mês',     desc: 'Soma das vendas fechadas no Ceasa/Holambra', prefixo: 'R$' },
+    { id: 'negociosFechados', label: 'Negócios Fechados no Mês', desc: 'Quantidade de lojas fechadas',                prefixo: null },
+  ];
+
+  const [metasCeasa, setMetasCeasa] = useState(() => {
+    try {
+      const s = localStorage.getItem('crm-metas-ceasa');
+      if (s) return JSON.parse(s);
+    } catch {}
+    return {};
+  });
+  const [metasCeasaSalvas, setMetasCeasaSalvas] = useState(false);
+
+  function setMetaCeasa(id, valor) {
+    setMetasCeasa((prev) => ({ ...prev, [id]: valor }));
+  }
+
+  function salvarMetasCeasa() {
+    const parsed = {};
+    for (const [k, v] of Object.entries(metasCeasa)) {
+      parsed[k] = Number(v) || 0;
+    }
+    localStorage.setItem('crm-metas-ceasa', JSON.stringify(parsed));
+    window.dispatchEvent(new CustomEvent('crm-metas-ceasa-change', { detail: parsed }));
+    setMetasCeasaSalvas(true);
+    setTimeout(() => setMetasCeasaSalvas(false), 2000);
+  }
+
   // ── Pipeline ───────────────────────────────────────────────────────────────
   const [canalPadrao, setCanalPadrao] = useState(
     () => localStorage.getItem('crm-canal-padrao') || 'WhatsApp'
@@ -282,6 +312,42 @@ export default function Configuracoes() {
                   onClick={salvarMetas}
                 >
                   {metasSalvas ? '✓ Salvo' : 'Salvar Metas'}
+                </button>
+              </div>
+            </section>
+
+            {/* Metas Ceasa/Holambra */}
+            <section className="config__card">
+              <h2 className="config__card-titulo">Metas Ceasa/Holambra</h2>
+              <p className="config__card-desc">Exibidas como barras de progresso no Dashboard Ceasa/Holambra · Deixe em branco para não exibir</p>
+
+              {METAS_CEASA_CAMPOS.map((campo) => (
+                <div key={campo.id} className="config__linha">
+                  <div className="config__linha-info">
+                    <span className="config__linha-label">{campo.label}</span>
+                    <span className="config__linha-desc">{campo.desc}</span>
+                  </div>
+                  <div className="config__linha-controle config__linha-controle--row">
+                    {campo.prefixo && <span className="config__input-prefix">{campo.prefixo}</span>}
+                    <input
+                      className="config__input config__input--meta"
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={metasCeasa[campo.id] ?? ''}
+                      onChange={(e) => setMetaCeasa(campo.id, e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && salvarMetasCeasa()}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <div className="config__metas-footer">
+                <button
+                  className={`config__btn ${metasCeasaSalvas ? 'config__btn--salvo' : 'config__btn--primary'}`}
+                  onClick={salvarMetasCeasa}
+                >
+                  {metasCeasaSalvas ? '✓ Salvo' : 'Salvar Metas'}
                 </button>
               </div>
             </section>

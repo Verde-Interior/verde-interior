@@ -22,7 +22,7 @@ const TIPOS = ['atacadista', 'varejista', 'floricultura', 'outros'];
 const VAZIO = {
   nome_loja: '', responsavel: '', telefone: '', whatsapp: '',
   tipo: 'atacadista', produtos_interesse: '', observacoes: '', endereco: '',
-  etapa: 'prospecto',
+  etapa: 'prospecto', valor_venda: '',
 };
 
 export default function CeasaHolambra() {
@@ -65,7 +65,7 @@ export default function CeasaHolambra() {
 
   // ── Modal ──
   function abrirAdd()   { setModal({ modo: 'add',  dados: { ...VAZIO } }); }
-  function abrirEdit(p) { setModal({ modo: 'edit', dados: { ...p } }); }
+  function abrirEdit(p) { setModal({ modo: 'edit', dados: { ...p }, etapaOriginal: p.etapa }); }
   function fechar()     { setModal(null); }
   function setField(k, v) { setModal(m => ({ ...m, dados: { ...m.dados, [k]: v } })); }
 
@@ -80,7 +80,13 @@ export default function CeasaHolambra() {
         tipo: d.tipo, produtos_interesse: d.produtos_interesse || null,
         observacoes: d.observacoes || null, endereco: d.endereco || null,
         etapa: d.etapa,
+        valor_venda: d.valor_venda === '' || d.valor_venda == null ? null : Number(d.valor_venda),
       };
+      // Grava fechado_em só na transição para "fechado" — não sobrescreve
+      // se o prospect já estava fechado antes desta edição.
+      const fechandoAgora = d.etapa === 'fechado' && (modal.modo === 'add' || modal.etapaOriginal !== 'fechado');
+      if (fechandoAgora) payload.fechado_em = new Date().toISOString().split('T')[0];
+
       if (modal.modo === 'add') {
         const { error } = await supabase.from('ceasa_prospects').insert(payload);
         if (error) throw error;
@@ -101,8 +107,15 @@ export default function CeasaHolambra() {
 
   // ── Drag & Drop entre colunas ──
   async function moverParaEtapa(ceasaId, novaEtapa) {
-    setProspects(prev => prev.map(p => p.id === ceasaId ? { ...p, etapa: novaEtapa } : p));
-    const { error } = await supabase.from('ceasa_prospects').update({ etapa: novaEtapa }).eq('id', ceasaId);
+    const atual = prospects.find(p => p.id === ceasaId);
+    const patch = { etapa: novaEtapa };
+    // Grava fechado_em só na transição para "fechado" — não sobrescreve
+    // se o prospect já estava fechado antes deste movimento.
+    if (novaEtapa === 'fechado' && atual?.etapa !== 'fechado') {
+      patch.fechado_em = new Date().toISOString().split('T')[0];
+    }
+    setProspects(prev => prev.map(p => p.id === ceasaId ? { ...p, ...patch } : p));
+    const { error } = await supabase.from('ceasa_prospects').update(patch).eq('id', ceasaId);
     if (error) { toast.erro('Erro ao mover'); carregar(); }
   }
 
@@ -322,6 +335,16 @@ export default function CeasaHolambra() {
                     {ETAPAS.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
                   </select>
                 </div>
+              </div>
+              <div className="ceasa__campo">
+                <label>Valor da Venda (R$)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={modal.dados.valor_venda ?? ''}
+                  onChange={e => setField('valor_venda', e.target.value)}
+                  placeholder="Preencha ao fechar a venda"
+                />
               </div>
               <div className="ceasa__campo">
                 <label>Responsável</label>

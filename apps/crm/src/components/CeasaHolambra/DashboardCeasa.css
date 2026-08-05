@@ -185,6 +185,65 @@
   padding: 20px 0;
 }
 
+/* Metas do mês */
+.dceasa__card--metas {
+  margin-top: 16px;
+}
+
+.dceasa__metas-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dceasa__meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dceasa__meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dceasa__meta-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dceasa__meta-valores {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dceasa__meta-sep { color: var(--text-muted); }
+
+.dceasa__meta-pct {
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.dceasa__meta-track {
+  height: 8px;
+  background: var(--surface-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dceasa__meta-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
 @media (max-width: 768px) {
   .dceasa__kpis { grid-template-columns: repeat(2, 1fr); }
   .dceasa__grid { grid-template-columns: 1fr; }

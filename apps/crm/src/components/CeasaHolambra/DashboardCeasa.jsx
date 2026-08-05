@@ -14,9 +14,30 @@ const ETAPAS = [
 
 const TIPOS = ['atacadista', 'varejista', 'floricultura', 'outros'];
 
+const fmt = (n) => new Intl.NumberFormat('pt-BR', {
+  style: 'currency', currency: 'BRL', minimumFractionDigits: 0,
+}).format(n);
+
+function useMetasCeasa() {
+  const [metas, setMetas] = useState(() => {
+    try {
+      const s = localStorage.getItem('crm-metas-ceasa');
+      if (s) return JSON.parse(s);
+    } catch {}
+    return {};
+  });
+  useEffect(() => {
+    function onMeta(e) { setMetas(e.detail ?? {}); }
+    window.addEventListener('crm-metas-ceasa-change', onMeta);
+    return () => window.removeEventListener('crm-metas-ceasa-change', onMeta);
+  }, []);
+  return metas;
+}
+
 export default function DashboardCeasa() {
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading]     = useState(true);
+  const metas = useMetasCeasa();
 
   useEffect(() => {
     supabase.from('ceasa_prospects').select('*').then(({ data }) => {
@@ -31,6 +52,19 @@ export default function DashboardCeasa() {
   const fechados = prospects.filter(p => p.etapa === 'fechado').length;
   const ativos   = prospects.filter(p => !['fechado','sem_interesse'].includes(p.etapa)).length;
   const conversao = total > 0 ? Math.round((fechados / total) * 100) : 0;
+
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  const fechadosNoMes = prospects.filter(p =>
+    p.etapa === 'fechado' && p.fechado_em?.slice(0, 7) === mesAtual
+  );
+  const valorVendidoMes     = fechadosNoMes.reduce((s, p) => s + (p.valor_venda ?? 0), 0);
+  const negociosFechadosMes = fechadosNoMes.length;
+
+  const metaValor     = Number(metas.valorVendido) || 0;
+  const metaNegocios  = Number(metas.negociosFechados) || 0;
+  const pctValor      = metaValor > 0 ? Math.min(Math.round((valorVendidoMes / metaValor) * 100), 100) : 0;
+  const pctNegocios   = metaNegocios > 0 ? Math.min(Math.round((negociosFechadosMes / metaNegocios) * 100), 100) : 0;
+  const corPct = (pct) => (pct >= 100 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444');
 
   const porEtapa = ETAPAS.map(e => ({
     ...e,
@@ -112,6 +146,46 @@ export default function DashboardCeasa() {
           )}
         </div>
       </div>
+
+      {(metaValor > 0 || metaNegocios > 0) && (
+        <div className="dceasa__card dceasa__card--metas">
+          <h3 className="dceasa__card-titulo">Metas do Mês</h3>
+          <div className="dceasa__metas-wrap">
+            {metaValor > 0 && (
+              <div className="dceasa__meta-item">
+                <div className="dceasa__meta-header">
+                  <span className="dceasa__meta-label">Valor Vendido</span>
+                  <span className="dceasa__meta-valores">
+                    <strong style={{ color: corPct(pctValor) }}>{fmt(valorVendidoMes)}</strong>
+                    <span className="dceasa__meta-sep"> / </span>
+                    {fmt(metaValor)}
+                    <span className="dceasa__meta-pct" style={{ color: corPct(pctValor) }}>{pctValor}%</span>
+                  </span>
+                </div>
+                <div className="dceasa__meta-track">
+                  <div className="dceasa__meta-fill" style={{ width: `${pctValor}%`, background: corPct(pctValor) }} />
+                </div>
+              </div>
+            )}
+            {metaNegocios > 0 && (
+              <div className="dceasa__meta-item">
+                <div className="dceasa__meta-header">
+                  <span className="dceasa__meta-label">Negócios Fechados</span>
+                  <span className="dceasa__meta-valores">
+                    <strong style={{ color: corPct(pctNegocios) }}>{negociosFechadosMes}</strong>
+                    <span className="dceasa__meta-sep"> / </span>
+                    {metaNegocios}
+                    <span className="dceasa__meta-pct" style={{ color: corPct(pctNegocios) }}>{pctNegocios}%</span>
+                  </span>
+                </div>
+                <div className="dceasa__meta-track">
+                  <div className="dceasa__meta-fill" style={{ width: `${pctNegocios}%`, background: corPct(pctNegocios) }} />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
