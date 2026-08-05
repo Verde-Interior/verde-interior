@@ -272,7 +272,7 @@ function AppLayout() {
         {tela === 'execucao'      && <FunilExecucao />}
         {tela === 'os'            && <OrdensServico />}
         {tela === 'clientes'      && <Clientes />}
-        {tela === 'mapa'          && <Mapa />}
+        {tela === 'mapa'          && <Mapa onNavegar={setTela} />}
         {tela === 'escala'        && <EscalaCampo />}
         {tela === 'relatorios'    && <Relatorios />}
         {tela === 'estoque'       && <Estoque />}

@@ -44,6 +44,7 @@ function popupHtml(c) {
           <a href="tel:${tel}">📞 Ligar</a>
         </div>
       ` : ''}
+      <button type="button" class="mapa-popup__abrir" data-cliente-id="${escapeHtml(c.id)}">📋 Ver cadastro completo</button>
     </div>
   `;
 }
@@ -100,6 +101,26 @@ function FocoCliente({ alvo }) {
   return null;
 }
 
+// Ouve o clique em "Ver cadastro completo" dentro de qualquer popup aberto
+// (tanto os dos markers do cluster quanto o do FocoCliente) e delega pro
+// callback do React — o conteúdo do popup é HTML puro do Leaflet, então a
+// ponte com o app precisa ser via DOM event, não via props/onClick normal.
+function PopupAcoes({ onAbrirCliente }) {
+  const map = useMap();
+
+  useEffect(() => {
+    function onPopupOpen(e) {
+      const btn = e.popup.getElement()?.querySelector('.mapa-popup__abrir');
+      if (!btn) return;
+      btn.addEventListener('click', () => onAbrirCliente(btn.dataset.clienteId), { once: true });
+    }
+    map.on('popupopen', onPopupOpen);
+    return () => map.off('popupopen', onPopupOpen);
+  }, [map, onAbrirCliente]);
+
+  return null;
+}
+
 // Enquadra o mapa nos clientes carregados — só na primeira carga, pra não
 // ficar recentralizando toda hora que o usuário filtra/busca.
 function FitBounds({ pontos }) {
@@ -116,7 +137,7 @@ function FitBounds({ pontos }) {
   return null;
 }
 
-export default function Mapa() {
+export default function Mapa({ onNavegar }) {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
@@ -168,6 +189,13 @@ export default function Mapa() {
     else if (e.key === 'ArrowUp')   { e.preventDefault(); setIndiceSugestao((i) => Math.max(i - 1, 0)); }
     else if (e.key === 'Enter')     { e.preventDefault(); selecionarSugestao(sugestoes[indiceSugestao]); }
     else if (e.key === 'Escape')    { setSugestoesAbertas(false); }
+  }
+
+  // Abre o cadastro completo do cliente na tela Clientes (deep-link, mesmo
+  // padrão do ?relatorio=<id> em Relatórios).
+  function abrirClienteCompleto(clienteId) {
+    window.history.pushState({}, '', `?tela=clientes&cliente=${clienteId}`);
+    onNavegar?.('clientes');
   }
 
   return (
@@ -223,6 +251,7 @@ export default function Mapa() {
             <ClusterLayer clientes={filtrados} />
             <FitBounds pontos={clientes} />
             <FocoCliente alvo={alvo} />
+            <PopupAcoes onAbrirCliente={abrirClienteCompleto} />
           </MapContainer>
         )}
       </div>

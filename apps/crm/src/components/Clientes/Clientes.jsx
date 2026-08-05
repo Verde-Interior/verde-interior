@@ -1,5 +1,5 @@
 // src/components/Clientes/Clientes.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import { tempoRelativo } from '../../utils/formatUtils';
@@ -170,6 +170,19 @@ export default function Clientes() {
   }
 
   useEffect(() => { carregar(); }, []);
+
+  // Deep-link: ?tela=clientes&cliente=<id> (vindo do "Ver cadastro completo"
+  // do Mapa) abre direto o modal de edição assim que a lista carrega.
+  const deepLinkAplicado = useRef(false);
+  useEffect(() => {
+    if (deepLinkAplicado.current || clientes.length === 0) return;
+    deepLinkAplicado.current = true;
+    const id = new URLSearchParams(window.location.search).get('cliente');
+    if (!id) return;
+    const c = clientes.find(x => String(x.id) === id);
+    if (c) abrirEditar(c);
+    window.history.replaceState({}, '', '?tela=clientes');
+  }, [clientes]);
 
   const clientesFiltrados = useMemo(() => {
     const q = busca.toLowerCase();
