@@ -139,6 +139,13 @@
   transform: translateY(-2px);
 }
 
+/* Cards "destaque" têm texto branco sobre gradiente escuro — o hover acima
+   trocaria o fundo pra claro e deixaria o texto ilegível, então mantém o
+   gradiente escuro (só um pouco mais vívido, pra dar feedback do hover). */
+.kpi-card--destaque.kpi-card--clicavel:hover {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--forest-700) 88%, transparent) 0%, color-mix(in srgb, var(--forest-800) 96%, transparent) 100%);
+}
+
 .kpi-card--destaque {
   background: linear-gradient(135deg, color-mix(in srgb, var(--forest-700) 78%, transparent) 0%, color-mix(in srgb, var(--forest-800) 88%, transparent) 100%);
   backdrop-filter: blur(var(--glass-blur)) saturate(160%);
