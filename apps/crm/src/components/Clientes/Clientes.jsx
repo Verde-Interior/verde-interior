@@ -6,32 +6,8 @@ import { tempoRelativo } from '../../utils/formatUtils';
 import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
+import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL } from '../../utils/clienteConstants';
 import './Clientes.css';
-
-const DIAS_SEMANA = [
-  { id: 'segunda', label: 'Seg' },
-  { id: 'terca',   label: 'Ter' },
-  { id: 'quarta',  label: 'Qua' },
-  { id: 'quinta',  label: 'Qui' },
-  { id: 'sexta',   label: 'Sex' },
-  { id: 'sabado',  label: 'Sáb' },
-];
-
-const TIPO_LABEL = {
-  manutencao: 'Manutenção',
-  locacao:    'Locação',
-  flores:     'Flores',
-  reforma:    'Reforma',
-  venda:      'Venda',
-  evento:     'Evento',
-};
-
-const FREQ_LABEL = {
-  semanal:    'Semanal',
-  quinzenal:  'Quinzenal',
-  mensal:     'Mensal',
-  pontual:    'Pontual',
-};
 
 const GRUPO_OPTIONS = [
   { value: '',                      label: '— Selecionar —'      },

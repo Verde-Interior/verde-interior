@@ -8,6 +8,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import { supabase } from '../../lib/supabase';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
+import ModalDetalhesCliente from '../ModalDetalhesCliente/ModalDetalhesCliente';
 import './Mapa.css';
 
 const CENTRO_SP = [-23.5614, -46.6558];
@@ -145,6 +146,7 @@ export default function Mapa({ onNavegar }) {
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const [indiceSugestao,   setIndiceSugestao]   = useState(0);
   const [alvo, setAlvo] = useState(null); // { cliente, ts } — cliente focado via dropdown
+  const [detalheClienteId, setDetalheClienteId] = useState(null); // cliente com modal de detalhes aberto
 
   useEffect(() => {
     (async () => {
@@ -191,9 +193,11 @@ export default function Mapa({ onNavegar }) {
     else if (e.key === 'Escape')    { setSugestoesAbertas(false); }
   }
 
-  // Abre o cadastro completo do cliente na tela Clientes (deep-link, mesmo
-  // padrão do ?relatorio=<id> em Relatórios).
-  function abrirClienteCompleto(clienteId) {
+  // Abre o modal de detalhes sem sair do mapa (markers e estado do Leaflet
+  // continuam montados). Só a edição de verdade ("Editar cadastro completo"
+  // dentro do modal) navega pra Clientes — via deep-link, mesmo padrão do
+  // ?relatorio=<id> em Relatórios.
+  function irParaEdicao(clienteId) {
     window.history.pushState({}, '', `?tela=clientes&cliente=${clienteId}`);
     onNavegar?.('clientes');
   }
@@ -251,10 +255,18 @@ export default function Mapa({ onNavegar }) {
             <ClusterLayer clientes={filtrados} />
             <FitBounds pontos={clientes} />
             <FocoCliente alvo={alvo} />
-            <PopupAcoes onAbrirCliente={abrirClienteCompleto} />
+            <PopupAcoes onAbrirCliente={setDetalheClienteId} />
           </MapContainer>
         )}
       </div>
+
+      {detalheClienteId && (
+        <ModalDetalhesCliente
+          clienteId={detalheClienteId}
+          onFechar={() => setDetalheClienteId(null)}
+          onEditar={() => irParaEdicao(detalheClienteId)}
+        />
+      )}
     </div>
   );
 }
