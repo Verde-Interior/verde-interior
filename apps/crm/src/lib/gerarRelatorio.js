@@ -284,19 +284,23 @@ export async function baixarPDF(params) {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW;
-    const imgH = (canvas.height * pageW) / canvas.width;
 
-    let heightLeft = imgH;
-    let position = 0;
-    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-    heightLeft -= pageH;
+    const mx = 14; // margem horizontal em mm
+    const my = 14; // margem vertical em mm
+    const usableW = pageW - mx * 2;
+    const usableH = pageH - my * 2;
 
-    while (heightLeft > 0) {
-      position -= pageH;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-      heightLeft -= pageH;
+    const imgW = usableW;
+    const imgH = (canvas.height * usableW) / canvas.width;
+
+    let pageCount = 0;
+    let yScrolled = 0; // quanto da imagem já foi exibido (em mm)
+
+    while (yScrolled < imgH) {
+      if (pageCount > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', mx, my - yScrolled, imgW, imgH);
+      yScrolled += usableH;
+      pageCount++;
     }
 
     pdf.save(nomeArquivo);
