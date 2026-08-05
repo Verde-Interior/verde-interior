@@ -312,12 +312,12 @@ function AppLayout({ tema, onToggleTema }) {
   );
 }
 
-function AppGate({ fontScale, tema, onToggleTema }) {
+function AppGate({ tema, onToggleTema }) {
   const { usuario, loading } = useAuth();
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', color: '#6B7280', fontSize: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', color: '#6B7280', fontSize: 14 }}>
         Carregando...
       </div>
     );
@@ -327,9 +327,7 @@ function AppGate({ fontScale, tema, onToggleTema }) {
 
   return (
     <CRMProvider>
-      <div style={{ zoom: fontScale }}>
-        <AppLayout tema={tema} onToggleTema={onToggleTema} />
-      </div>
+      <AppLayout tema={tema} onToggleTema={onToggleTema} />
     </CRMProvider>
   );
 }
@@ -346,6 +344,16 @@ export default function App() {
     return () => window.removeEventListener('crm-font-scale-change', onScale);
   }, []);
 
+  // Zoom aplicado no <html> (raiz) em vez de numa div interna — sem a div
+  // wrapper, .app/.login (que usam height 100%/100vh) encostam direto na
+  // cadeia html/body/#root, sem depender de um wrapper com altura implícita.
+  // A correção do "vão vazio" em si é no CSS: vh sempre mede contra o
+  // viewport real, ignorando zoom — trocamos por height:100%, que respeita
+  // o zoom do ancestral (ver App.css .app e Login.css .login).
+  useEffect(() => {
+    document.documentElement.style.zoom = fontScale;
+  }, [fontScale]);
+
   useEffect(() => {
     document.documentElement.dataset.theme = tema;
     localStorage.setItem('crm-theme', tema);
@@ -358,7 +366,7 @@ export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <AppGate fontScale={fontScale} tema={tema} onToggleTema={alternarTema} />
+        <AppGate tema={tema} onToggleTema={alternarTema} />
       </AuthProvider>
     </ToastProvider>
   );
