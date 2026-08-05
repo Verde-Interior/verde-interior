@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import KanbanColumn from '../KanbanColumn/KanbanColumn';
 import AddLeadModal from '../AddLeadModal/AddLeadModal';
+import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import './KanbanBoard.css';
 
 const ORDENACOES = [
@@ -22,6 +23,8 @@ export default function KanbanBoard() {
   const [ordenacao, setOrdenacao]         = useState('entrada');
   const [addAberto, setAddAberto]         = useState(false);
   const [modoVista, setModoVista]         = useState('kanban'); // 'kanban' | 'lista'
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const [indiceSugestao,   setIndiceSugestao]   = useState(0);
 
   const leadsFiltrados = useMemo(() => {
     const q = busca.toLowerCase().trim();
@@ -50,6 +53,24 @@ export default function KanbanBoard() {
     // getTiposServico é helper estável do CRMContext — não muda entre renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, busca, filtroServico, filtroCanal, ordenacao]);
+
+  const sugestoes = useMemo(() => {
+    if (!busca.trim()) return [];
+    return leadsFiltrados.slice(0, 8).map((l) => ({ id: l.id, label: l.empresa, sublabel: l.bairro, _lead: l }));
+  }, [leadsFiltrados, busca]);
+
+  function selecionarSugestao(item) {
+    setSugestoesAbertas(false);
+    abrirModal(item._lead);
+  }
+
+  function onBuscaKeyDown(e) {
+    if (!sugestoesAbertas || sugestoes.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIndiceSugestao((i) => Math.min(i + 1, sugestoes.length - 1)); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); setIndiceSugestao((i) => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter')     { e.preventDefault(); selecionarSugestao(sugestoes[indiceSugestao]); }
+    else if (e.key === 'Escape')    { setSugestoesAbertas(false); }
+  }
 
   const temFiltro = busca || filtroServico !== 'todos' || filtroCanal !== 'todos';
 
@@ -102,10 +123,17 @@ export default function KanbanBoard() {
             className="kanban-board__busca"
             placeholder="Buscar empresa, contato ou bairro..."
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            onChange={(e) => { setBusca(e.target.value); setSugestoesAbertas(true); setIndiceSugestao(0); }}
+            onFocus={() => busca.trim() && setSugestoesAbertas(true)}
+            onBlur={() => setTimeout(() => setSugestoesAbertas(false), 150)}
+            onKeyDown={onBuscaKeyDown}
+            autoComplete="off"
           />
           {busca && (
             <button className="kanban-board__busca-limpar" onClick={() => setBusca('')}>✕</button>
+          )}
+          {sugestoesAbertas && busca.trim() && (
+            <SugestoesDropdown itens={sugestoes} indiceAtivo={indiceSugestao} onSelecionar={selecionarSugestao} onHover={setIndiceSugestao} />
           )}
         </div>
 

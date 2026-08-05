@@ -5,6 +5,7 @@ import { useToast } from '../Toast/Toast';
 import { tempoRelativo } from '../../utils/formatUtils';
 import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import './Clientes.css';
 
 const DIAS_SEMANA = [
@@ -121,6 +122,8 @@ export default function Clientes() {
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
   const [filtroOrquidea, setFiltroOrquidea] = useState('todos'); // 'todos' | 'com' | 'sem'
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const [indiceSugestao,   setIndiceSugestao]   = useState(0);
 
   const [modal,         setModal]         = useState(null); // null | { modo: 'editar'|'novo', cliente?: obj }
   const [form,          setForm]          = useState(null);
@@ -180,6 +183,24 @@ export default function Clientes() {
       return true;
     });
   }, [clientes, busca, filtroAtivo, filtroGrupo, filtroOrquidea]);
+
+  const sugestoes = useMemo(() => {
+    if (!busca.trim()) return [];
+    return clientesFiltrados.slice(0, 8).map(c => ({ id: c.id, label: c.nome_empresa, sublabel: c.bairro, _cliente: c }));
+  }, [clientesFiltrados, busca]);
+
+  function selecionarSugestao(item) {
+    setSugestoesAbertas(false);
+    abrirEditar(item._cliente);
+  }
+
+  function onBuscaKeyDown(e) {
+    if (!sugestoesAbertas || sugestoes.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIndiceSugestao(i => Math.min(i + 1, sugestoes.length - 1)); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); setIndiceSugestao(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter')     { e.preventDefault(); selecionarSugestao(sugestoes[indiceSugestao]); }
+    else if (e.key === 'Escape')    { setSugestoesAbertas(false); }
+  }
 
   const metricas = useMemo(() => ({
     total:       clientes.length,
@@ -401,10 +422,17 @@ export default function Clientes() {
             className="clientes__busca"
             placeholder="Buscar por nome ou bairro..."
             value={busca}
-            onChange={e => setBusca(e.target.value)}
+            onChange={e => { setBusca(e.target.value); setSugestoesAbertas(true); setIndiceSugestao(0); }}
+            onFocus={() => busca.trim() && setSugestoesAbertas(true)}
+            onBlur={() => setTimeout(() => setSugestoesAbertas(false), 150)}
+            onKeyDown={onBuscaKeyDown}
+            autoComplete="off"
           />
           {busca && (
             <button className="clientes__busca-clear" onClick={() => setBusca('')}>✕</button>
+          )}
+          {sugestoesAbertas && busca.trim() && (
+            <SugestoesDropdown itens={sugestoes} indiceAtivo={indiceSugestao} onSelecionar={selecionarSugestao} onHover={setIndiceSugestao} />
           )}
         </div>
 

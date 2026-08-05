@@ -7,6 +7,7 @@ import { formatarDuracao } from '../../utils/formatUtils';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { baixarPDF } from '../../lib/gerarRelatorio';
+import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import './Relatorios.css';
 
 function duracaoEntre(inicio, fim) {
@@ -74,6 +75,8 @@ export default function Relatorios() {
   const [busca,      setBusca]      = useState('');
   const [filtroFunc, setFiltroFunc] = useState('todos');
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const [indiceSugestao,   setIndiceSugestao]   = useState(0);
   // Range de datas (defaults: últimos 30 dias)
   const hojeStr = new Date().toISOString().split('T')[0];
   const trintaAtrasStr = (() => {
@@ -210,6 +213,37 @@ export default function Relatorios() {
     return [...set].sort();
   }, [relatorios]);
 
+  const sugestoes = useMemo(() => {
+    if (!busca.trim()) return [];
+    const q = busca.toLowerCase();
+    const vistos = new Set();
+    const itens = [];
+    for (const r of relatorios) {
+      const c = r.agenda?.cliente;
+      if (!c || vistos.has(c.id)) continue;
+      const nome = c.nome_empresa?.toLowerCase() ?? '';
+      const bairro = c.bairro?.toLowerCase() ?? '';
+      if (!nome.includes(q) && !bairro.includes(q)) continue;
+      vistos.add(c.id);
+      itens.push({ id: c.id, label: c.nome_empresa, sublabel: c.bairro });
+      if (itens.length >= 8) break;
+    }
+    return itens;
+  }, [relatorios, busca]);
+
+  function selecionarSugestao(item) {
+    setSugestoesAbertas(false);
+    setBusca(item.label);
+  }
+
+  function onBuscaKeyDown(e) {
+    if (!sugestoesAbertas || sugestoes.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIndiceSugestao(i => Math.min(i + 1, sugestoes.length - 1)); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); setIndiceSugestao(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter')     { e.preventDefault(); selecionarSugestao(sugestoes[indiceSugestao]); }
+    else if (e.key === 'Escape')    { setSugestoesAbertas(false); }
+  }
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
     return relatorios.filter(r => {
@@ -340,9 +374,16 @@ export default function Relatorios() {
             className="rel__busca"
             placeholder="Buscar por cliente ou bairro..."
             value={busca}
-            onChange={e => setBusca(e.target.value)}
+            onChange={e => { setBusca(e.target.value); setSugestoesAbertas(true); setIndiceSugestao(0); }}
+            onFocus={() => busca.trim() && setSugestoesAbertas(true)}
+            onBlur={() => setTimeout(() => setSugestoesAbertas(false), 150)}
+            onKeyDown={onBuscaKeyDown}
+            autoComplete="off"
           />
           {busca && <button className="rel__busca-clear" onClick={() => setBusca('')}>✕</button>}
+          {sugestoesAbertas && busca.trim() && (
+            <SugestoesDropdown itens={sugestoes} indiceAtivo={indiceSugestao} onSelecionar={selecionarSugestao} onHover={setIndiceSugestao} />
+          )}
         </div>
 
         <select className="rel__select" value={filtroFunc} onChange={e => setFiltroFunc(e.target.value)}>
