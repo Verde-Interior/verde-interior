@@ -413,6 +413,22 @@
 </div>
 </div><!-- /app -->
 
+<!-- Modal criar acesso para colaborador existente -->
+<div id="criar-acesso-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:min(400px,100%);max-height:90vh;overflow-y:auto">
+    <div class="sl" style="margin-bottom:.5rem">Criar acesso</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem">Colaborador: <strong id="criar-acesso-empnome">—</strong></p>
+    <input type="hidden" id="criar-acesso-empidx">
+    <div class="fr"><label>Usuário</label><input type="text" id="criar-acesso-user" placeholder="nome.sobrenome" autocomplete="off" autocapitalize="none"></div>
+    <div class="fr"><label>Senha (mínimo 6 caracteres)</label><input type="password" id="criar-acesso-pw" placeholder="••••••••" autocomplete="new-password"></div>
+    <div id="criar-acesso-msg" style="display:none;margin-top:8px;padding:9px 11px;border-radius:7px;font-size:12px"></div>
+    <div style="display:flex;gap:8px;margin-top:1rem">
+      <button class="bg" onclick="confirmarCriarAcesso()"><i class="fa-solid fa-user-lock"></i> Criar acesso</button>
+      <button class="bsm" onclick="fecharCriarAcesso()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal redefinir senha (admin) -->
 <div id="reset-pwd-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem">
   <div class="card" style="width:min(400px,100%);max-height:90vh;overflow-y:auto">

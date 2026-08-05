@@ -38,16 +38,18 @@ export async function load() {
   if (empErr || !emps || !emps.length) { _loadLocal(); return; }
 
   state.EMP = emps.map(e => ({
-    id:     e.id,
-    name:   e.name,
-    cargo:  e.cargo,
-    c:      e.contract_type,
-    j:      e.daily_hours,
-    bank:   e.bank_minutes,
-    worked: Number(e.worked_hours),
-    extra:  Number(e.extra_hours),
-    due:    Number(e.due_hours),
-    days:   e.days_worked,
+    id:       e.id,
+    name:     e.name,
+    cargo:    e.cargo,
+    c:        e.contract_type,
+    j:        e.daily_hours,
+    bank:     e.bank_minutes,
+    worked:   Number(e.worked_hours),
+    extra:    Number(e.extra_hours),
+    due:      Number(e.due_hours),
+    days:     e.days_worked,
+    authId:   e.auth_user_id   || null,
+    username: e.username       || null,
   }));
 
   const { data: punches } = await supabase.from('punch_records').select('*').order('time');
