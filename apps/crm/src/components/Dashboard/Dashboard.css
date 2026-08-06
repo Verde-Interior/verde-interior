@@ -1642,6 +1642,11 @@
   border-radius: 8px;
   font-size: 13px;
 }
+.dashboard-op__agenda-item--clicavel {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.dashboard-op__agenda-item--clicavel:hover { background: var(--cream-100); }
 .dashboard-op__agenda-hora {
   font-weight: 700;
   color: var(--text-primary);
@@ -1688,6 +1693,11 @@
   border-radius: 8px;
   gap: 12px;
 }
+.dashboard-op__ult-item--clicavel {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.dashboard-op__ult-item--clicavel:hover { background: var(--cream-100); }
 .dashboard-op__ult-empresa {
   font-weight: 600;
   color: var(--text-primary);

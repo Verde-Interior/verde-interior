@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import DashboardCeasa from '../CeasaHolambra/DashboardCeasa';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import ModalDetalhesAgendamento from './ModalDetalhesAgendamento';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -1137,6 +1138,7 @@ export default function Dashboard({ onNavegar }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function DashboardOperacional({ onNavegar }) {
   const [loading, setLoading] = useState(true);
+  const [agendamentoSelecionado, setAgendamentoSelecionado] = useState(null);
   const [dados, setDados] = useState({
     agendaHoje: [],
     agendaSemana: [],
@@ -1261,7 +1263,11 @@ function DashboardOperacional({ onNavegar }) {
               {dados.agendaHoje.slice(0, 8).map((v) => {
                 const stCor = v.status === 'concluido' ? '#10B981' : v.status === 'em_execucao' ? '#3B82F6' : v.status === 'publicado' ? '#F59E0B' : '#9CA3AF';
                 return (
-                  <div key={v.id} className="dashboard-op__agenda-item">
+                  <div
+                    key={v.id}
+                    className="dashboard-op__agenda-item dashboard-op__agenda-item--clicavel"
+                    onClick={() => setAgendamentoSelecionado(v)}
+                  >
                     <span className="dashboard-op__agenda-hora">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</span>
                     <div className="dashboard-op__agenda-mid">
                       <div className="dashboard-op__agenda-cli">{v.cliente?.nome_empresa ?? '—'}</div>
@@ -1315,7 +1321,14 @@ function DashboardOperacional({ onNavegar }) {
                 const cli = r.agenda?.cliente;
                 const quando = r.checkin_at ? new Date(r.checkin_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
                 return (
-                  <div key={r.id} className="dashboard-op__ult-item">
+                  <div
+                    key={r.id}
+                    className="dashboard-op__ult-item dashboard-op__ult-item--clicavel"
+                    onClick={() => {
+                      window.history.pushState({}, '', `?tela=relatorios&relatorio=${r.id}`);
+                      onNavegar?.('relatorios');
+                    }}
+                  >
                     <div className="dashboard-op__ult-info">
                       <div className="dashboard-op__ult-empresa">{cli?.nome_empresa ?? '—'}</div>
                       <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'} · 📍 {cli?.bairro ?? '—'}</div>
@@ -1354,6 +1367,14 @@ function DashboardOperacional({ onNavegar }) {
         </section>
       </div>
 
+      {agendamentoSelecionado && (
+        <ModalDetalhesAgendamento
+          visita={agendamentoSelecionado}
+          funcionarioNome={empMap.get(String(agendamentoSelecionado.funcionario_id))}
+          onFechar={() => setAgendamentoSelecionado(null)}
+          onVerNaEscala={() => { setAgendamentoSelecionado(null); onNavegar?.('escala'); }}
+        />
+      )}
     </div>
   );
 }
