@@ -18,6 +18,22 @@ export const TIPO_COR = {
   flores: '#9333EA', reforma: '#C47A1A', venda: '#1A7A4A', evento: '#C23B3B',
 };
 
+// Cor por status de visita/agendamento — usada em qualquer tela que mostre um
+// badge/pino de status (Dashboard, Mapa). Publicado = verde (aguardando, sem
+// problema) e cancelado = vermelho, mesma semântica já usada nos cartões da
+// Escala (EscalaCampo.css .ec-cartao--publicado/--cancelado); antes disso
+// cada tela tinha sua própria cor inline e "publicado" saía laranja num
+// lugar e verde noutro, e "cancelado" às vezes nem tinha cor própria.
+export const STATUS_VISITA_COR = {
+  publicado:    '#22C55E',
+  em_execucao:  '#3B82F6',
+  concluido:    '#10B981',
+  cancelado:    '#EF4444',
+};
+export function corStatusVisita(status) {
+  return STATUS_VISITA_COR[status] ?? '#9CA3AF';
+}
+
 export const TIPOS_TAREFA = [
   { id: 'manutencao', label: 'Manutenção', frase: 'manutenção das plantas' },
   { id: 'troca',      label: 'Troca',      frase: 'trocas' },

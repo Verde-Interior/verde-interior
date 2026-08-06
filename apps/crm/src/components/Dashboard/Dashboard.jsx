@@ -6,6 +6,7 @@ import { useToast } from '../Toast/Toast';
 import DashboardCeasa from '../CeasaHolambra/DashboardCeasa';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import ModalDetalhesAgendamento from './ModalDetalhesAgendamento';
+import { corStatusVisita } from '../../utils/escalaHelpers';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -1261,7 +1262,7 @@ function DashboardOperacional({ onNavegar }) {
           ) : (
             <div className="dashboard-op__agenda-lista">
               {dados.agendaHoje.slice(0, 8).map((v) => {
-                const stCor = v.status === 'concluido' ? '#10B981' : v.status === 'em_execucao' ? '#3B82F6' : v.status === 'publicado' ? '#F59E0B' : '#9CA3AF';
+                const stCor = corStatusVisita(v.status);
                 return (
                   <div
                     key={v.id}

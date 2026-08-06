@@ -10,14 +10,10 @@ import { supabase } from '../../lib/supabase';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import ModalDetalhesCliente from '../ModalDetalhesCliente/ModalDetalhesCliente';
 import ModalDetalhesAgendamento from '../Dashboard/ModalDetalhesAgendamento';
+import { corStatusVisita as corStatus } from '../../utils/escalaHelpers';
 import './Mapa.css';
 
 const CENTRO_SP = [-23.5614, -46.6558];
-
-const STATUS_COR = {
-  concluido: '#10B981', em_execucao: '#3B82F6', publicado: '#F59E0B', cancelado: '#9CA3AF',
-};
-function corStatus(status) { return STATUS_COR[status] ?? '#9CA3AF'; }
 
 function hojeStr() { return new Date().toISOString().split('T')[0]; }
 
