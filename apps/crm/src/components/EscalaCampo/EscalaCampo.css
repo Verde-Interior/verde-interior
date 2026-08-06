@@ -519,7 +519,7 @@
 }
 
 .ec__coluna-bloq {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
   color: var(--text-muted);
   width: 30px;
@@ -1065,19 +1065,19 @@
   padding: 10px 14px;
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
-  background: white;
+  background: var(--surface-card);
   cursor: pointer;
   font-family: inherit;
   transition: all var(--transition-fast);
   text-align: left;
 }
 .ec-picker__item:hover:not(:disabled) {
-  background: #f0fdf4;
+  background: color-mix(in srgb, #22C55E 14%, var(--surface-card));
   border-color: #86efac;
 }
 .ec-picker__item:disabled { opacity: 0.5; cursor: not-allowed; }
-.ec-picker__nome  { font-size: 14px; font-weight: 600; color: #111827; }
-.ec-picker__cargo { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
+.ec-picker__nome  { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.ec-picker__cargo { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
 
 /* ── Campos do modal ── */
 .ec-grid2 {
@@ -1240,12 +1240,12 @@
 .ec-btn--pri:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ec-btn--perigo {
-  background: white;
+  background: var(--surface-card);
   color: #B91C1C;
-  border: 1px solid #FCA5A5;
+  border: 1px solid color-mix(in srgb, #B91C1C 45%, var(--surface-border));
 }
 .ec-btn--perigo:hover:not(:disabled) {
-  background: #FEE2E2;
+  background: color-mix(in srgb, #B91C1C 15%, var(--surface-card));
   border-color: #DC2626;
 }
 .ec-btn--perigo:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1473,7 +1473,7 @@
 }
 
 .ec__coluna-otim {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
   color: var(--text-secondary);
   width: 30px;

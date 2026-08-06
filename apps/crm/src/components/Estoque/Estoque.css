@@ -51,7 +51,7 @@
 }
 
 .es__btn-sec {
-  background: white;
+  background: var(--surface-card);
   color: var(--text-secondary);
   border: 1px solid var(--surface-border);
 }
@@ -604,12 +604,12 @@
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: white;
+  background: var(--surface-card);
 }
 
 .es__layout-btn {
   padding: 8px 12px;
-  background: white;
+  background: var(--surface-card);
   border: none;
   color: var(--text-muted);
   font-size: 16px;
@@ -729,7 +729,7 @@
   width: 40px;
   height: 40px;
   border: 1px solid var(--surface-border);
-  background: white;
+  background: var(--surface-card);
   color: var(--text-secondary);
   border-radius: var(--radius-md);
   font-size: 20px;
@@ -880,7 +880,7 @@
   font-weight: 600;
   border-radius: var(--radius-md);
   border: 1px solid var(--surface-border);
-  background: white;
+  background: var(--surface-card);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -965,7 +965,7 @@
     flex-direction: column;
   }
   .modal__body { flex: 1; overflow-y: auto; }
-  .modal__footer { position: sticky; bottom: 0; background: white; border-top: 1px solid var(--surface-border); }
+  .modal__footer { position: sticky; bottom: 0; background: var(--surface-card); border-top: 1px solid var(--surface-border); }
 }
 
 /* Grade em 1 coluna em telas muito pequenas */
