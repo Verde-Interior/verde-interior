@@ -138,6 +138,14 @@
   --cream-100: rgba(255,255,255,0.08);
   --cream-200: rgba(255,255,255,0.12);
 
+  /* --color-primary-lt é usado como fundo de hover/seleção (linha de
+     tabela, item de dropdown, botão) em várias telas — no claro é um
+     rosa-vinho bem pálido (quase branco). Sem redefinir, ficava pálido
+     no escuro também e o texto branco sumia em cima. Aqui vira um vinho
+     translúcido: continua lendo como "hover com a cor da marca", só que
+     tingindo o fundo escuro em vez de estourar pra um bloco claro. */
+  --color-primary-lt: rgba(123,26,26,0.18);
+
   /* Opacidade bem mais alta que o glass do modo claro: a referência é
      "chapada" (sem vidro translúcido deixando o degradê colorido vazar). */
   --glass-light:        rgba(20,30,23,0.94);
