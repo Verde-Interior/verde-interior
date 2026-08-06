@@ -1210,7 +1210,11 @@ function DashboardOperacional({ onNavegar }) {
     const map = { Semanal: 0, Quinzenal: 0, Mensal: 0, Outro: 0 };
     dados.clientes.forEach(c => {
       const f = c.frequencia_visita;
-      if (f === 'semanal') map.Semanal++;
+      // As opções reais do cadastro (Clientes.jsx) são 1x_semana/2x_semana/
+      // 3x_semana, quinzenal, mensal — não existe valor "semanal" puro no
+      // banco. Checar só "semanal" fazia todo cliente com visita semanal
+      // cair em "Outro" por engano (0% em Semanal, ~90% em Outro).
+      if (f === '1x_semana' || f === '2x_semana' || f === '3x_semana') map.Semanal++;
       else if (f === 'quinzenal') map.Quinzenal++;
       else if (f === 'mensal') map.Mensal++;
       else map.Outro++;
@@ -1272,7 +1276,7 @@ function DashboardOperacional({ onNavegar }) {
                     <span className="dashboard-op__agenda-hora">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</span>
                     <div className="dashboard-op__agenda-mid">
                       <div className="dashboard-op__agenda-cli">{v.cliente?.nome_empresa ?? '—'}</div>
-                      <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'} · 📍 {v.cliente?.bairro ?? '—'}</div>
+                      <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'}{v.cliente?.bairro ? ` · 📍 ${v.cliente.bairro}` : ''}</div>
                     </div>
                     <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{labelStatusVisita(v.status ?? 'rascunho')}</span>
                   </div>
@@ -1332,7 +1336,7 @@ function DashboardOperacional({ onNavegar }) {
                   >
                     <div className="dashboard-op__ult-info">
                       <div className="dashboard-op__ult-empresa">{cli?.nome_empresa ?? '—'}</div>
-                      <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'} · 📍 {cli?.bairro ?? '—'}</div>
+                      <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'}{cli?.bairro ? ` · 📍 ${cli.bairro}` : ''}</div>
                     </div>
                     <span className="dashboard-op__ult-data">{quando}</span>
                   </div>
