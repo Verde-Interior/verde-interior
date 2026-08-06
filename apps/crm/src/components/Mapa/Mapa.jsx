@@ -1,6 +1,6 @@
 // src/components/Mapa/Mapa.jsx
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -9,9 +9,17 @@ import 'leaflet.markercluster';
 import { supabase } from '../../lib/supabase';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import ModalDetalhesCliente from '../ModalDetalhesCliente/ModalDetalhesCliente';
+import ModalDetalhesAgendamento from '../Dashboard/ModalDetalhesAgendamento';
 import './Mapa.css';
 
 const CENTRO_SP = [-23.5614, -46.6558];
+
+const STATUS_COR = {
+  concluido: '#10B981', em_execucao: '#3B82F6', publicado: '#F59E0B', cancelado: '#9CA3AF',
+};
+function corStatus(status) { return STATUS_COR[status] ?? '#9CA3AF'; }
+
+function hojeStr() { return new Date().toISOString().split('T')[0]; }
 
 const pinIcon = L.divIcon({
   className: 'mapa-pin-wrap',
@@ -144,6 +152,43 @@ function FitBounds({ pontos }) {
   return null;
 }
 
+// Rota de um funcionário num dia: pino numerado (na ordem de chegada) por
+// visita com localização, ligados por uma linha — em linha reta, não é rota
+// de rua real (ver otimizadorRota.js, que já assume isso pra ordenar).
+function RotaLayer({ visitas, onAbrirVisita }) {
+  const map = useMap();
+  const comGeo = useMemo(() => visitas.filter((v) => v.cliente?.lat && v.cliente?.lng), [visitas]);
+
+  useEffect(() => {
+    if (comGeo.length === 0) return;
+    const bounds = L.latLngBounds(comGeo.map((v) => [v.cliente.lat, v.cliente.lng]));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }, [comGeo, map]);
+
+  useEffect(() => {
+    const markers = comGeo.map((v, i) => {
+      const icon = L.divIcon({
+        className: 'mapa-rota-pin-wrap',
+        html: `<span class="mapa-rota-pin" style="background:${corStatus(v.status)}">${i + 1}</span>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      });
+      const marker = L.marker([v.cliente.lat, v.cliente.lng], { icon }).addTo(map);
+      marker.on('click', () => onAbrirVisita(v));
+      return marker;
+    });
+    return () => markers.forEach((m) => map.removeLayer(m));
+  }, [comGeo, map, onAbrirVisita]);
+
+  if (comGeo.length < 2) return null;
+  return (
+    <Polyline
+      positions={comGeo.map((v) => [v.cliente.lat, v.cliente.lng])}
+      pathOptions={{ color: '#7B1A1A', weight: 3, opacity: 0.7, dashArray: '6 8' }}
+    />
+  );
+}
+
 export default function Mapa({ onNavegar }) {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +198,50 @@ export default function Mapa({ onNavegar }) {
   const [indiceSugestao,   setIndiceSugestao]   = useState(0);
   const [alvo, setAlvo] = useState(null); // { cliente, ts } — cliente focado via dropdown
   const [detalheClienteId, setDetalheClienteId] = useState(null); // cliente com modal de detalhes aberto
+
+  // ── Planejador de rota (Fase 1: visualizar rota de 1 funcionário/dia) ──
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [rotaFuncionarioId, setRotaFuncionarioId] = useState('');
+  const [rotaData, setRotaData] = useState(hojeStr);
+  const [rotaVisitas, setRotaVisitas] = useState([]);
+  const [rotaLoading, setRotaLoading] = useState(false);
+  const [agendamentoSelecionado, setAgendamentoSelecionado] = useState(null);
+  const modoRota = rotaFuncionarioId !== '';
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('employees')
+        .select('id, name, cargo')
+        .in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo'])
+        .order('name');
+      setFuncionarios(data ?? []);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!modoRota) { setRotaVisitas([]); return; }
+    let cancelado = false;
+    (async () => {
+      setRotaLoading(true);
+      const { data } = await supabase
+        .from('agenda')
+        .select(`
+          id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
+          cliente:clientes(id, nome_empresa, bairro, lat, lng)
+        `)
+        .eq('funcionario_id', rotaFuncionarioId)
+        .eq('data_agendada', rotaData)
+        .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
+      if (cancelado) return;
+      setRotaVisitas(data ?? []);
+      setRotaLoading(false);
+    })();
+    return () => { cancelado = true; };
+  }, [modoRota, rotaFuncionarioId, rotaData]);
+
+  const rotaFuncionarioNome = funcionarios.find((f) => String(f.id) === String(rotaFuncionarioId))?.name;
+  const rotaSemGeo = rotaVisitas.filter((v) => !v.cliente?.lat || !v.cliente?.lng).length;
 
   useEffect(() => {
     (async () => {
@@ -214,56 +303,124 @@ export default function Mapa({ onNavegar }) {
         <div className="mapa__header-topo">
           <div>
             <h2 className="mapa__titulo">Mapa de Clientes</h2>
-            <p className="mapa__subtitulo">Localização dos clientes ativos · {filtrados.length} no mapa</p>
+            <p className="mapa__subtitulo">
+              {modoRota
+                ? `Rota de ${rotaFuncionarioNome ?? '—'} · ${new Date(rotaData + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${rotaVisitas.length} visita${rotaVisitas.length !== 1 ? 's' : ''}`
+                : `Localização dos clientes ativos · ${filtrados.length} no mapa`}
+            </p>
           </div>
         </div>
         <div className="mapa__filtros">
-          <div className="mapa__busca-wrap">
-            <span className="mapa__busca-icon">⌕</span>
-            <input
-              className="mapa__busca"
-              placeholder="Buscar por nome ou bairro..."
-              value={busca}
-              onChange={(e) => { setBusca(e.target.value); setSugestoesAbertas(true); setIndiceSugestao(0); }}
-              onFocus={() => busca.trim() && setSugestoesAbertas(true)}
-              onBlur={() => setTimeout(() => setSugestoesAbertas(false), 150)}
-              onKeyDown={onBuscaKeyDown}
-              autoComplete="off"
-            />
-            {busca && <button className="mapa__busca-limpar" onClick={() => setBusca('')}>✕</button>}
-            {sugestoesAbertas && busca.trim() && (
-              <SugestoesDropdown itens={sugestoes} indiceAtivo={indiceSugestao} onSelecionar={selecionarSugestao} onHover={setIndiceSugestao} />
-            )}
-          </div>
-          <select className="mapa__select" value={filtroGrupo} onChange={(e) => setFiltroGrupo(e.target.value)}>
-            <option value="todos">Todos os grupos</option>
-            {grupos.map((g) => <option key={g} value={g}>{g}</option>)}
+          {!modoRota && (
+            <>
+              <div className="mapa__busca-wrap">
+                <span className="mapa__busca-icon">⌕</span>
+                <input
+                  className="mapa__busca"
+                  placeholder="Buscar por nome ou bairro..."
+                  value={busca}
+                  onChange={(e) => { setBusca(e.target.value); setSugestoesAbertas(true); setIndiceSugestao(0); }}
+                  onFocus={() => busca.trim() && setSugestoesAbertas(true)}
+                  onBlur={() => setTimeout(() => setSugestoesAbertas(false), 150)}
+                  onKeyDown={onBuscaKeyDown}
+                  autoComplete="off"
+                />
+                {busca && <button className="mapa__busca-limpar" onClick={() => setBusca('')}>✕</button>}
+                {sugestoesAbertas && busca.trim() && (
+                  <SugestoesDropdown itens={sugestoes} indiceAtivo={indiceSugestao} onSelecionar={selecionarSugestao} onHover={setIndiceSugestao} />
+                )}
+              </div>
+              <select className="mapa__select" value={filtroGrupo} onChange={(e) => setFiltroGrupo(e.target.value)}>
+                <option value="todos">Todos os grupos</option>
+                {grupos.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </>
+          )}
+
+          <select
+            className="mapa__select"
+            value={rotaFuncionarioId}
+            onChange={(e) => setRotaFuncionarioId(e.target.value)}
+          >
+            <option value="">🧭 Planejar rota de...</option>
+            {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
+          {modoRota && (
+            <>
+              <input
+                type="date"
+                className="mapa__select"
+                value={rotaData}
+                onChange={(e) => setRotaData(e.target.value)}
+              />
+              <button className="mapa__rota-sair" onClick={() => setRotaFuncionarioId('')} title="Sair do modo rota">
+                ✕ Ver todos os clientes
+              </button>
+            </>
+          )}
         </div>
       </header>
 
       <div className="mapa__area">
-        {loading ? (
-          <div className="mapa__estado">
-            <div className="mapa__spinner" />
-            <p>Carregando clientes...</p>
-          </div>
-        ) : clientes.length === 0 ? (
-          <div className="mapa__estado">
-            <p>Nenhum cliente ativo com localização cadastrada ainda.</p>
-          </div>
-        ) : (
-          <MapContainer center={CENTRO_SP} zoom={11} className="mapa__leaflet">
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            />
-            <ClusterLayer clientes={filtrados} />
-            <FitBounds pontos={clientes} />
-            <FocoCliente alvo={alvo} />
-            <PopupAcoes onAbrirCliente={setDetalheClienteId} />
-          </MapContainer>
+        {modoRota && (
+          <aside className="mapa__rota-painel">
+            <div className="mapa__rota-painel-header">
+              <div className="mapa__rota-painel-titulo">Itinerário</div>
+              <div className="mapa__rota-painel-sub">
+                {rotaLoading ? 'Carregando...' : `${rotaVisitas.length} visita${rotaVisitas.length !== 1 ? 's' : ''}${rotaSemGeo > 0 ? ` · ${rotaSemGeo} sem localização` : ''}`}
+              </div>
+            </div>
+            {!rotaLoading && rotaVisitas.length === 0 ? (
+              <p className="mapa__rota-vazio">Nenhuma visita agendada para {rotaFuncionarioNome} nesse dia.</p>
+            ) : (
+              <div className="mapa__rota-lista">
+                {rotaVisitas.map((v, i) => {
+                  const semGeo = !v.cliente?.lat || !v.cliente?.lng;
+                  return (
+                    <button key={v.id} className="mapa__rota-item" onClick={() => setAgendamentoSelecionado(v)}>
+                      <span className="mapa__rota-item__num" style={{ background: corStatus(v.status) }}>{i + 1}</span>
+                      <span className="mapa__rota-item__info">
+                        <span className="mapa__rota-item__nome">{v.cliente?.nome_empresa ?? '—'}</span>
+                        <span className="mapa__rota-item__meta">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}{v.cliente?.bairro ? ` · ${v.cliente.bairro}` : ''}</span>
+                        {semGeo && <span className="mapa__rota-item__semgeo">⚠ sem localização</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </aside>
         )}
+
+        <div className="mapa__mapa-wrap">
+          {loading ? (
+            <div className="mapa__estado">
+              <div className="mapa__spinner" />
+              <p>Carregando clientes...</p>
+            </div>
+          ) : clientes.length === 0 ? (
+            <div className="mapa__estado">
+              <p>Nenhum cliente ativo com localização cadastrada ainda.</p>
+            </div>
+          ) : (
+            <MapContainer center={CENTRO_SP} zoom={11} className="mapa__leaflet">
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+              {modoRota ? (
+                <RotaLayer key={`${rotaFuncionarioId}-${rotaData}`} visitas={rotaVisitas} onAbrirVisita={setAgendamentoSelecionado} />
+              ) : (
+                <>
+                  <ClusterLayer clientes={filtrados} />
+                  <FitBounds pontos={clientes} />
+                  <FocoCliente alvo={alvo} />
+                  <PopupAcoes onAbrirCliente={setDetalheClienteId} />
+                </>
+              )}
+            </MapContainer>
+          )}
+        </div>
       </div>
 
       {detalheClienteId && (
@@ -271,6 +428,15 @@ export default function Mapa({ onNavegar }) {
           clienteId={detalheClienteId}
           onFechar={() => setDetalheClienteId(null)}
           onEditar={() => irParaEdicao(detalheClienteId)}
+        />
+      )}
+
+      {agendamentoSelecionado && (
+        <ModalDetalhesAgendamento
+          visita={agendamentoSelecionado}
+          funcionarioNome={rotaFuncionarioNome}
+          onFechar={() => setAgendamentoSelecionado(null)}
+          onVerNaEscala={() => { setAgendamentoSelecionado(null); onNavegar?.('escala'); }}
         />
       )}
     </div>

@@ -65,7 +65,8 @@
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   font-size: 13px;
-  background: white;
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-family: var(--font-body);
 }
 .mapa__busca-limpar {
@@ -85,13 +86,36 @@
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   font-size: 13px;
-  background: white;
+  background: var(--surface-card);
   color: var(--text-secondary);
   font-family: var(--font-body);
 }
 
+.mapa__filtros input[type="date"] { color-scheme: light; }
+[data-theme="dark"] .mapa__filtros input[type="date"] { color-scheme: dark; }
+
+.mapa__rota-sair {
+  padding: 9px 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+.mapa__rota-sair:hover { background: var(--cream-50); color: var(--text-primary); }
+
 /* ── Área do mapa ── */
 .mapa__area {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.mapa__mapa-wrap {
   flex: 1;
   position: relative;
   /* Sem z-index aqui, os panes/controles internos do Leaflet (que chegam a
@@ -103,6 +127,115 @@
 .mapa__leaflet {
   width: 100%;
   height: 100%;
+}
+
+/* ── Painel do itinerário (modo rota) ── */
+.mapa__rota-painel {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  overflow-y: auto;
+}
+
+.mapa__rota-painel-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.mapa__rota-painel-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mapa__rota-painel-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.mapa__rota-vazio {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.mapa__rota-lista {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 4px;
+}
+
+.mapa__rota-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast);
+}
+.mapa__rota-item:hover { background: var(--cream-50); }
+
+.mapa__rota-item__num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  margin-top: 1px;
+}
+
+.mapa__rota-item__info { min-width: 0; }
+.mapa__rota-item__nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mapa__rota-item__meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+.mapa__rota-item__semgeo {
+  font-size: 10px;
+  color: var(--color-warning);
+  margin-top: 2px;
+}
+
+/* ── Pino numerado da rota ── */
+.mapa-rota-pin-wrap { background: transparent; border: none; }
+.mapa-rota-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-body);
 }
 
 .mapa__estado {
@@ -205,4 +338,5 @@
 @media (max-width: 720px) {
   .mapa__header { padding: 14px 16px 12px; }
   .mapa__busca-wrap { min-width: 0; }
+  .mapa__rota-painel { width: 220px; }
 }
