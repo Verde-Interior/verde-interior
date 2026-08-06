@@ -1,6 +1,7 @@
 // src/components/GlobalSearch/GlobalSearch.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import { supabase } from '../../lib/supabase';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import './GlobalSearch.css';
 
@@ -8,26 +9,59 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
   const { leads, TIPOS_SERVICO, ESTAGIOS, abrirModal, getTiposServico } = useCRM();
   const [query, setQuery]         = useState('');
   const [selecionado, setSel]     = useState(0);
+  const [clientes, setClientes]   = useState([]);
   const inputRef = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const resultados = query.trim().length >= 1
-    ? leads.filter((l) => {
-        const q = query.toLowerCase();
-        return (
+  // Clientes já cadastrados não ficam no CRMContext (só leads) — busca uma
+  // vez, ao abrir, a lista inteira (mesmo padrão já usado em Clientes/Mapa/
+  // Escala, que também carregam tudo e filtram no cliente).
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nome_empresa, contato_nome, contato_telefone, bairro, grupo_servico')
+        .eq('ativo', true);
+      setClientes(data ?? []);
+    })();
+  }, []);
+
+  const q = query.trim().toLowerCase();
+
+  const leadsResultado = q.length >= 1
+    ? leads
+        .filter((l) => (
           l.empresa?.toLowerCase().includes(q) ||
           l.contato?.toLowerCase().includes(q) ||
           l.bairro?.toLowerCase().includes(q) ||
           l.telefone?.includes(q)
-        );
-      }).slice(0, 8)
+        ))
+        .map((l) => ({ ...l, _tipo: 'lead' }))
     : [];
 
-  function abrir(lead) {
+  const clientesResultado = q.length >= 1
+    ? clientes
+        .filter((c) => (
+          c.nome_empresa?.toLowerCase().includes(q) ||
+          c.contato_nome?.toLowerCase().includes(q) ||
+          c.bairro?.toLowerCase().includes(q) ||
+          c.contato_telefone?.includes(q)
+        ))
+        .map((c) => ({ ...c, _tipo: 'cliente' }))
+    : [];
+
+  const resultados = [...leadsResultado, ...clientesResultado].slice(0, 8);
+
+  function abrir(item) {
     onFechar();
+    if (item._tipo === 'cliente') {
+      window.history.pushState({}, '', `?tela=clientes&cliente=${item.id}`);
+      onNavegar('clientes');
+      return;
+    }
     onNavegar('kanban');
-    setTimeout(() => abrirModal(lead), 80);
+    setTimeout(() => abrirModal(item), 80);
   }
 
   function handleKey(e) {
@@ -52,7 +86,7 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
           <input
             ref={inputRef}
             className="gsearch__input"
-            placeholder="Buscar lead por empresa, contato ou bairro…"
+            placeholder="Buscar lead ou cliente por empresa, contato ou bairro…"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSel(0); }}
             onKeyDown={handleKey}
@@ -63,7 +97,30 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
         {/* Resultados */}
         {resultados.length > 0 && (
           <ul className="gsearch__lista">
-            {resultados.map((lead, i) => {
+            {resultados.map((item, i) => {
+              if (item._tipo === 'cliente') {
+                return (
+                  <li
+                    key={`cliente-${item.id}`}
+                    className={`gsearch__item ${i === selecionado ? 'gsearch__item--ativo' : ''}`}
+                    onClick={() => abrir(item)}
+                    onMouseEnter={() => setSel(i)}
+                  >
+                    <div className="gsearch__item-esq">
+                      <span className="gsearch__empresa">{item.nome_empresa}</span>
+                      <span className="gsearch__contato">{item.contato_nome ?? '—'} · 📍 {item.bairro ?? '—'}</span>
+                    </div>
+                    <div className="gsearch__item-dir">
+                      {item.grupo_servico && (
+                        <span className="gsearch__badge-svc" style={{ '--cor': '#6B7280' }}>{item.grupo_servico}</span>
+                      )}
+                      <span className="gsearch__badge-tipo gsearch__badge-tipo--cliente">Cliente</span>
+                    </div>
+                  </li>
+                );
+              }
+
+              const lead = item;
               const tipos = getTiposServico(lead);
               const svcPrimario = tipos[0] ? TIPOS_SERVICO[tipos[0]] : null;
               const labelSvc = tipos.length > 1
@@ -71,7 +128,7 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
                 : (svcPrimario?.label ?? '—');
               return (
                 <li
-                  key={lead.id}
+                  key={`lead-${lead.id}`}
                   className={`gsearch__item ${i === selecionado ? 'gsearch__item--ativo' : ''}`}
                   onClick={() => abrir(lead)}
                   onMouseEnter={() => setSel(i)}
@@ -93,6 +150,7 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
                     >
                       {label(lead.estagioId)}
                     </span>
+                    <span className="gsearch__badge-tipo gsearch__badge-tipo--lead">Lead</span>
                   </div>
                 </li>
               );
@@ -101,7 +159,7 @@ export default function GlobalSearch({ onFechar, onNavegar }) {
         )}
 
         {query.trim().length > 0 && resultados.length === 0 && (
-          <div className="gsearch__vazio">Nenhum lead encontrado para "<strong>{query}</strong>"</div>
+          <div className="gsearch__vazio">Nenhum resultado para "<strong>{query}</strong>"</div>
         )}
 
         {/* Dicas */}

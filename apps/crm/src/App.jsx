@@ -247,7 +247,7 @@ function AppLayout({ tema, onToggleTema }) {
           <div className="app__sidebar-busca">
             <button className="app__busca-btn" onClick={() => setBuscaAberta(true)}>
               <span className="app__busca-icon">⌕</span>
-              <span className="app__busca-texto">Buscar lead</span>
+              <span className="app__busca-texto">Buscar</span>
               <kbd className="app__busca-kbd">⌘K</kbd>
             </button>
           </div>

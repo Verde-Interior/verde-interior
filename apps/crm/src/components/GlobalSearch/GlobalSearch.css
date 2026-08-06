@@ -143,6 +143,19 @@
   white-space: nowrap;
 }
 
+.gsearch__badge-tipo {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.gsearch__badge-tipo--lead    { background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); }
+.gsearch__badge-tipo--cliente { background: color-mix(in srgb, var(--forest-500) 15%, transparent); color: var(--forest-500); }
+
 /* ── Vazio ── */
 .gsearch__vazio {
   padding: 20px 16px;
