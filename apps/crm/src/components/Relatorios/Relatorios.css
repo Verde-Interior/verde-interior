@@ -643,7 +643,7 @@
   border-collapse: collapse;
   font-size: 13px;
   margin-top: 8px;
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   overflow: hidden;
