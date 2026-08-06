@@ -67,6 +67,7 @@ const FORM_VAZIO = {
   endereco: '',
   complemento: '',
   bairro: '',
+  regiao: '',
   lat: '',
   lng: '',
   dias_disponiveis: [],
@@ -211,6 +212,7 @@ export default function Clientes() {
       endereco:              c.endereco              ?? '',
       complemento:           c.complemento           ?? '',
       bairro:                c.bairro                ?? '',
+      regiao:                c.regiao                ?? '',
       lat:                   c.lat                   ?? '',
       lng:                   c.lng                   ?? '',
       dias_disponiveis:      c.dias_disponiveis      ?? [],
@@ -270,6 +272,7 @@ export default function Clientes() {
         data_inicio_contrato:  dados.data_inicio_contrato   || null,
         cnpj:                  dados.cnpj                   || null,
         grupo_servico:         dados.grupo_servico          || null,
+        regiao:                dados.regiao                 || null,
         tem_orquidea:          !!dados.tem_orquidea,
         frequencia_visita:     dados.frequencia_visita      || null,
       };
@@ -787,6 +790,10 @@ export default function Clientes() {
                   <div className="cl-campo">
                     <label>Bairro</label>
                     <input value={form.bairro} onChange={e => setF('bairro', e.target.value)} />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Região <span className="cl-label-hint">ex: Zona Sul, Zona Oeste</span></label>
+                    <input value={form.regiao} onChange={e => setF('regiao', e.target.value)} />
                   </div>
                   <div className="cl-campo">
                     <label>Latitude</label>

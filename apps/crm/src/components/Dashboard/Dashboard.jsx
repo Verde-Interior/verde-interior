@@ -1163,7 +1163,7 @@ function DashboardOperacional({ onNavegar }) {
       const [ag, agSem, relSem, ultimosRel, cli, emp] = await Promise.all([
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
-          cliente:clientes(id, nome_empresa, bairro)
+          cliente:clientes(id, nome_empresa, regiao)
         `).eq('data_agendada', hoje).order('hora_estimada_chegada', { ascending: true, nullsFirst: false }),
         supabase.from('agenda').select(`
           id, data_agendada, funcionario_id, status, tipos_tarefa,
@@ -1172,7 +1172,7 @@ function DashboardOperacional({ onNavegar }) {
         supabase.from('relatorios').select('id, funcionario_id, checkin_at, checkout_at, agendamento_id').gte('checkin_at', setePassadosIso),
         supabase.from('relatorios').select(`
           id, funcionario_id, checkin_at, checkout_at,
-          agenda:agenda(cliente:clientes(nome_empresa, bairro))
+          agenda:agenda(cliente:clientes(nome_empresa, regiao))
         `).order('checkin_at', { ascending: false }).limit(6),
         supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
@@ -1276,7 +1276,7 @@ function DashboardOperacional({ onNavegar }) {
                     <span className="dashboard-op__agenda-hora">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</span>
                     <div className="dashboard-op__agenda-mid">
                       <div className="dashboard-op__agenda-cli">{v.cliente?.nome_empresa ?? '—'}</div>
-                      <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'}{v.cliente?.bairro ? ` · 📍 ${v.cliente.bairro}` : ''}</div>
+                      <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'}{v.cliente?.regiao ? ` · 📍 ${v.cliente.regiao}` : ''}</div>
                     </div>
                     <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{labelStatusVisita(v.status ?? 'rascunho')}</span>
                   </div>
@@ -1335,7 +1335,7 @@ function DashboardOperacional({ onNavegar }) {
                   >
                     <div className="dashboard-op__ult-info">
                       <div className="dashboard-op__ult-empresa">{cli?.nome_empresa ?? '—'}</div>
-                      <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'}{cli?.bairro ? ` · 📍 ${cli.bairro}` : ''}</div>
+                      <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'}{cli?.regiao ? ` · 📍 ${cli.regiao}` : ''}</div>
                       {(horaCheckin || horaCheckout) && (
                         <div className="dashboard-op__ult-horas">
                           {horaCheckin  && <>Check-in {horaCheckin}</>}
