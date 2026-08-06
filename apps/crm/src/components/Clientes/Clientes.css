@@ -81,10 +81,10 @@
   gap: 2px;
   box-shadow: var(--glass-shadow);
 }
-.clientes__kpi--verde  { border-color: var(--forest-300); background: var(--forest-50); }
+.clientes__kpi--verde  { border-color: var(--forest-300); background: color-mix(in srgb, var(--forest-500) 14%, var(--glass-light)); }
 .clientes__kpi--muted  { opacity: 0.7; }
-.clientes__kpi--alerta { border-color: #E6B800; background: #FFFBEB; }
-.clientes__kpi--ok     { border-color: var(--forest-300); background: var(--forest-50); }
+.clientes__kpi--alerta { border-color: #E6B800; background: color-mix(in srgb, var(--color-warning) 14%, var(--glass-light)); }
+.clientes__kpi--ok     { border-color: var(--forest-300); background: color-mix(in srgb, var(--forest-500) 14%, var(--glass-light)); }
 
 .clientes__kpi-valor {
   font-size: 26px;
@@ -92,9 +92,9 @@
   color: var(--text-primary);
   line-height: 1;
 }
-.clientes__kpi--verde  .clientes__kpi-valor { color: var(--forest-700); }
-.clientes__kpi--alerta .clientes__kpi-valor { color: #92600A; }
-.clientes__kpi--ok     .clientes__kpi-valor { color: var(--forest-700); }
+.clientes__kpi--verde  .clientes__kpi-valor { color: var(--forest-500); }
+.clientes__kpi--alerta .clientes__kpi-valor { color: var(--color-warning); }
+.clientes__kpi--ok     .clientes__kpi-valor { color: var(--forest-500); }
 
 .clientes__kpi-label {
   font-size: 12px;
@@ -333,16 +333,16 @@
   white-space: nowrap;
 }
 .clientes__recencia--recente {
-  color: var(--forest-700);
-  background: var(--forest-100);
+  color: var(--forest-500);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
 }
 .clientes__recencia--aviso {
-  color: #92600A;
-  background: #FEF3C7;
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 15%, var(--surface-card));
 }
 .clientes__recencia--antigo {
-  color: #991B1B;
-  background: #FEE2E2;
+  color: #EF4444;
+  background: color-mix(in srgb, #EF4444 15%, var(--surface-card));
 }
 
 /* ── Badges ── */
@@ -360,13 +360,13 @@
 }
 
 .clientes__badge--servico {
-  background: var(--forest-100);
-  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
 }
 
 .clientes__badge--ativo {
-  background: var(--forest-100);
-  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
 }
 
 .clientes__badge--inativo {
@@ -382,9 +382,9 @@
   border-radius: 10px;
   white-space: nowrap;
 }
-.clientes__comp--ok    { background: var(--forest-100); color: var(--forest-700); }
-.clientes__comp--medio { background: #FEF9C3; color: #92600A; }
-.clientes__comp--baixo { background: #FEE2E2; color: #991B1B; }
+.clientes__comp--ok    { background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card)); color: var(--forest-500); }
+.clientes__comp--medio { background: color-mix(in srgb, var(--color-warning) 15%, var(--surface-card)); color: var(--color-warning); }
+.clientes__comp--baixo { background: color-mix(in srgb, #EF4444 15%, var(--surface-card)); color: #EF4444; }
 
 /* ═══════════════════════════════════════════
    MODAL DE EDIÇÃO
@@ -464,9 +464,9 @@
 .cl-sec:last-child { border-bottom: none; }
 
 .cl-sec--destaque {
-  background: var(--forest-50);
-  border-top: 1px solid var(--forest-200);
-  border-bottom: 1px solid var(--forest-200);
+  background: color-mix(in srgb, var(--forest-500) 10%, var(--glass-light-strong));
+  border-top: 1px solid color-mix(in srgb, var(--forest-500) 35%, var(--glass-light-border));
+  border-bottom: 1px solid color-mix(in srgb, var(--forest-500) 35%, var(--glass-light-border));
 }
 
 .cl-sec__titulo {
@@ -528,8 +528,8 @@
 .cl-label-hint {
   font-size: 10px;
   font-weight: 500;
-  background: var(--forest-100);
-  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
   padding: 1px 6px;
   border-radius: 10px;
   letter-spacing: 0;

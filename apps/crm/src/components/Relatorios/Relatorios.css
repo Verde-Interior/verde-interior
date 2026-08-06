@@ -262,8 +262,8 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.rel-tag--ok { background: var(--forest-100); color: var(--forest-700); }
-.rel-tag--warn { background: #FEF3C7; color: #92600A; }
+.rel-tag--ok { background: color-mix(in srgb, var(--forest-500) 15%, var(--glass-light)); color: var(--forest-500); }
+.rel-tag--warn { background: color-mix(in srgb, var(--color-warning) 15%, var(--glass-light)); color: var(--color-warning); }
 .rel-tag--neu { background: var(--cream-100); color: var(--text-muted); }
 
 /* ═══════════════════════════════════════════

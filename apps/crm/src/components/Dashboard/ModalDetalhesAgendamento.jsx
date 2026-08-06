@@ -1,17 +1,9 @@
 // src/components/Dashboard/ModalDetalhesAgendamento.jsx
 import { useOverlayClose } from '../../hooks/useOverlayClose';
-import { TIPOS_TAREFA } from '../../utils/escalaHelpers';
-
-const TAREFA_LABEL = Object.fromEntries(TIPOS_TAREFA.map((t) => [t.id, t.label]));
+import { TIPOS_TAREFA, STATUS_VISITA_LABEL } from '../../utils/escalaHelpers';
 import '../ModalDetalhesCliente/ModalDetalhesCliente.css';
 
-const STATUS_LABEL = {
-  rascunho:     'Rascunho',
-  publicado:    'Publicado',
-  em_execucao:  'Em execução',
-  concluido:    'Concluído',
-  cancelado:    'Cancelado',
-};
+const TAREFA_LABEL = Object.fromEntries(TIPOS_TAREFA.map((t) => [t.id, t.label]));
 
 // Card somente-leitura com os dados do agendamento em si (horário, status,
 // funcionário, tipo de tarefa) — não confundir com ModalDetalhesCliente, que
@@ -43,7 +35,7 @@ export default function ModalDetalhesAgendamento({ visita, funcionarioNome, onFe
               <div className="mdc-mc"><div className="mdc-mc__lbl">Data</div><div className="mdc-mc__val">{dataFmt}</div></div>
               <div className="mdc-mc"><div className="mdc-mc__lbl">Hora estimada</div><div className="mdc-mc__val">{visita.hora_estimada_chegada?.slice(0, 5) ?? '—'}</div></div>
               <div className="mdc-mc"><div className="mdc-mc__lbl">Funcionário</div><div className="mdc-mc__val">{funcionarioNome ?? '—'}</div></div>
-              <div className="mdc-mc"><div className="mdc-mc__lbl">Status</div><div className="mdc-mc__val">{STATUS_LABEL[visita.status] ?? visita.status ?? '—'}</div></div>
+              <div className="mdc-mc"><div className="mdc-mc__lbl">Status</div><div className="mdc-mc__val">{STATUS_VISITA_LABEL[visita.status] ?? visita.status ?? '—'}</div></div>
             </div>
           </section>
 

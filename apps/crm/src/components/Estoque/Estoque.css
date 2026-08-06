@@ -90,8 +90,8 @@
 }
 .es__subaba:hover { background: var(--cream-50); }
 .es__subaba--ativa {
-  background: var(--forest-100);
-  color: var(--forest-800);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
   border-color: var(--forest-300);
 }
 
@@ -426,9 +426,9 @@
   white-space: nowrap;
 }
 
-.ep-badge--verde   { background: var(--forest-100); color: var(--forest-800); }
-.ep-badge--azul    { background: #DBEAFE; color: #1E40AF; }
-.ep-badge--amarelo { background: #FEF3C7; color: #92600A; }
+.ep-badge--verde   { background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card)); color: var(--forest-500); }
+.ep-badge--azul    { background: color-mix(in srgb, #2563EB 15%, var(--surface-card)); color: #60A5FA; }
+.ep-badge--amarelo { background: color-mix(in srgb, var(--color-warning) 15%, var(--surface-card)); color: var(--color-warning); }
 .ep-badge--cinza   { background: var(--cream-100); color: var(--text-muted); }
 
 /* ── Timeline de histórico ──────────────────────────── */
@@ -527,9 +527,9 @@
   font-size: 11px;
   font-weight: 600;
 }
-.ep-cnt--verde   { background: var(--forest-100); color: var(--forest-800); }
-.ep-cnt--azul    { background: #DBEAFE; color: #1E40AF; }
-.ep-cnt--amarelo { background: #FEF3C7; color: #92600A; }
+.ep-cnt--verde   { background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card)); color: var(--forest-500); }
+.ep-cnt--azul    { background: color-mix(in srgb, #2563EB 15%, var(--surface-card)); color: #60A5FA; }
+.ep-cnt--amarelo { background: color-mix(in srgb, var(--color-warning) 15%, var(--surface-card)); color: var(--color-warning); }
 .ep-cnt--cinza   { background: var(--cream-100); color: var(--text-muted); }
 
 /* ── QR card ─────────────────────────────────────────── */
@@ -619,14 +619,14 @@
 }
 .es__layout-btn:hover { background: var(--cream-50); }
 .es__layout-btn--ativo {
-  background: var(--forest-100);
-  color: var(--forest-800);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
 }
 .es__layout-btn + .es__layout-btn { border-left: 1px solid var(--surface-border); }
 
 .es__btn-sec--ativo {
-  background: var(--forest-100);
-  color: var(--forest-800);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
   border-color: var(--forest-300);
 }
 
@@ -767,10 +767,10 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.ep-status--verde   { background: var(--forest-100); color: var(--forest-800); }
-.ep-status--azul    { background: #DBEAFE; color: #1E40AF; }
-.ep-status--roxo    { background: #EDE9FE; color: #6D28D9; }
-.ep-status--amarelo { background: #FEF3C7; color: #92600A; }
+.ep-status--verde   { background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card)); color: var(--forest-500); }
+.ep-status--azul    { background: color-mix(in srgb, #2563EB 15%, var(--surface-card)); color: #60A5FA; }
+.ep-status--roxo    { background: color-mix(in srgb, #8B5CF6 15%, var(--surface-card)); color: #A78BFA; }
+.ep-status--amarelo { background: color-mix(in srgb, var(--color-warning) 15%, var(--surface-card)); color: var(--color-warning); }
 .ep-status--cinza   { background: var(--cream-100); color: var(--text-muted); }
 
 /* ── QR card (novo layout) ──────────────────────────── */
@@ -826,12 +826,12 @@
 }
 
 .qr-card--sem-especie { border-left: 3px solid #F59E0B; }
-.qr-card--sem-especie .qr-card__especie { color: #92600A; font-style: italic; }
+.qr-card--sem-especie .qr-card__especie { color: var(--color-warning); font-style: italic; }
 
 /* ── Scan mobile — hub de ações ─────────────────────── */
 .qr-scan__info {
-  background: var(--forest-100);
-  color: var(--forest-800);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
   padding: 12px 14px;
   border-radius: var(--radius-md);
   font-size: 13px;

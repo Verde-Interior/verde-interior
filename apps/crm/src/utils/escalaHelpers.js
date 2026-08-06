@@ -34,6 +34,20 @@ export function corStatusVisita(status) {
   return STATUS_VISITA_COR[status] ?? '#9CA3AF';
 }
 
+// Rótulo por extenso do status — mesma ideia da cor acima: uma fonte única
+// pra não ficar cada tela mostrando o valor cru do banco (ex: "EM_EXECUCAO")
+// enquanto outra mostra "Em execução".
+export const STATUS_VISITA_LABEL = {
+  rascunho:     'Rascunho',
+  publicado:    'Publicado',
+  em_execucao:  'Em execução',
+  concluido:    'Concluído',
+  cancelado:    'Cancelado',
+};
+export function labelStatusVisita(status) {
+  return STATUS_VISITA_LABEL[status] ?? status;
+}
+
 export const TIPOS_TAREFA = [
   { id: 'manutencao', label: 'Manutenção', frase: 'manutenção das plantas' },
   { id: 'troca',      label: 'Troca',      frase: 'trocas' },

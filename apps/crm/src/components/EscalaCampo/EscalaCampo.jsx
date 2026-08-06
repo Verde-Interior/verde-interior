@@ -567,6 +567,11 @@ export default function EscalaCampo() {
         tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
         observacoes_gestor:    campos.obs || null,
       };
+      // Nome só é editável (e só existe como coluna própria) pra tarefa
+      // avulsa — cliente/lead cadastrado têm o nome no próprio cadastro.
+      if (!modalEdit.cliente_id && !modalEdit.lead_id) {
+        payload.nome_cliente = campos.nomeTarefa?.trim() || null;
+      }
       // Mudou de dia e/ou funcionário — manda pro fim da lista do destino
       // pra não colidir com a ordem de rota de quem já está lá.
       const mudouDestino = campos.data !== modalEdit.data_agendada
@@ -610,6 +615,8 @@ export default function EscalaCampo() {
       const { error } = await supabase.from('agenda').insert({
         cliente_id:            modalEdit.cliente_id,
         lead_id:               modalEdit.lead_id,
+        nome_cliente:          campos.nomeTarefa?.trim() || null,
+        endereco_tarefa:       campos.endereco?.trim() || null,
         funcionario_id:        String(alvoId),
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         data_agendada:         modalEdit.data_agendada,
@@ -651,6 +658,7 @@ export default function EscalaCampo() {
       const { error } = await supabase.from('agenda').insert({
         cliente_id:            modalEdit.cliente_id,
         lead_id:               modalEdit.lead_id,
+        nome_cliente:          campos.nomeTarefa?.trim() || null,
         funcionario_id:        String(funcionarioId),
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         data_agendada:         data,

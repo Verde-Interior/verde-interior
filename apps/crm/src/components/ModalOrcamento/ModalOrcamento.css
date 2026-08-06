@@ -645,12 +645,12 @@
 
 .modal__btn-gerar-orc--secundario {
   background: transparent;
-  color: var(--forest-700);
+  color: var(--forest-500);
   border: 1.5px solid var(--forest-300);
 }
 
 .modal__btn-gerar-orc--secundario:hover {
-  background: var(--forest-50);
+  background: color-mix(in srgb, var(--forest-500) 12%, transparent);
   border-color: var(--forest-500);
   transform: none;
 }

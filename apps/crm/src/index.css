@@ -145,6 +145,8 @@
      translúcido: continua lendo como "hover com a cor da marca", só que
      tingindo o fundo escuro em vez de estourar pra um bloco claro. */
   --color-primary-lt: rgba(123,26,26,0.18);
+  /* Mesma lógica do --color-primary-lt acima, só que pro acento verde. */
+  --color-accent-lt: rgba(74,136,40,0.18);
 
   /* Opacidade bem mais alta que o glass do modo claro: a referência é
      "chapada" (sem vidro translúcido deixando o degradê colorido vazar). */

@@ -6,7 +6,7 @@ import { useToast } from '../Toast/Toast';
 import DashboardCeasa from '../CeasaHolambra/DashboardCeasa';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import ModalDetalhesAgendamento from './ModalDetalhesAgendamento';
-import { corStatusVisita } from '../../utils/escalaHelpers';
+import { corStatusVisita, labelStatusVisita } from '../../utils/escalaHelpers';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -1274,7 +1274,7 @@ function DashboardOperacional({ onNavegar }) {
                       <div className="dashboard-op__agenda-cli">{v.cliente?.nome_empresa ?? '—'}</div>
                       <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'} · 📍 {v.cliente?.bairro ?? '—'}</div>
                     </div>
-                    <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{v.status ?? 'rascunho'}</span>
+                    <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{labelStatusVisita(v.status ?? 'rascunho')}</span>
                   </div>
                 );
               })}

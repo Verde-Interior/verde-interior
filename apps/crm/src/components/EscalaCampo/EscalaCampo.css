@@ -192,8 +192,8 @@
   padding: 2px 10px;
   border-radius: 10px;
 }
-.ec__status-badge--rascunho  { background: #FEF9C3; color: #92600A; }
-.ec__status-badge--publicado { background: var(--forest-100); color: var(--forest-700); }
+.ec__status-badge--rascunho  { background: color-mix(in srgb, var(--color-warning) 15%, var(--surface-card)); color: var(--color-warning); }
+.ec__status-badge--publicado { background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card)); color: var(--forest-500); }
 .ec__status-badge--vazio     { background: var(--cream-100); color: var(--text-muted); }
 
 .ec__dia-acoes {
@@ -740,12 +740,12 @@
   white-space: nowrap;
 }
 .ec-preview__diff-tag--custo {
-  background: #FEE2E2;
-  color: #991B1B;
+  background: color-mix(in srgb, #EF4444 15%, var(--surface-card));
+  color: #EF4444;
 }
 .ec-preview__diff-tag--ganho {
-  background: var(--forest-100);
-  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
 }
 
 .ec-preview__lista {
@@ -1146,7 +1146,7 @@
   transition: border-color var(--transition-fast);
 }
 .ec-busca__input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-lt); }
-.ec-busca__input--sel  { border-color: var(--color-accent); background: var(--forest-50); }
+.ec-busca__input--sel  { border-color: var(--color-accent); background: color-mix(in srgb, var(--forest-500) 12%, var(--surface-card)); }
 
 .ec-busca__clear {
   position: absolute;
@@ -1210,9 +1210,9 @@
   padding: 7px 12px;
   border-radius: var(--radius-md);
 }
-.ec-alerta--erro  { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
-.ec-alerta--aviso { background: #FEF9C3; color: #92600A; border: 1px solid #FDE68A; }
-.ec-alerta--ok    { background: var(--forest-50); color: var(--forest-700); border: 1px solid var(--forest-200); font-size: 12px; }
+.ec-alerta--erro  { background: color-mix(in srgb, #EF4444 14%, var(--surface-card)); color: #EF4444; border: 1px solid color-mix(in srgb, #EF4444 40%, var(--surface-border)); }
+.ec-alerta--aviso { background: color-mix(in srgb, var(--color-warning) 14%, var(--surface-card)); color: var(--color-warning); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--surface-border)); }
+.ec-alerta--ok    { background: color-mix(in srgb, var(--forest-500) 14%, var(--surface-card)); color: var(--forest-500); border: 1px solid color-mix(in srgb, var(--forest-500) 40%, var(--surface-border)); font-size: 12px; }
 
 /* ── Botões do modal ── */
 .ec-btn {
@@ -1936,8 +1936,8 @@
   font-size: 11px;
   font-weight: 600;
   padding: 2px 8px;
-  background: var(--forest-100);
-  color: var(--forest-700);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
+  color: var(--forest-500);
   border-radius: 999px;
 }
 .ec-copiar__linha { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
@@ -1955,16 +1955,16 @@
 }
 .ec-copiar__btn-buscar {
   padding: 8px 16px;
-  background: var(--forest-100);
+  background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card));
   border: 1px solid var(--forest-300);
-  color: var(--forest-700);
+  color: var(--forest-500);
   border-radius: var(--radius-md);
   font-weight: 700;
   cursor: pointer;
   font-size: 13px;
   font-family: var(--font-body);
 }
-.ec-copiar__btn-buscar:hover:not(:disabled) { background: var(--forest-200); }
+.ec-copiar__btn-buscar:hover:not(:disabled) { background: color-mix(in srgb, var(--forest-500) 25%, var(--surface-card)); }
 .ec-copiar__btn-buscar:disabled { opacity: .55; cursor: not-allowed; }
 
 .ec-copiar__preview {
@@ -1995,9 +1995,9 @@
 
 .ec-copiar__msg {
   padding: 10px 14px;
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
-  color: #92400E;
+  background: color-mix(in srgb, var(--color-warning) 14%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--surface-border));
+  color: var(--color-warning);
   border-radius: var(--radius-md);
   font-size: 13px;
   margin: 0;
@@ -2007,6 +2007,6 @@
   font-size: 12px;
   color: var(--text-secondary);
   padding: 8px 12px;
-  background: var(--forest-50);
+  background: color-mix(in srgb, var(--forest-500) 10%, var(--surface-card));
   border-radius: var(--radius-md);
 }

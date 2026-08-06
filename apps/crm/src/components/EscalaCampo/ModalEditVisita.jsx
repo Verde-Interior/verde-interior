@@ -21,12 +21,18 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
 
   const tiposIniciais = Array.isArray(visita.tipos_tarefa) ? visita.tipos_tarefa : [];
 
+  // Tarefa avulsa: não tem cliente cadastrado nem lead — o nome vem só do
+  // texto livre (agenda.nome_cliente). É o único caso em que dá pra editar
+  // o nome por aqui (cliente/lead têm o nome no próprio cadastro).
+  const semCliente = !visita.cliente_id && !visita.lead_id;
+
   const [form, setForm] = useState({
     funcionarioId: String(visita.funcionario_id ?? ''),
     data:          visita.data_agendada ?? '',
     hora:          (visita.hora_estimada_chegada ?? '').slice(0, 5),
     duracao:       visita.duracao_estimada_min ? String(visita.duracao_estimada_min) : '',
     servicoId:     visita.cliente_servico_id ?? '',
+    nomeTarefa:    visita.nome_cliente || '',
     endereco:      visita.endereco_tarefa || visita.clientes?.endereco || '',
     tipos:         tiposIniciais,
     obs:           visita.observacoes_gestor ?? '',
@@ -129,6 +135,18 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
               </div>
             )}
           </div>
+
+          {semCliente && (
+            <div className="ec-campo">
+              <label>Nome <span className="ec-hint">(essa visita não está vinculada a um cliente ou lead cadastrado)</span></label>
+              <input
+                type="text"
+                value={form.nomeTarefa}
+                onChange={e => setF('nomeTarefa', e.target.value)}
+                placeholder="Ex: Nome da empresa ou do evento"
+              />
+            </div>
+          )}
 
           <div className="ec-campo">
             <label>Local / Endereço <span className="ec-hint">(vale só para esta visita — não altera o cadastro do cliente)</span></label>
