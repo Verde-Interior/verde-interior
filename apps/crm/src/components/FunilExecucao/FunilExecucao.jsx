@@ -34,7 +34,7 @@ export default function FunilExecucao() {
     (async () => {
       const [saldosRes, empRes] = await Promise.all([
         supabase.from('estoque_saldos_totais').select('material_id, nome, categoria, saldo_total, controla_posse'),
-        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
+        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
       ]);
       setSaldos(saldosRes.data ?? []);
       setEmployees(empRes.data ?? []);

@@ -1175,7 +1175,7 @@ function DashboardOperacional({ onNavegar }) {
           agenda:agenda(cliente:clientes(nome_empresa, regiao))
         `).order('checkin_at', { ascending: false }).limit(6),
         supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
-        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI']).order('name'),
+        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
       ]);
 
       setDados({
