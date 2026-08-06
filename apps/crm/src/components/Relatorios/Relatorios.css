@@ -52,8 +52,8 @@
 }
 
 .rel__kpi--verde {
-  background: var(--forest-50);
-  border-color: var(--forest-200);
+  background: color-mix(in srgb, var(--forest-500) 14%, var(--glass-light));
+  border-color: color-mix(in srgb, var(--forest-500) 35%, var(--glass-light-border));
 }
 
 .rel__kpi-valor {
@@ -555,7 +555,7 @@
   flex-wrap: wrap;
 }
 .rel__flag {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
   color: var(--text-secondary);
   padding: 8px 12px;
@@ -569,11 +569,11 @@
 }
 .rel__flag:hover { border-color: var(--text-secondary); background: var(--cream-50); }
 .rel__flag--on {
-  background: #FEF3C7;
-  border-color: #B45309;
-  color: #92600A;
+  background: color-mix(in srgb, var(--color-warning) 20%, var(--surface-card));
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
-.rel__flag--on:hover { background: #FDE68A; }
+.rel__flag--on:hover { background: color-mix(in srgb, var(--color-warning) 30%, var(--surface-card)); }
 
 /* Consumo de dados por colaborador */
 .rel__consumo {
@@ -581,7 +581,7 @@
   margin-top: -4px;
 }
 .rel__consumo-toggle {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
   color: var(--text-secondary);
   padding: 8px 12px;

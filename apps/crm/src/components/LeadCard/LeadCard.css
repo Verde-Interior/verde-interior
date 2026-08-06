@@ -211,8 +211,8 @@
   justify-content: center;
   gap: 5px;
   padding: 5px 10px;
-  background: #F0FDF4;
-  border: 1px solid #BBF7D0;
+  background: color-mix(in srgb, #16A34A 14%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, #16A34A 40%, var(--surface-border));
   border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
@@ -220,7 +220,7 @@
   transition: background var(--transition-fast);
 }
 
-.lead-card__whatsapp:hover { background: #DCFCE7; }
+.lead-card__whatsapp:hover { background: color-mix(in srgb, #16A34A 24%, var(--surface-card)); }
 
 /* ── Ligar ── */
 .lead-card__ligar {
@@ -230,8 +230,8 @@
   justify-content: center;
   gap: 5px;
   padding: 5px 10px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
+  background: color-mix(in srgb, #1D4ED8 12%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, #1D4ED8 40%, var(--surface-border));
   border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
@@ -240,7 +240,7 @@
   transition: background var(--transition-fast);
 }
 
-.lead-card__ligar:hover { background: #DBEAFE; }
+.lead-card__ligar:hover { background: color-mix(in srgb, #1D4ED8 22%, var(--surface-card)); }
 
 /* ── Drag handle ── */
 .lead-card__drag-handle {
@@ -310,9 +310,9 @@
 .lead-card__gerar-orc {
   margin-top: 8px;
   width: 100%;
-  background: #EEF2FF;
+  background: color-mix(in srgb, #4338CA 14%, var(--surface-card));
   color: #4338CA;
-  border: 1px solid #C7D2FE;
+  border: 1px solid color-mix(in srgb, #4338CA 40%, var(--surface-border));
   padding: 6px 12px;
   border-radius: var(--radius-md);
   font-size: 11px;
@@ -322,8 +322,8 @@
   font-family: var(--font-body);
 }
 .lead-card__gerar-orc:hover {
-  background: #E0E7FF;
-  border-color: #A5B4FC;
+  background: color-mix(in srgb, #4338CA 24%, var(--surface-card));
+  border-color: color-mix(in srgb, #4338CA 55%, var(--surface-border));
 }
 
 .lead-card__cliente-tag {
