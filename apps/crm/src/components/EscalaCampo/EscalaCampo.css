@@ -354,7 +354,7 @@
   display: flex;
   align-items: flex-start;
   gap: 5px;
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
   padding: 8px 30px 8px 5px; /* padding-right pequeno pro ícone de status caber */
@@ -388,38 +388,41 @@
 .ec-cartao--em_execucao,
 .ec-cartao--concluido,
 .ec-cartao--cancelado { border-left: 4px solid transparent; }
-/* Aguardando (publicado): mantém quase branco pra não competir com concluído */
-.ec-cartao--publicado   { border-left-color: #86efac; background: #ffffff; }
+/* Tons batidos com color-mix sobre var(--surface-card) em vez de pastéis
+   fixos: no claro dá quase o mesmo resultado de antes, no escuro vira um
+   tingimento sutil sobre o fundo escuro em vez de um card branco. */
+/* Aguardando (publicado): mantém quase igual ao card base pra não competir com concluído */
+.ec-cartao--publicado   { border-left-color: #86efac; background: var(--surface-card); }
 /* Em execução: azul discreto */
-.ec-cartao--em_execucao { border-left-color: #2563eb; background: #eff6ff; }
+.ec-cartao--em_execucao { border-left-color: #2563eb; background: color-mix(in srgb, #2563eb 8%, var(--surface-card)); }
 /* Concluída: verde suave (mais evidente que aguardando) */
-.ec-cartao--concluido   { border-left-color: #059669; background: #ecfdf5; }
+.ec-cartao--concluido   { border-left-color: #059669; background: color-mix(in srgb, #059669 10%, var(--surface-card)); }
 /* Cancelada: vermelho apagado */
-.ec-cartao--cancelado   { border-left-color: #ef4444; background: #fef2f2; opacity: 0.65; }
+.ec-cartao--cancelado   { border-left-color: #ef4444; background: color-mix(in srgb, #ef4444 8%, var(--surface-card)); opacity: 0.65; }
 
 /* Conflitos de horário — fundo sólido, sem gradientes */
 .ec-cartao--conflito-sob {
-  background: #FEF2F2;
-  border-color: #FCA5A5;
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--surface-border));
 }
 .ec-cartao--conflito-sob:hover { box-shadow: var(--shadow-sm); }
 
 .ec-cartao--conflito-fim {
-  background: #FFFBEB;
-  border-color: #FDE68A;
+  background: color-mix(in srgb, var(--color-warning) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--surface-border));
 }
 
 /* Sobreposição prevalece sobre estouro */
 .ec-cartao--conflito-sob.ec-cartao--conflito-fim {
-  background: #FEF2F2;
-  border-color: #FCA5A5;
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--surface-border));
 }
 
 /* Restrição do cliente (dia ou hora fora da regra) — mais grave */
 .ec-cartao--restr-dia,
 .ec-cartao--restr-hora {
-  background: #fff7ed;
-  border-color: #fed7aa;
+  background: color-mix(in srgb, #f97316 14%, var(--surface-card));
+  border-color: color-mix(in srgb, #f97316 45%, var(--surface-border));
   border-left: 4px solid #f97316;
 }
 
@@ -457,7 +460,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px white;
+  box-shadow: 0 0 0 2px var(--surface-card);
 }
 .ec-cartao--prio-critica .ec-cartao__prio-dot { background: #DC2626; }
 .ec-cartao--prio-alta    .ec-cartao__prio-dot { background: #F97316; }

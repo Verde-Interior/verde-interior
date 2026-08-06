@@ -540,9 +540,12 @@
 }
 .rel-card__dist--warn strong { color: #92600A; }
 
-/* Cartão com alerta (sem foto/assinatura/GPS fora) fica sutilmente destacado */
+/* Cartão com alerta (sem foto/assinatura/GPS fora) fica sutilmente destacado.
+   Usa var(--glass-light) como base (em vez de branco fixo) pra acompanhar o
+   tema — no escuro vira um degradê quente sobre o fundo escuro, não um card
+   branco destoando do resto da tela. */
 .rel-card--alerta {
-  background: linear-gradient(to right, #FFFBEB 0%, white 12%);
+  background: linear-gradient(to right, color-mix(in srgb, var(--color-warning) 14%, var(--glass-light)) 0%, var(--glass-light) 12%);
 }
 
 /* Toggles de alerta rápido */
