@@ -46,7 +46,7 @@ async function signedUrl(path, ttlSec = 60 * 60) {
   return data?.signedUrl ?? null;
 }
 
-export default function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
+export default function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido, onEditarAgendamento }) {
   const c = r.agenda?.cliente;
   const [fotoAmpIdx, setFotoAmpIdx] = useState(null); // índice em r.fotos, ou null se fechado
   const [urlsFotos, setUrlsFotos] = useState({}); // fotoId -> signed url
@@ -372,6 +372,11 @@ export default function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onR
             {removendo ? 'Removendo...' : '✕ Remover relatório'}
           </button>
           <span style={{ flex: 1 }} />
+          {onEditarAgendamento && (
+            <button className="rel-btn rel-btn--pdf" onClick={onEditarAgendamento}>
+              ✏️ Editar agendamento
+            </button>
+          )}
           <button className="rel-btn rel-btn--pdf" onClick={exportarPDF} title="Exportar como PDF">
             📄 Exportar PDF
           </button>

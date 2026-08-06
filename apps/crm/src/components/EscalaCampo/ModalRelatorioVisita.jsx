@@ -17,7 +17,7 @@ function formatarData(iso) {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-export default function ModalRelatorioVisita({ visita, funcNome, onFechar, onRemovido }) {
+export default function ModalRelatorioVisita({ visita, funcNome, onFechar, onRemovido, onEditarAgendamento }) {
   const [relatorio, setRelatorio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
@@ -50,6 +50,7 @@ export default function ModalRelatorioVisita({ visita, funcNome, onFechar, onRem
         funcNome={funcNome}
         onFechar={onFechar}
         onRemovido={onRemovido}
+        onEditarAgendamento={onEditarAgendamento}
       />
     );
   }
@@ -77,6 +78,10 @@ export default function ModalRelatorioVisita({ visita, funcNome, onFechar, onRem
           )}
         </div>
         <footer className="rel-modal__footer">
+          {onEditarAgendamento && (
+            <button className="rel-btn rel-btn--pdf" onClick={onEditarAgendamento}>✏️ Editar agendamento</button>
+          )}
+          <span style={{ flex: 1 }} />
           <button className="rel-btn" onClick={onFechar}>Fechar</button>
         </footer>
       </div>

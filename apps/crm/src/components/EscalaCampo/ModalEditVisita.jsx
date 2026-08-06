@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario } from '../../utils/escalaHelpers';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 
-export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onDuplicarFuncionario }) {
+export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onDuplicarFuncionario, onDuplicar }) {
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
   // se é visita de lead (cliente_id null), usa o `visita.clientes` sintético
   // já enriquecido pela EscalaCampo — traz cliente_servicos como array de 1 item
@@ -23,9 +23,11 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
 
   const [form, setForm] = useState({
     funcionarioId: String(visita.funcionario_id ?? ''),
+    data:          visita.data_agendada ?? '',
     hora:          (visita.hora_estimada_chegada ?? '').slice(0, 5),
     duracao:       visita.duracao_estimada_min ? String(visita.duracao_estimada_min) : '',
     servicoId:     visita.cliente_servico_id ?? '',
+    endereco:      visita.endereco_tarefa || visita.clientes?.endereco || '',
     tipos:         tiposIniciais,
     obs:           visita.observacoes_gestor ?? '',
     obsManual:     (visita.observacoes_gestor ?? '').trim() !== textoObsDeTipos(tiposIniciais).trim(),
@@ -61,6 +63,7 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
   const nomeCliente = visita.clientes?.nome_empresa ?? clienteCompleto?.nome_empresa ?? '—';
   const dataFmt = new Date(visita.data_agendada + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', weekday: 'short' });
   const publicada = visita.status === 'publicado';
+  const jaExecutada = visita.status === 'em_execucao' || visita.status === 'concluido';
 
   const overlayClose = useOverlayClose(onFechar);
 
@@ -81,6 +84,11 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
               ⚠ Esta visita já foi <strong>publicada</strong> e pode ter sido vista pelo funcionário. Mudanças agora são refletidas no App Ponto na próxima vez que ele abrir a agenda.
             </div>
           )}
+          {jaExecutada && (
+            <div className="ec-alerta ec-alerta--aviso" style={{ marginBottom: 4 }}>
+              ⚠ Esta visita já foi <strong>{visita.status === 'concluido' ? 'concluída' : 'iniciada'}</strong>. O relatório continua vinculado aos dados originais do check-in — mudar data, horário ou funcionário aqui não altera o que já foi registrado em campo.
+            </div>
+          )}
           <div className="ec-grid2">
             <div className="ec-campo">
               <label>Funcionário</label>
@@ -89,6 +97,10 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
                   <option key={f.id} value={String(f.id)}>{f.name}</option>
                 ))}
               </select>
+            </div>
+            <div className="ec-campo">
+              <label>Data</label>
+              <input type="date" value={form.data} onChange={e => setF('data', e.target.value)} />
             </div>
             <div className="ec-campo">
               <label>Hora estimada de chegada</label>
@@ -116,6 +128,16 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
                 </select>
               </div>
             )}
+          </div>
+
+          <div className="ec-campo">
+            <label>Local / Endereço <span className="ec-hint">(vale só para esta visita — não altera o cadastro do cliente)</span></label>
+            <input
+              type="text"
+              value={form.endereco}
+              onChange={e => setF('endereco', e.target.value)}
+              placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
+            />
           </div>
 
           <div className="ec-campo">
@@ -183,6 +205,16 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
                 title="Cria uma cópia desta visita atribuída a outro funcionário (mesma hora, tarefa e observações)"
               >
                 👥 + Funcionário
+              </button>
+            )}
+            {onDuplicar && (
+              <button
+                className="ec-btn ec-btn--sec"
+                onClick={() => onDuplicar(form)}
+                disabled={salvando}
+                title="Cria uma cópia desta visita, escolhendo funcionário e data de destino"
+              >
+                ⧉ Duplicar
               </button>
             )}
             <button className="ec-btn ec-btn--sec" onClick={onFechar}>Fechar</button>

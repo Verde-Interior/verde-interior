@@ -878,6 +878,16 @@
   text-overflow: ellipsis;
 }
 
+.ec-cartao__endereco {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ec-cartao__bairro {
   display: block;
   font-size: 10px;

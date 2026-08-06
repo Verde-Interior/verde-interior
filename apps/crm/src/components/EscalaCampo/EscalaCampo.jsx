@@ -13,6 +13,7 @@ import { minutosParaHora, otimizarRotaComRestricoes } from '../../utils/otimizad
 import CartaoVisita from './CartaoVisita';
 import ModalAddVisita from './ModalAddVisita';
 import ModalEditVisita from './ModalEditVisita';
+import ModalDuplicarVisita from './ModalDuplicarVisita';
 import ModalRelatorioVisita from './ModalRelatorioVisita';
 import ModalPreviewRota from './ModalPreviewRota';
 import ModalRedistribuir from './ModalRedistribuir';
@@ -77,7 +78,7 @@ export default function EscalaCampo() {
       const [empRes, cliRes, bloqRes] = await Promise.all([
         supabase.from('employees').select('id, name, cargo, daily_hours').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
         supabase.from('clientes')
-          .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
+          .select('id, nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),
         supabase.from('employee_bloqueios').select('*').order('data_inicio'),
       ]);
@@ -102,7 +103,7 @@ export default function EscalaCampo() {
     // é a fonte de dados exibidos no cartão.
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, nome_cliente, endereco_tarefa, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
+      .select('*, nome_cliente, endereco_tarefa, clientes(nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[6])
       .neq('status', 'cancelado')
@@ -558,12 +559,24 @@ export default function EscalaCampo() {
     try {
       const payload = {
         funcionario_id:        String(campos.funcionarioId),
+        data_agendada:         campos.data,
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         hora_estimada_chegada: campos.hora || null,
         duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
+        endereco_tarefa:       campos.endereco?.trim() || null,
         tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
         observacoes_gestor:    campos.obs || null,
       };
+      // Mudou de dia e/ou funcionário — manda pro fim da lista do destino
+      // pra não colidir com a ordem de rota de quem já está lá.
+      const mudouDestino = campos.data !== modalEdit.data_agendada
+        || String(campos.funcionarioId) !== String(modalEdit.funcionario_id);
+      if (mudouDestino) {
+        const visitasDestino = agendaOrg[campos.data]?.[campos.funcionarioId] ?? [];
+        payload.ordem_rota = visitasDestino.length > 0
+          ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
+          : 0;
+      }
       const { error } = await supabase.from('agenda').update(payload).eq('id', modalEdit.id);
       if (error) throw error;
       setModalEdit(null);
@@ -608,6 +621,49 @@ export default function EscalaCampo() {
         status:                'rascunho',
       });
       if (error) throw error;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao duplicar: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
+  // ── Duplicar visita escolhendo funcionário e data de destino ───────────────
+  // Botão "⧉ Duplicar" no ModalEditVisita — diferente do "+ Funcionário"
+  // acima (que fixa o mesmo dia), aqui o destino é livre.
+  const [modalDuplicar, setModalDuplicar] = useState(null); // { campos: form } | null
+
+  function abrirModalDuplicar(campos) {
+    setModalDuplicar({ campos });
+  }
+
+  async function executarDuplicacaoGeral({ funcionarioId, data }) {
+    if (!modalEdit || !modalDuplicar) return;
+    const campos = modalDuplicar.campos;
+    setSalvandoEdit(true);
+    try {
+      const visitasDestino = agendaOrg[data]?.[funcionarioId] ?? [];
+      const proximaOrdem = visitasDestino.length > 0
+        ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
+        : 0;
+      const { error } = await supabase.from('agenda').insert({
+        cliente_id:            modalEdit.cliente_id,
+        lead_id:               modalEdit.lead_id,
+        funcionario_id:        String(funcionarioId),
+        cliente_servico_id:    idServicoParaBanco(campos.servicoId),
+        data_agendada:         data,
+        hora_estimada_chegada: campos.hora || null,
+        duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
+        endereco_tarefa:       campos.endereco?.trim() || null,
+        tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
+        observacoes_gestor:    campos.obs || null,
+        ordem_rota:            proximaOrdem,
+        status:                'rascunho',
+      });
+      if (error) throw error;
+      setModalDuplicar(null);
       setModalEdit(null);
       await carregarAgenda();
     } catch (e) {
@@ -976,7 +1032,18 @@ export default function EscalaCampo() {
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
           onDuplicarFuncionario={abrirPickerDuplicar}
+          onDuplicar={abrirModalDuplicar}
           salvando={salvandoEdit}
+        />
+      )}
+
+      {modalDuplicar && (
+        <ModalDuplicarVisita
+          visita={modalEdit}
+          funcionarios={employees}
+          duplicando={salvandoEdit}
+          onFechar={() => setModalDuplicar(null)}
+          onDuplicar={executarDuplicacaoGeral}
         />
       )}
 
@@ -987,6 +1054,7 @@ export default function EscalaCampo() {
           funcNome={employees.find(e => String(e.id) === String(modalRel.funcionario_id))?.name ?? '—'}
           onFechar={() => setModalRel(null)}
           onRemovido={() => { setModalRel(null); carregarAgenda(); }}
+          onEditarAgendamento={() => { setModalEdit(modalRel); setModalRel(null); }}
         />
       )}
 

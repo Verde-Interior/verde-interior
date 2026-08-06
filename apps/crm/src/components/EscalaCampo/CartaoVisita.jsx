@@ -108,6 +108,9 @@ export default function CartaoVisita({
             </span>
           )}
         </span>
+        {(visita.endereco_tarefa || visita.clientes?.endereco) && (
+          <span className="ec-cartao__endereco">📍 {visita.endereco_tarefa || visita.clientes.endereco}</span>
+        )}
         {visita.clientes?.bairro && (
           <span className="ec-cartao__bairro">{visita.clientes.bairro}</span>
         )}

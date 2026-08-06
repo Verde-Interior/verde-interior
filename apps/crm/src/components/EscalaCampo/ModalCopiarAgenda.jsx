@@ -49,7 +49,7 @@ export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFecha
     try {
       const { data, error } = await supabase
         .from('agenda')
-        .select('id, cliente_id, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, tipos_tarefa, status')
+        .select('id, cliente_id, lead_id, nome_cliente, endereco_tarefa, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, tipos_tarefa, status, leads(empresa)')
         .eq('funcionario_id', origemFunc)
         .eq('data_agendada', origemData)
         .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
@@ -76,6 +76,9 @@ export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFecha
     try {
       const novas = selecionadasList.map(v => ({
         cliente_id:            v.cliente_id,
+        lead_id:               v.lead_id,
+        nome_cliente:          v.nome_cliente,
+        endereco_tarefa:       v.endereco_tarefa,
         funcionario_id:        destinoFunc,
         cliente_servico_id:    v.cliente_servico_id,
         data_agendada:         destinoData,
@@ -176,7 +179,7 @@ export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFecha
                             <input type="checkbox" checked={marc} onChange={() => toggleSel(v.id)} />
                           </td>
                           <td>{i + 1}</td>
-                          <td>{c?.nome_empresa ?? '—'}</td>
+                          <td>{c?.nome_empresa ?? v.leads?.empresa ?? v.nome_cliente ?? '—'}</td>
                           <td>{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</td>
                           <td>{v.duracao_estimada_min ? `${v.duracao_estimada_min}min` : '—'}</td>
                           <td className="ec-copiar__tipos">
