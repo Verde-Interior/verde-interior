@@ -128,6 +128,16 @@
   --text-muted:      #8BA48A;
   --text-inverse:    var(--vinho-950);
 
+  /* --cream-50/100/200 são usados por vários componentes como fundo de
+     "chips"/cards secundários (campos somente-leitura, linhas de lista,
+     hover de itens). No modo claro são tons de creme; sem essa redefinição
+     eles continuam creme/branco chapado no modo escuro também — daí os
+     cards brancos destoando do resto da tela. Aqui viram um branco bem
+     translúcido, criando o mesmo relevo sutil só que sobre o fundo escuro. */
+  --cream-50:  rgba(255,255,255,0.05);
+  --cream-100: rgba(255,255,255,0.08);
+  --cream-200: rgba(255,255,255,0.12);
+
   /* Opacidade bem mais alta que o glass do modo claro: a referência é
      "chapada" (sem vidro translúcido deixando o degradê colorido vazar). */
   --glass-light:        rgba(20,30,23,0.94);
