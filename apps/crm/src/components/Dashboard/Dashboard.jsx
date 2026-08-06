@@ -1164,6 +1164,7 @@ function DashboardOperacional({ onNavegar }) {
       const [ag, agSem, relSem, ultimosRel, cli, emp] = await Promise.all([
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
+          observacoes_gestor,
           cliente:clientes(id, nome_empresa, regiao, endereco)
         `).eq('data_agendada', hoje).order('hora_estimada_chegada', { ascending: true, nullsFirst: false }),
         supabase.from('agenda').select(`
@@ -1387,6 +1388,11 @@ function DashboardOperacional({ onNavegar }) {
           funcionarioNome={empMap.get(String(agendamentoSelecionado.funcionario_id))}
           onFechar={() => setAgendamentoSelecionado(null)}
           onVerNaEscala={() => { setAgendamentoSelecionado(null); onNavegar?.('escala'); }}
+          onVerRelatorio={(relatorioId) => {
+            setAgendamentoSelecionado(null);
+            window.history.pushState({}, '', `?tela=relatorios&relatorio=${relatorioId}`);
+            onNavegar?.('relatorios');
+          }}
         />
       )}
     </div>
