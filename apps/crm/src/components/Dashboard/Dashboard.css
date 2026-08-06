@@ -1657,6 +1657,15 @@
   color: var(--text-primary);
   font-size: 13px;
 }
+.dashboard-op__agenda-end {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 .dashboard-op__agenda-func {
   font-size: 11px;
   color: var(--text-secondary);

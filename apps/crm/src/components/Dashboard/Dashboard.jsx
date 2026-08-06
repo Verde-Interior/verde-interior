@@ -7,6 +7,7 @@ import DashboardCeasa from '../CeasaHolambra/DashboardCeasa';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import ModalDetalhesAgendamento from './ModalDetalhesAgendamento';
 import { corStatusVisita, labelStatusVisita } from '../../utils/escalaHelpers';
+import { enderecoSimplificado } from '../../utils/geoUtils';
 import './Dashboard.css';
 
 function useContador(alvo, ms = 700) {
@@ -1163,7 +1164,7 @@ function DashboardOperacional({ onNavegar }) {
       const [ag, agSem, relSem, ultimosRel, cli, emp] = await Promise.all([
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
-          cliente:clientes(id, nome_empresa, regiao)
+          cliente:clientes(id, nome_empresa, regiao, endereco)
         `).eq('data_agendada', hoje).order('hora_estimada_chegada', { ascending: true, nullsFirst: false }),
         supabase.from('agenda').select(`
           id, data_agendada, funcionario_id, status, tipos_tarefa,
@@ -1267,6 +1268,7 @@ function DashboardOperacional({ onNavegar }) {
             <div className="dashboard-op__agenda-lista dashboard-op__agenda-lista--scroll">
               {dados.agendaHoje.map((v) => {
                 const stCor = corStatusVisita(v.status);
+                const endSimples = enderecoSimplificado(v.cliente?.endereco);
                 return (
                   <div
                     key={v.id}
@@ -1276,6 +1278,7 @@ function DashboardOperacional({ onNavegar }) {
                     <span className="dashboard-op__agenda-hora">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</span>
                     <div className="dashboard-op__agenda-mid">
                       <div className="dashboard-op__agenda-cli">{v.cliente?.nome_empresa ?? '—'}</div>
+                      {endSimples && <div className="dashboard-op__agenda-end" title={endSimples}>{endSimples}</div>}
                       <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'}{v.cliente?.regiao ? ` · 📍 ${v.cliente.regiao}` : ''}</div>
                     </div>
                     <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{labelStatusVisita(v.status ?? 'rascunho')}</span>

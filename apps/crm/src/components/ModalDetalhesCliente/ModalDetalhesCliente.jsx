@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { formatarMoeda } from '../../utils/formatUtils';
+import { geocodeEndereco } from '../../utils/geoUtils';
+import { useToast } from '../Toast/Toast';
 import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL, FREQ_VISITA_LABEL } from '../../utils/clienteConstants';
 import './ModalDetalhesCliente.css';
 
@@ -18,6 +20,34 @@ export default function ModalDetalhesCliente({ clienteId, onFechar, onEditar }) 
   const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro,    setErro]    = useState(null);
+  const [recalculando, setRecalculando] = useState(false);
+  const toast = useToast();
+
+  async function recalcularCoordenadas() {
+    if (!cliente?.endereco?.trim()) {
+      toast.erro('Cliente sem endereço cadastrado');
+      return;
+    }
+    setRecalculando(true);
+    try {
+      const r = await geocodeEndereco({ endereco: cliente.endereco, bairro: cliente.bairro });
+      if (!r) {
+        toast.erro('Endereço não encontrado na geocodificação');
+        return;
+      }
+      const { error } = await supabase
+        .from('clientes')
+        .update({ lat: r.lat, lng: r.lng })
+        .eq('id', clienteId);
+      if (error) throw error;
+      setCliente((prev) => ({ ...prev, lat: r.lat, lng: r.lng }));
+      toast.ok('Coordenadas recalculadas');
+    } catch (e) {
+      toast.erro('Erro ao recalcular: ' + e.message);
+    } finally {
+      setRecalculando(false);
+    }
+  }
 
   useEffect(() => {
     let cancelado = false;
@@ -79,10 +109,24 @@ export default function ModalDetalhesCliente({ clienteId, onFechar, onEditar }) 
               </section>
 
               <section className="mdc-sec">
-                <h4 className="mdc-sec__titulo">Endereço</h4>
+                <div className="mdc-sec__titulo-row">
+                  <h4 className="mdc-sec__titulo">Endereço</h4>
+                  <button
+                    className="mdc-sec__pin"
+                    onClick={recalcularCoordenadas}
+                    disabled={recalculando}
+                    title="Recalcular coordenadas a partir do endereço"
+                  >
+                    {recalculando ? '...' : '📍'}
+                  </button>
+                </div>
                 <div className="mdc-info">
                   <div>{cliente.endereco || '—'}{cliente.complemento ? ` — ${cliente.complemento}` : ''}</div>
-                  {cliente.bairro && <div className="mdc-hint">{cliente.bairro}</div>}
+                  {(cliente.bairro || cliente.regiao) && (
+                    <div className="mdc-hint">
+                      {[cliente.bairro, cliente.regiao].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
                 </div>
               </section>
 

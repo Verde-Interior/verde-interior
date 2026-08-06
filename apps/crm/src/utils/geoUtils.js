@@ -19,6 +19,16 @@ export function distanciaMetros(lat1, lng1, lat2, lng2) {
   return km === Infinity ? null : Math.round(km * 1000);
 }
 
+// Extrai só os 2 primeiros pedaços do endereço completo (geralmente rua +
+// número), pra exibição compacta em cards — sem bairro/cidade/CEP/país.
+export function enderecoSimplificado(endereco) {
+  if (!endereco) return null;
+  const partes = endereco.split(',').map(p => p.trim()).filter(Boolean);
+  if (partes.length === 0) return null;
+  if (partes.length === 1) return partes[0];
+  return `${partes[0]}, ${partes[1]}`;
+}
+
 // Geocoding via Nominatim (OpenStreetMap) — grátis, respeitar 1 req/s e enviar User-Agent.
 // Retorna { lat, lng, display_name } ou null se não achou.
 export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo', uf = 'SP' }) {
