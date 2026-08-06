@@ -69,7 +69,7 @@ export function getSemana(refDate) {
   const seg = new Date(d);
   seg.setDate(d.getDate() + diff);
   const semana = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const curr = new Date(seg);
     curr.setDate(seg.getDate() + i);
     semana.push(dateParaISO(curr));

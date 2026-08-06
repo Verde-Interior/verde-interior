@@ -6,8 +6,8 @@ import { addDias, diasEntre, getDiaSlug as getDiaSlugUtil } from './dateUtils';
 import { horaEmMinutos, minutosParaHora } from './otimizadorRota';
 
 // ── Constantes ─────────────────────────────────────────────────────────
-export const DIAS_LABEL = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb' };
-export const DIAS_NOME  = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado' };
+export const DIAS_LABEL = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb', domingo: 'Dom' };
+export const DIAS_NOME  = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado', domingo: 'Domingo' };
 
 export const TIPO_LABEL = {
   manutencao: 'Manutenção', locacao: 'Locação',

@@ -104,7 +104,7 @@ export default function EscalaCampo() {
       .from('agenda')
       .select('*, nome_cliente, endereco_tarefa, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
       .gte('data_agendada', semana[0])
-      .lte('data_agendada', semana[5])
+      .lte('data_agendada', semana[6])
       .neq('status', 'cancelado')
       .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
     setLoading(false);
@@ -697,7 +697,7 @@ export default function EscalaCampo() {
           </button>
           <div className="ec__nav-semana">
             <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
-            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[5])}</span>
+            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[6])}</span>
             <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
           </div>
           <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
