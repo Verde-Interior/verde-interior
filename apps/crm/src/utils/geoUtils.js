@@ -42,3 +42,24 @@ export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo',
     return null;
   }
 }
+
+// Reverse geocoding via Nominatim (OpenStreetMap) — free, sem chave de API.
+// Retorna "Rua, número — bairro" a partir de lat/lng, ou null se não achou.
+export async function reverseGeocode(lat, lng) {
+  if (lat == null || lng == null) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=pt-BR`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    const a = data?.address;
+    if (!a) return data?.display_name ?? null;
+    const rua    = a.road || a.pedestrian || a.footway || a.residential || '';
+    const num    = a.house_number || '';
+    const bairro = a.suburb || a.neighbourhood || a.city_district || '';
+    if (!rua && !bairro) return data.display_name ?? null;
+    let out = rua;
+    if (num) out += `, ${num}`;
+    if (bairro) out += out ? ` — ${bairro}` : bairro;
+    return out || data.display_name || null;
+  } catch { return null; }
+}

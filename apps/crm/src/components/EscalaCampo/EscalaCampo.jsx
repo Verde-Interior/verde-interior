@@ -984,7 +984,9 @@ export default function EscalaCampo() {
       {modalRel && (
         <ModalRelatorioVisita
           visita={modalRel}
+          funcNome={employees.find(e => String(e.id) === String(modalRel.funcionario_id))?.name ?? '—'}
           onFechar={() => setModalRel(null)}
+          onRemovido={() => { setModalRel(null); carregarAgenda(); }}
         />
       )}
 

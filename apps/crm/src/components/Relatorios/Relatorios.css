@@ -357,8 +357,14 @@
   padding: 12px 16px;
   box-shadow: var(--glass-shadow);
 }
-.rel-sec--warn { background: #FEF9C3; border-color: #FDE68A; }
-.rel-sec--gestor { background: #EFF6FF; border-color: #BFDBFE; }
+.rel-sec--warn {
+  background: color-mix(in srgb, var(--color-warning) 14%, var(--glass-light));
+  border-color: color-mix(in srgb, var(--color-warning) 40%, var(--glass-light-border));
+}
+.rel-sec--gestor {
+  background: color-mix(in srgb, #2563EB 12%, var(--glass-light));
+  border-color: color-mix(in srgb, #2563EB 35%, var(--glass-light-border));
+}
 
 .rel-sec__titulo {
   font-size: 11px;
@@ -397,13 +403,36 @@
   white-space: pre-wrap;
 }
 
+/* Tentativas de check-in canceladas antes do relatório atual */
+.rel-cancelados { display: flex; flex-direction: column; gap: 6px; }
+.rel-cancelados__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.rel-cancelados__num {
+  background: var(--color-warning);
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .rel-dist {
   margin-top: 6px;
   font-size: 12px;
   font-weight: 600;
 }
-.rel-dist--ok { color: var(--forest-700); }
-.rel-dist--warn { color: #92600A; }
+.rel-dist--ok { color: var(--forest-500); }
+.rel-dist--warn { color: var(--color-warning); }
 
 /* Grid do resumo */
 .rel-grid {
@@ -470,7 +499,7 @@
   font-size: 12px;
   padding: 7px 10px;
   color: var(--text-secondary);
-  background: white;
+  background: var(--surface-card);
   border-top: 1px solid var(--surface-border);
   line-height: 1.4;
 }
@@ -506,22 +535,22 @@
 .rel-btn:hover { background: var(--color-primary-dark); }
 
 .rel-btn--perigo {
-  background: white;
+  background: var(--surface-card);
   color: #B91C1C;
-  border: 1px solid #FCA5A5;
+  border: 1px solid color-mix(in srgb, #B91C1C 45%, var(--surface-border));
 }
 .rel-btn--perigo:hover:not(:disabled) {
-  background: #FEE2E2;
+  background: color-mix(in srgb, #B91C1C 15%, var(--surface-card));
   border-color: #DC2626;
 }
 .rel-btn--perigo:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .rel-btn--pdf {
-  background: white;
-  color: #1a3d10;
-  border: 1px solid #1a3d10;
+  background: var(--surface-card);
+  color: var(--forest-500);
+  border: 1px solid color-mix(in srgb, var(--forest-500) 45%, var(--surface-border));
 }
-.rel-btn--pdf:hover { background: #f0fdf4; }
+.rel-btn--pdf:hover { background: color-mix(in srgb, var(--forest-500) 15%, var(--surface-card)); }
 
 .rel-modal__footer { display: flex; align-items: center; gap: 8px; }
 
