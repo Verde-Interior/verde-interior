@@ -24,3 +24,14 @@ export const FREQ_LABEL = {
   mensal:     'Mensal',
   pontual:    'Pontual',
 };
+
+// Rótulo do campo clientes.frequencia_visita — escala diferente da FREQ_LABEL
+// acima (que é de cliente_servicos.frequencia): aqui o cadastro grava
+// 1x_semana/2x_semana/3x_semana em vez de um "semanal" genérico.
+export const FREQ_VISITA_LABEL = {
+  '3x_semana': '3× por semana',
+  '2x_semana': '2× por semana',
+  '1x_semana': '1× por semana',
+  quinzenal:   'Quinzenal',
+  mensal:      'Mensal',
+};

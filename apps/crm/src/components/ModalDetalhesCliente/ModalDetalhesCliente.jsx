@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { formatarMoeda } from '../../utils/formatUtils';
-import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL } from '../../utils/clienteConstants';
+import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL, FREQ_VISITA_LABEL } from '../../utils/clienteConstants';
 import './ModalDetalhesCliente.css';
 
 function telefoneLimpo(tel) {
@@ -107,7 +107,7 @@ export default function ModalDetalhesCliente({ clienteId, onFechar, onEditar }) 
                     </div>
                   </div>
                   <div className="mdc-mc"><div className="mdc-mc__lbl">Duração</div><div className="mdc-mc__val">{cliente.duracao_estimada_min ? `${cliente.duracao_estimada_min} min` : '—'}</div></div>
-                  <div className="mdc-mc"><div className="mdc-mc__lbl">Frequência</div><div className="mdc-mc__val">{cliente.frequencia_visita || '—'}</div></div>
+                  <div className="mdc-mc"><div className="mdc-mc__lbl">Frequência</div><div className="mdc-mc__val">{FREQ_VISITA_LABEL[cliente.frequencia_visita] ?? cliente.frequencia_visita ?? '—'}</div></div>
                 </div>
               </section>
 

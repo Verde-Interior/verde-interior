@@ -1671,12 +1671,22 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.dashboard-op__mais {
-  margin: 4px 0 0;
-  padding: 6px;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 12px;
+/* Card com scroll interno (Agenda de hoje) — cabeçalho fixo, lista rola.
+   min-height:0 no filho flex é o que permite o overflow funcionar dentro
+   de um flex column (senão o item cresce e empurra o card inteiro). */
+.dashboard__card--scroll {
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+}
+.dashboard__card--scroll .dashboard__card-header { flex-shrink: 0; }
+.dashboard-op__agenda-lista--scroll {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px; /* espaço pra scrollbar não colar no status */
+}
+@media (max-width: 720px) {
+  .dashboard__card--scroll { max-height: 360px; }
 }
 
 .dashboard-op__ult-lista {
@@ -1706,6 +1716,11 @@
 .dashboard-op__ult-meta {
   font-size: 11px;
   color: var(--text-secondary);
+  margin-top: 2px;
+}
+.dashboard-op__ult-horas {
+  font-size: 10px;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 .dashboard-op__ult-data {

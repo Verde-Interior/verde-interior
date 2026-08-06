@@ -1171,7 +1171,7 @@ function DashboardOperacional({ onNavegar }) {
         `).gte('data_agendada', hoje).lte('data_agendada', daquiSeteStr),
         supabase.from('relatorios').select('id, funcionario_id, checkin_at, checkout_at, agendamento_id').gte('checkin_at', setePassadosIso),
         supabase.from('relatorios').select(`
-          id, funcionario_id, checkin_at,
+          id, funcionario_id, checkin_at, checkout_at,
           agenda:agenda(cliente:clientes(nome_empresa, bairro))
         `).order('checkin_at', { ascending: false }).limit(6),
         supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
@@ -1256,7 +1256,7 @@ function DashboardOperacional({ onNavegar }) {
       <div className="dashboard-op__grid">
 
         {/* Agenda de hoje */}
-        <section className="dashboard__secao dashboard__card">
+        <section className="dashboard__secao dashboard__card dashboard__card--scroll">
           <div className="dashboard__card-header">
             <h2 className="dashboard__secao-titulo">Agenda de hoje</h2>
             <button className="dashboard__ver-todos" onClick={() => onNavegar('escala')}>Ver Escala →</button>
@@ -1264,8 +1264,8 @@ function DashboardOperacional({ onNavegar }) {
           {dados.agendaHoje.length === 0 ? (
             <p className="dashboard-op__vazio">Nenhuma visita agendada para hoje.</p>
           ) : (
-            <div className="dashboard-op__agenda-lista">
-              {dados.agendaHoje.slice(0, 8).map((v) => {
+            <div className="dashboard-op__agenda-lista dashboard-op__agenda-lista--scroll">
+              {dados.agendaHoje.map((v) => {
                 const stCor = corStatusVisita(v.status);
                 return (
                   <div
@@ -1282,9 +1282,6 @@ function DashboardOperacional({ onNavegar }) {
                   </div>
                 );
               })}
-              {dados.agendaHoje.length > 8 && (
-                <p className="dashboard-op__mais">+ {dados.agendaHoje.length - 8} visita{dados.agendaHoje.length - 8 !== 1 ? 's' : ''}</p>
-              )}
             </div>
           )}
         </section>
@@ -1324,7 +1321,9 @@ function DashboardOperacional({ onNavegar }) {
             <div className="dashboard-op__ult-lista">
               {dados.ultimosRelatorios.map((r) => {
                 const cli = r.agenda?.cliente;
-                const quando = r.checkin_at ? new Date(r.checkin_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+                const dataCurta = r.checkin_at ? new Date(r.checkin_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '—';
+                const horaCheckin = r.checkin_at  ? new Date(r.checkin_at).toLocaleTimeString('pt-BR',  { hour: '2-digit', minute: '2-digit' }) : null;
+                const horaCheckout = r.checkout_at ? new Date(r.checkout_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null;
                 return (
                   <div
                     key={r.id}
@@ -1337,8 +1336,15 @@ function DashboardOperacional({ onNavegar }) {
                     <div className="dashboard-op__ult-info">
                       <div className="dashboard-op__ult-empresa">{cli?.nome_empresa ?? '—'}</div>
                       <div className="dashboard-op__ult-meta">👤 {empMap.get(String(r.funcionario_id)) ?? '—'}{cli?.bairro ? ` · 📍 ${cli.bairro}` : ''}</div>
+                      {(horaCheckin || horaCheckout) && (
+                        <div className="dashboard-op__ult-horas">
+                          {horaCheckin  && <>Check-in {horaCheckin}</>}
+                          {horaCheckin && horaCheckout && ' · '}
+                          {horaCheckout && <>Check-out {horaCheckout}</>}
+                        </div>
+                      )}
                     </div>
-                    <span className="dashboard-op__ult-data">{quando}</span>
+                    <span className="dashboard-op__ult-data">{dataCurta}</span>
                   </div>
                 );
               })}
