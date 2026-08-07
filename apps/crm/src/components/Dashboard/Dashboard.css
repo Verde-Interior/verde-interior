@@ -1627,6 +1627,21 @@
   margin: 0;
 }
 
+.dashboard-op__agenda-filtro {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+.dashboard-op__agenda-filtro:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-lt); }
+.dashboard-op__agenda-filtro::placeholder { color: var(--text-muted); }
+
 .dashboard-op__agenda-lista {
   display: flex;
   flex-direction: column;

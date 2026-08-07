@@ -1141,6 +1141,7 @@ export default function Dashboard({ onNavegar }) {
 function DashboardOperacional({ onNavegar }) {
   const [loading, setLoading] = useState(true);
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState(null);
+  const [filtroAgendaHoje, setFiltroAgendaHoje] = useState('');
   const [dados, setDados] = useState({
     agendaHoje: [],
     agendaSemana: [],
@@ -1164,8 +1165,9 @@ function DashboardOperacional({ onNavegar }) {
       const [ag, agSem, relSem, ultimosRel, cli, emp] = await Promise.all([
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
-          observacoes_gestor,
-          cliente:clientes(id, nome_empresa, regiao, endereco)
+          observacoes_gestor, nome_cliente, endereco_tarefa,
+          cliente:clientes(id, nome_empresa, regiao, endereco),
+          lead:leads(id, empresa, bairro, endereco)
         `).eq('data_agendada', hoje).order('hora_estimada_chegada', { ascending: true, nullsFirst: false }),
         supabase.from('agenda').select(`
           id, data_agendada, funcionario_id, status, tipos_tarefa,
@@ -1180,8 +1182,25 @@ function DashboardOperacional({ onNavegar }) {
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
       ]);
 
+      // A visita pode estar vinculada a um cliente cadastrado, a um lead
+      // (migration 016) ou ser uma tarefa interna sem cadastro (nome_cliente/
+      // endereco_tarefa — migration 030). O join só preenche `cliente:clientes`
+      // no primeiro caso; nos outros dois normalizamos pra dentro de `.cliente`
+      // pra manter um único formato de leitura na renderização (mesma lógica
+      // aplicada em EscalaCampo.jsx).
+      const agendaHojeNormalizada = (ag.data ?? []).map((v) => {
+        if (v.cliente) return v;
+        if (v.lead) {
+          return { ...v, cliente: { nome_empresa: v.lead.empresa, endereco: v.lead.endereco, regiao: v.lead.bairro } };
+        }
+        if (v.nome_cliente) {
+          return { ...v, cliente: { nome_empresa: v.nome_cliente, endereco: v.endereco_tarefa, regiao: null } };
+        }
+        return v;
+      });
+
       setDados({
-        agendaHoje:        ag.data ?? [],
+        agendaHoje:        agendaHojeNormalizada,
         agendaSemana:      agSem.data ?? [],
         relatoriosSemana:  relSem.data ?? [],
         ultimosRelatorios: ultimosRel.data ?? [],
@@ -1193,6 +1212,16 @@ function DashboardOperacional({ onNavegar }) {
   }, []);
 
   const empMap = useMemo(() => new Map((dados.employees ?? []).map(e => [String(e.id), e.name])), [dados.employees]);
+
+  const agendaHojeFiltrada = useMemo(() => {
+    const termo = filtroAgendaHoje.trim().toLowerCase();
+    if (!termo) return dados.agendaHoje;
+    return dados.agendaHoje.filter((v) => {
+      const nomeFunc = (empMap.get(String(v.funcionario_id)) ?? '').toLowerCase();
+      const nomeCli = (v.cliente?.nome_empresa ?? '').toLowerCase();
+      return nomeFunc.includes(termo) || nomeCli.includes(termo);
+    });
+  }, [dados.agendaHoje, filtroAgendaHoje, empMap]);
 
   const kpis = useMemo(() => {
     const visitasHoje = dados.agendaHoje.length;
@@ -1263,11 +1292,22 @@ function DashboardOperacional({ onNavegar }) {
             <h2 className="dashboard__secao-titulo">Agenda de hoje</h2>
             <button className="dashboard__ver-todos" onClick={() => onNavegar('escala')}>Ver Escala →</button>
           </div>
+          {dados.agendaHoje.length > 0 && (
+            <input
+              type="text"
+              className="dashboard-op__agenda-filtro"
+              placeholder="Buscar colaborador ou empresa..."
+              value={filtroAgendaHoje}
+              onChange={(e) => setFiltroAgendaHoje(e.target.value)}
+            />
+          )}
           {dados.agendaHoje.length === 0 ? (
             <p className="dashboard-op__vazio">Nenhuma visita agendada para hoje.</p>
+          ) : agendaHojeFiltrada.length === 0 ? (
+            <p className="dashboard-op__vazio">Nenhum resultado para "{filtroAgendaHoje}".</p>
           ) : (
             <div className="dashboard-op__agenda-lista dashboard-op__agenda-lista--scroll">
-              {dados.agendaHoje.map((v) => {
+              {agendaHojeFiltrada.map((v) => {
                 const stCor = corStatusVisita(v.status);
                 const endSimples = enderecoSimplificado(v.cliente?.endereco);
                 return (
