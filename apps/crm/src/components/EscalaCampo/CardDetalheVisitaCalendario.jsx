@@ -98,20 +98,20 @@ export default function CardDetalheVisitaCalendario({ visita, onFechar }) {
                 <span className="ec-cdv__val">{tiposLabel}</span>
               </div>
               <div className="ec-cdv__campo">
-                <span className="ec-cdv__lbl">Duração estimada</span>
-                <span className="ec-cdv__val">{visita.duracao ? `${visita.duracao} min` : '—'}</span>
-              </div>
-            </div>
-            <div className="ec-cdv__grid2">
-              <div className="ec-cdv__campo">
-                <span className="ec-cdv__lbl">Duração real</span>
-                <span className="ec-cdv__val">{realMin ? formatarDuracao(realMin) : '—'}</span>
-              </div>
-              <div className="ec-cdv__campo">
                 <span className="ec-cdv__lbl">Status</span>
                 <span className="ec-cdv__status" style={{ background: corStatusVisita(visita.status) }}>
                   {labelStatusVisita(visita.status)}
                 </span>
+              </div>
+            </div>
+            <div className="ec-cdv__grid2">
+              <div className="ec-cdv__campo">
+                <span className="ec-cdv__lbl">Duração estimada</span>
+                <span className="ec-cdv__val">{visita.duracao ? `${visita.duracao} min` : '—'}</span>
+              </div>
+              <div className="ec-cdv__campo">
+                <span className="ec-cdv__lbl">Duração real</span>
+                <span className="ec-cdv__val">{realMin ? formatarDuracao(realMin) : '—'}</span>
               </div>
             </div>
             <div className="ec-cdv__grid2">
