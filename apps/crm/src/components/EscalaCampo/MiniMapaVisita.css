@@ -1,6 +1,7 @@
 /* src/components/EscalaCampo/MiniMapaVisita.css */
 
 .mmv {
+  position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--surface-border);
@@ -9,9 +10,39 @@
 .mmv__map {
   height: 130px;
   width: 100%;
-  /* Preview estático — sem interação, então o cursor de "mão" do Leaflet
-     confundiria (parece arrastável mas não é). */
+  /* Preview sem arrastar/zoom por scroll (só os botões +/-), então o cursor
+     de "mão" do Leaflet confundiria (parece arrastável mas não é). */
   cursor: default;
+}
+
+.mmv__expandir {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 500;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.mmv__expandir:hover { background: var(--cream-100); }
+
+/* ── Mapa expandido (modal) ── */
+.mmv__modal { max-width: 720px; width: 100%; }
+
+.mmv__modal-corpo {
+  padding: 0;
+}
+
+.mmv__map-grande {
+  height: 60vh;
+  width: 100%;
 }
 
 .mmv-pin-wrap { background: transparent; border: none; }
