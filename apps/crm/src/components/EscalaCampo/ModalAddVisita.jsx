@@ -4,7 +4,9 @@ import {
   TIPO_LABEL, TIPOS_TAREFA,
   textoObsDeTipos, verificarConflitos, verificarHorario, verificarBloqueioHorario,
 } from '../../utils/escalaHelpers';
+import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import MiniMapaVisita from './MiniMapaVisita';
 
 export default function ModalAddVisita({ clientes, funcionarios, dataInicial, funcionarioIdInicial, clienteIdPre, onSalvar, onFechar, salvando }) {
   const idInicial = funcionarioIdInicial ?? (funcionarios[0]?.id?.toString() ?? '');
@@ -96,6 +98,30 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
 
   // Cliente digitado mas não selecionado da lista = não cadastrado
   const clienteNaoCadastrado = busca.trim().length > 0 && !form.clienteId;
+
+  // Mini-mapa: cliente cadastrado usa a coordenada do próprio cadastro
+  // direto (não tem campo de endereço separado pra esse caso); cliente não
+  // cadastrado geocodifica o texto livre digitado em "Endereço", com
+  // debounce pra não estourar o limite do Nominatim (~1 req/s).
+  const [mapaCoords, setMapaCoords] = useState({ lat: null, lng: null });
+  const [geocodando, setGeocodando] = useState(false);
+
+  useEffect(() => {
+    if (clienteSel?.lat && clienteSel?.lng) setMapaCoords({ lat: clienteSel.lat, lng: clienteSel.lng });
+    else if (clienteSel) setMapaCoords({ lat: null, lng: null });
+  }, [clienteSel]);
+
+  useEffect(() => {
+    if (clienteSel) return; // cliente cadastrado já resolvido acima
+    if (!form.enderecoTarefa?.trim()) { setMapaCoords({ lat: null, lng: null }); return; }
+    const timer = setTimeout(async () => {
+      setGeocodando(true);
+      const resultado = await geocodeEndereco({ endereco: form.enderecoTarefa });
+      setGeocodando(false);
+      if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [form.enderecoTarefa, clienteSel]);
 
   const nomesFunc = funcionarios.filter(e => form.funcionariosIds.includes(String(e.id))).map(e => e.name);
 
@@ -217,6 +243,9 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
             {clienteNaoCadastrado && (
               <span className="ec-aviso-nao-cad">⚠ Esse cliente ainda não foi cadastrado</span>
             )}
+            {/* Cliente cadastrado selecionado — mostra a localização do
+                próprio cadastro, já que não tem campo de endereço aqui. */}
+            {clienteSel && <MiniMapaVisita lat={mapaCoords.lat} lng={mapaCoords.lng} />}
           </div>
 
           {/* Endereço — só aparece quando não há cliente cadastrado selecionado */}
@@ -232,6 +261,8 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
                 value={form.enderecoTarefa}
                 onChange={e => setF('enderecoTarefa', e.target.value)}
               />
+              {geocodando && <span className="ec-hint">🔎 Buscando localização...</span>}
+              <MiniMapaVisita lat={mapaCoords.lat} lng={mapaCoords.lng} />
             </div>
           )}
 
