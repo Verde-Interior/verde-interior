@@ -42,12 +42,13 @@ function saudacao() {
   return `Boa noite${sfx} 👋`;
 }
 
-function KpiCard({ label, valor, sub, destaque, alerta, onClick }) {
+function KpiCard({ label, valor, sub, destaque, alerta, onClick, tooltip }) {
   return (
     <button
       className={`kpi-card ${destaque ? 'kpi-card--destaque' : ''} ${alerta ? 'kpi-card--alerta' : ''} ${onClick ? 'kpi-card--clicavel' : ''}`}
       onClick={onClick}
       disabled={!onClick}
+      title={tooltip}
     >
       <span className="kpi-card__valor">{valor}</span>
       <span className="kpi-card__label">{label}</span>
@@ -1332,7 +1333,8 @@ function DashboardOperacional({ onNavegar }) {
           <KpiCard
             label="Faltas hoje"
             valor={nomesFaltaramHoje.length}
-            sub={nomesFaltaramHoje.length === 0 ? 'nenhuma' : nomesFaltaramHoje.length <= 2 ? nomesFaltaramHoje.join(', ') : `${nomesFaltaramHoje.length} funcionários`}
+            sub={nomesFaltaramHoje.length === 0 ? 'nenhuma' : nomesFaltaramHoje.length === 1 ? '1 funcionário' : `${nomesFaltaramHoje.length} funcionários`}
+            tooltip={nomesFaltaramHoje.length > 0 ? nomesFaltaramHoje.join(', ') : undefined}
             onClick={() => onNavegar('escala')}
             alerta={nomesFaltaramHoje.length > 0}
           />
