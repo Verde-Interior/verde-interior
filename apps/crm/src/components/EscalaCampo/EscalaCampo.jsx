@@ -335,6 +335,22 @@ export default function EscalaCampo() {
     setModoVisao('semana');
   }
 
+  // "Selecionar" na Quinzenal/Mês não seleciona entre dias diferentes — pula
+  // pra Semana já naquele dia com o modo seleção ativo, reaproveitando a
+  // mesma lógica de sempre (que já lida com mover/cancelar em lote dentro de
+  // um dia). Evita duplicar esse comportamento pra grade do calendário.
+  function abrirSelecaoNoDia(iso) {
+    setDiaSel(iso);
+    setSemana(getSemana(new Date(iso + 'T12:00')));
+    setModoVisao('semana');
+    ativarModoSelecao();
+  }
+
+  function abrirAdicionarTarefaNoCalendario(iso) {
+    setDiaSel(iso);
+    setModal({ funcionarioId: employeesOrdenados[0]?.id?.toString() ?? '' });
+  }
+
   // ── Derivações ─────────────────────────────────────────────────────────────
 
   // employees na ordem alfabética (vinda do banco) reorganizada pela
@@ -1023,6 +1039,8 @@ export default function EscalaCampo() {
           onNavQuinzena={deltaDias => setQuinzenaBase(b => addDias(b, deltaDias))}
           hojeIso={hoje}
           onAbrirDia={abrirDiaNoCalendario}
+          onSelecionarDia={abrirSelecaoNoDia}
+          onAdicionarTarefa={abrirAdicionarTarefaNoCalendario}
         />
       ) : (
       <>

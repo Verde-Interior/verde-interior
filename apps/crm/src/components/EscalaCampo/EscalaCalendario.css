@@ -38,6 +38,12 @@
   text-align: center;
 }
 
+.ec-cal__acoes {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .ec-cal__grid {
   display: grid;
   /* minmax(0, 1fr), não só 1fr: sem isso, uma coluna com texto longo (nome
@@ -74,6 +80,71 @@
 .ec-cal__cel--vazia {
   background: transparent;
   border-color: transparent;
+}
+
+/* Dia sem nenhuma visita — a célula inteira vira um botão de "adicionar
+   tarefa" (alvo maior que só o número, mais fácil de acertar). O texto
+   "+ tarefa" só aparece no hover pra não poluir um mês inteiro de células
+   vazias com texto o tempo todo. */
+.ec-cal__cel--vazia-clicavel {
+  min-height: 64px;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 5px;
+  gap: 4px;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ec-cal__cel--vazia-clicavel:hover {
+  background: var(--cream-100);
+  border-color: var(--color-primary);
+}
+.ec-cal__cel-add {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-primary);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.ec-cal__cel--vazia-clicavel:hover .ec-cal__cel-add { opacity: 1; }
+
+.ec-cal__cel-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+/* Bolinha de status (rascunho/publicado) + contagem — mesma leitura rápida
+   que as abas da Semana já dão, só que dentro da célula do calendário. */
+.ec-cal__cel-resumo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.ec-cal__cel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ec-cal__cel-dot--rascunho  { background: var(--color-warning); }
+.ec-cal__cel-dot--publicado { background: var(--color-success); }
+
+.ec-cal__cel-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 10px;
 }
 
 .ec-cal__cel-num-btn {

@@ -31,6 +31,8 @@ export default function EscalaCalendario({
   quinzenaBase, onNavQuinzena,
   hojeIso,
   onAbrirDia,
+  onSelecionarDia,
+  onAdicionarTarefa,
 }) {
   const [diaAberto, setDiaAberto] = useState(null); // iso do dia (modal "ver tudo")
   const [visitaAberta, setVisitaAberta] = useState(null); // visita clicada (card de detalhe)
@@ -64,6 +66,12 @@ export default function EscalaCalendario({
         <button className="ec-cal__nav-btn" onClick={() => navegar(1)}>›</button>
       </div>
 
+      <div className="ec-cal__acoes">
+        <button className="ec__btn-add" onClick={() => onAdicionarTarefa(hojeIso)}>
+          + Adicionar Tarefa
+        </button>
+      </div>
+
       <div className={`ec-cal__grid ${modo === 'mes' ? 'ec-cal__grid--mes' : 'ec-cal__grid--quinzenal'}`}>
         {dow.map(d => <span key={d} className="ec-cal__dow">{d}</span>)}
         {grid.map((iso, i) => {
@@ -72,38 +80,59 @@ export default function EscalaCalendario({
           const isHoje = iso === hojeIso;
           const dia = parseInt(iso.split('-')[2], 10);
           const extras = Math.max(visitas.length - MAX_LINHAS_CELULA, 0);
+          const statusDia = visitas.some(v => v.status === 'rascunho') ? 'rascunho' : 'publicado';
+
+          if (visitas.length === 0) {
+            return (
+              <button
+                key={iso}
+                className="ec-cal__cel ec-cal__cel--vazia-clicavel"
+                onClick={() => onAdicionarTarefa(iso)}
+                title="Adicionar tarefa nesse dia"
+              >
+                <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
+                <span className="ec-cal__cel-add">+ tarefa</span>
+              </button>
+            );
+          }
+
           return (
             <div key={iso} className="ec-cal__cel">
-              <button className="ec-cal__cel-num-btn" onClick={() => setDiaAberto(iso)} title="Ver o dia inteiro">
-                <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
-              </button>
-              {visitas.length > 0 && (
-                <>
-                  {/* Rola com a roda do mouse quando passa por cima — quem
-                      prefere não clicar em "mais" vê tudo aqui dentro. */}
-                  <div className="ec-cal__cel-lista">
-                    {visitas.map(v => (
-                      <button
-                        key={v.id}
-                        className="ec-cal__cel-item"
-                        onMouseEnter={e => mostrarTooltip(e, v)}
-                        onMouseLeave={() => setTooltip(null)}
-                        onClick={() => { setTooltip(null); setVisitaAberta(v); }}
-                      >
-                        <span className="ec-cal__cel-item-dot" style={{ background: STATUS_VISITA_COR[v.status] ?? '#9CA3AF' }} />
-                        {v.hora && <span className="ec-cal__cel-item-hora">{v.hora}</span>}
-                        <span className="ec-cal__cel-item-nome">{v.cliente}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {/* Fora da área de scroll — sempre visível, pra quem prefere
-                      clicar em vez de rolar. */}
-                  {extras > 0 && (
-                    <button className="ec-cal__cel-mais" onClick={() => setDiaAberto(iso)}>
-                      mais +{extras}
-                    </button>
-                  )}
-                </>
+              <div className="ec-cal__cel-topo">
+                <button className="ec-cal__cel-num-btn" onClick={() => setDiaAberto(iso)} title="Ver o dia inteiro">
+                  <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
+                </button>
+                <span
+                  className="ec-cal__cel-resumo"
+                  title={statusDia === 'rascunho' ? 'Tem rascunho pendente' : 'Tudo publicado'}
+                >
+                  <span className={`ec-cal__cel-dot ec-cal__cel-dot--${statusDia}`} />
+                  <span className="ec-cal__cel-badge">{visitas.length}</span>
+                </span>
+              </div>
+              {/* Rola com a roda do mouse quando passa por cima — quem
+                  prefere não clicar em "mais" vê tudo aqui dentro. */}
+              <div className="ec-cal__cel-lista">
+                {visitas.map(v => (
+                  <button
+                    key={v.id}
+                    className="ec-cal__cel-item"
+                    onMouseEnter={e => mostrarTooltip(e, v)}
+                    onMouseLeave={() => setTooltip(null)}
+                    onClick={() => { setTooltip(null); setVisitaAberta(v); }}
+                  >
+                    <span className="ec-cal__cel-item-dot" style={{ background: STATUS_VISITA_COR[v.status] ?? '#9CA3AF' }} />
+                    {v.hora && <span className="ec-cal__cel-item-hora">{v.hora}</span>}
+                    <span className="ec-cal__cel-item-nome">{v.cliente}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Fora da área de scroll — sempre visível, pra quem prefere
+                  clicar em vez de rolar. */}
+              {extras > 0 && (
+                <button className="ec-cal__cel-mais" onClick={() => setDiaAberto(iso)}>
+                  mais +{extras}
+                </button>
               )}
             </div>
           );
@@ -170,6 +199,9 @@ export default function EscalaCalendario({
 
             <footer className="ec-modal__footer">
               <button className="ec-btn ec-btn--sec" onClick={() => setDiaAberto(null)}>Fechar</button>
+              {visitasDoDiaAberto.length > 0 && (
+                <button className="ec-btn ec-btn--sec" onClick={() => onSelecionarDia(diaAberto)}>☑ Selecionar</button>
+              )}
               <button className="ec-btn ec-btn--pri" onClick={() => onAbrirDia(diaAberto)}>Ver na Escala →</button>
             </footer>
           </div>
