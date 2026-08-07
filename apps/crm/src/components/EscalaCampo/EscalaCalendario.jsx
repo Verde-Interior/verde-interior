@@ -34,6 +34,8 @@ export default function EscalaCalendario({
   onSelecionarDia,
   onAdicionarTarefa,
   onReagendar,
+  onEditarVisita,
+  onVerRelatorioVisita,
 }) {
   const [diaAberto, setDiaAberto] = useState(null); // iso do dia (modal "ver tudo")
   const [visitaAberta, setVisitaAberta] = useState(null); // visita clicada (card de detalhe)
@@ -47,6 +49,17 @@ export default function EscalaCalendario({
     if (!dragVisitaId) return;
     onReagendar(dragVisitaId, iso);
     setDragVisitaId(null);
+  }
+
+  // Mesma regra de editabilidade que o cartão da Semana já usa: rascunho/
+  // publicado abre o formulário completo, em_execução vai pro relatório em
+  // andamento. Concluída/cancelada/faltou continuam no card leve de detalhe
+  // (com "Ver relatório" já disponível pra concluída).
+  function abrirVisita(v) {
+    setTooltip(null);
+    if (v.status === 'rascunho' || v.status === 'publicado') onEditarVisita(v.id);
+    else if (v.status === 'em_execucao') onVerRelatorioVisita(v.id);
+    else setVisitaAberta(v);
   }
 
   const grid = modo === 'mes' ? buildGrid(calAno, calMes) : buildGridQuinzena(quinzenaBase);
@@ -141,7 +154,7 @@ export default function EscalaCalendario({
                     onDragEnd={() => { setDragVisitaId(null); setDragOverIso(null); }}
                     onMouseEnter={e => mostrarTooltip(e, v)}
                     onMouseLeave={() => setTooltip(null)}
-                    onClick={() => { setTooltip(null); setVisitaAberta(v); }}
+                    onClick={() => abrirVisita(v)}
                   >
                     <span className="ec-cal__cel-item-dot" style={{ background: STATUS_VISITA_COR[v.status] ?? '#9CA3AF' }} />
                     {v.hora && <span className="ec-cal__cel-item-hora">{v.hora}</span>}
@@ -203,7 +216,7 @@ export default function EscalaCalendario({
                     <div
                       key={v.id}
                       className="ec-cal__pop-item ec-cal__pop-item--clicavel"
-                      onClick={() => { setDiaAberto(null); setVisitaAberta(v); }}
+                      onClick={() => { setDiaAberto(null); abrirVisita(v); }}
                     >
                       <span className="ec-cal__pop-hora">{v.hora ?? '—'}</span>
                       <div className="ec-cal__pop-info">

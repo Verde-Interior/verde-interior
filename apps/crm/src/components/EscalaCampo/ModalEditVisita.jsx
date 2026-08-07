@@ -1,9 +1,11 @@
 // src/components/EscalaCampo/ModalEditVisita.jsx
 // Modal de editar visita — extraído de EscalaCampo.jsx (Fase 3.2)
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario, verificarBloqueioHorario, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
 import { formatarDataCurta } from '../../utils/dateUtils';
+import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import MiniMapaVisita from './MiniMapaVisita';
 
 export default function ModalEditVisita({ visita, dataAlvo, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, alerta, onDuplicarFuncionario, onDuplicar }) {
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
@@ -42,6 +44,30 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
     obs:           visita.observacoes_gestor ?? '',
     obsManual:     (visita.observacoes_gestor ?? '').trim() !== textoObsDeTipos(tiposIniciais).trim(),
   });
+
+  // Mini-mapa do endereço — começa com a coordenada já cadastrada do cliente/
+  // lead (se tiver). Se o gestor editar o texto do endereço (campo é livre,
+  // só vale pra essa visita), busca a localização de novo automaticamente,
+  // com debounce pra não estourar o limite do Nominatim (~1 req/s) a cada
+  // tecla digitada.
+  const [mapaCoords, setMapaCoords] = useState(() => ({
+    lat: clienteCompleto?.lat ?? null,
+    lng: clienteCompleto?.lng ?? null,
+  }));
+  const [geocodando, setGeocodando] = useState(false);
+  const enderecoOriginal = useRef(form.endereco);
+
+  useEffect(() => {
+    if (form.endereco === enderecoOriginal.current) return; // endereço não mudou — mantém a coordenada do cadastro
+    if (!form.endereco?.trim()) return;
+    const timer = setTimeout(async () => {
+      setGeocodando(true);
+      const resultado = await geocodeEndereco({ endereco: form.endereco, bairro: clienteCompleto?.bairro });
+      setGeocodando(false);
+      if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [form.endereco]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -168,6 +194,8 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
               onChange={e => setF('endereco', e.target.value)}
               placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
             />
+            {geocodando && <span className="ec-hint">🔎 Buscando localização...</span>}
+            <MiniMapaVisita lat={mapaCoords.lat} lng={mapaCoords.lng} />
           </div>
 
           <div className="ec-campo">

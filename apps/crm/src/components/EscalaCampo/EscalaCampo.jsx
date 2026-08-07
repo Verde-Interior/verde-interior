@@ -386,6 +386,24 @@ export default function EscalaCampo() {
     setModalEditDataAlvo(novoIso);
   }
 
+  // Clique numa visita da Quinzenal/Mês — mesma regra de editabilidade já
+  // usada pelo cartão da Semana (rascunho/publicado editam, em_execucao vai
+  // pro relatório em andamento). Busca a visita completa (não a versão leve
+  // usada só pra listar no calendário) porque os modais reais esperam todos
+  // os campos — inclusive se o usuário clicar em "Editar agendamento" de
+  // dentro do relatório.
+  async function abrirVisitaDoCalendario(visitaId, comoRelatorio) {
+    const { data, error } = await supabase
+      .from('agenda')
+      .select(SELECT_AGENDA_COMPLETA)
+      .eq('id', visitaId)
+      .single();
+    if (error || !data) return;
+    const enriched = normalizarVisita(data);
+    if (comoRelatorio) setModalRel(enriched);
+    else setModalEdit(enriched);
+  }
+
   // ── Derivações ─────────────────────────────────────────────────────────────
 
   // employees na ordem alfabética (vinda do banco) reorganizada pela
@@ -1078,6 +1096,8 @@ export default function EscalaCampo() {
           onSelecionarDia={abrirSelecaoNoDia}
           onAdicionarTarefa={abrirAdicionarTarefaNoCalendario}
           onReagendar={reagendarPorDrag}
+          onEditarVisita={visitaId => abrirVisitaDoCalendario(visitaId, false)}
+          onVerRelatorioVisita={visitaId => abrirVisitaDoCalendario(visitaId, true)}
         />
       ) : (
       <>
