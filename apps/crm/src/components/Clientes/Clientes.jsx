@@ -7,7 +7,20 @@ import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL, FREQ_VISITA_LABEL } from '../../utils/clienteConstants';
+import { situacaoRecenciaVisita } from '../../utils/escalaHelpers';
+import { dateParaISO } from '../../utils/dateUtils';
 import './Clientes.css';
+
+const SITUACAO_LABEL = {
+  atrasado: (dias) => `Atrasado ${dias}d`,
+  vencendo: (dias) => dias <= 0 ? 'Vence hoje' : `Vence em ${dias}d`,
+  em_dia:   ()      => 'Em dia',
+};
+const SITUACAO_COR = {
+  atrasado: 'antigo',
+  vencendo: 'aviso',
+  em_dia:   'recente',
+};
 
 const GRUPO_OPTIONS = [
   { value: '',                      label: '— Selecionar —'      },
@@ -100,6 +113,7 @@ export default function Clientes() {
   const [busca,       setBusca]       = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
+  const [filtroRegiao, setFiltroRegiao] = useState('todos');
   const [filtroOrquidea, setFiltroOrquidea] = useState('todos'); // 'todos' | 'com' | 'sem'
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const [indiceSugestao,   setIndiceSugestao]   = useState(0);
@@ -113,6 +127,7 @@ export default function Clientes() {
   const [editandoServ,    setEditandoServ]    = useState(null); // { id }
   const [formEditServico, setFormEditServico] = useState(FORM_SERVICO_VAZIO);
   const [geocoding, setGeocoding] = useState(false);
+  const hoje = dateParaISO(new Date());
 
   async function buscarCoordenadas() {
     if (!form.endereco?.trim()) {
@@ -163,18 +178,24 @@ export default function Clientes() {
     window.history.replaceState({}, '', '?tela=clientes');
   }, [clientes]);
 
+  const regioesDisponiveis = useMemo(
+    () => [...new Set(clientes.map(c => c.regiao).filter(Boolean))].sort(),
+    [clientes]
+  );
+
   const clientesFiltrados = useMemo(() => {
     const q = busca.toLowerCase();
     return clientes.filter(c => {
       if (filtroAtivo === 'ativos'   &&  !c.ativo) return false;
       if (filtroAtivo === 'inativos' &&   c.ativo) return false;
       if (filtroGrupo !== 'todos'    && c.grupo_servico !== filtroGrupo) return false;
+      if (filtroRegiao !== 'todos'   && c.regiao !== filtroRegiao) return false;
       if (filtroOrquidea === 'com'   && !c.tem_orquidea) return false;
       if (filtroOrquidea === 'sem'   &&  c.tem_orquidea) return false;
-      if (q && !c.nome_empresa.toLowerCase().includes(q) && !(c.bairro?.toLowerCase().includes(q))) return false;
+      if (q && !c.nome_empresa.toLowerCase().includes(q) && !(c.bairro?.toLowerCase().includes(q)) && !(c.regiao?.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [clientes, busca, filtroAtivo, filtroGrupo, filtroOrquidea]);
+  }, [clientes, busca, filtroAtivo, filtroGrupo, filtroRegiao, filtroOrquidea]);
 
   const sugestoes = useMemo(() => {
     if (!busca.trim()) return [];
@@ -418,7 +439,7 @@ export default function Clientes() {
           <span className="clientes__busca-icon">⌕</span>
           <input
             className="clientes__busca"
-            placeholder="Buscar por nome ou bairro..."
+            placeholder="Buscar por nome, bairro ou região..."
             value={busca}
             onChange={e => { setBusca(e.target.value); setSugestoesAbertas(true); setIndiceSugestao(0); }}
             onFocus={() => busca.trim() && setSugestoesAbertas(true)}
@@ -461,6 +482,19 @@ export default function Clientes() {
           ))}
         </select>
 
+        {regioesDisponiveis.length > 0 && (
+          <select
+            className="clientes__select"
+            value={filtroRegiao}
+            onChange={e => setFiltroRegiao(e.target.value)}
+          >
+            <option value="todos">Todas as regiões</option>
+            {regioesDisponiveis.map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        )}
+
         <select
           className="clientes__select"
           value={filtroOrquidea}
@@ -491,11 +525,11 @@ export default function Clientes() {
       ) : clientesFiltrados.length === 0 ? (
         <div className="clientes__estado">
           <p className="clientes__estado-msg">
-            {busca || filtroAtivo !== 'todos' || filtroGrupo !== 'todos' || filtroOrquidea !== 'todos'
+            {busca || filtroAtivo !== 'todos' || filtroGrupo !== 'todos' || filtroRegiao !== 'todos' || filtroOrquidea !== 'todos'
               ? 'Nenhum cliente encontrado com esse filtro.'
               : 'Nenhum cliente cadastrado.'}
           </p>
-          {!busca && filtroAtivo === 'todos' && filtroGrupo === 'todos' && filtroOrquidea === 'todos' && (
+          {!busca && filtroAtivo === 'todos' && filtroGrupo === 'todos' && filtroRegiao === 'todos' && filtroOrquidea === 'todos' && (
             <button className="clientes__btn-novo clientes__btn-novo--outline" onClick={abrirNovo}>
               + Cadastrar primeiro cliente
             </button>
@@ -511,7 +545,7 @@ export default function Clientes() {
                 <th>Dias disponíveis / Freq.</th>
                 <th>Duração</th>
                 <th>Última visita</th>
-                <th>Contratos</th>
+                <th>Contratos / Valor</th>
                 <th>Status</th>
                 <th title="Completude do cadastro">%</th>
               </tr>
@@ -522,7 +556,10 @@ export default function Clientes() {
                 const diasLabel = (c.dias_disponiveis?.length ?? 0) > 0
                   ? c.dias_disponiveis.map(d => DIAS_SEMANA.find(x => x.id === d)?.label ?? d).join(' · ')
                   : null;
-                const servicosAtivos = (c.cliente_servicos ?? []).filter(s => s.ativo).length;
+                const servicosAtivosArr = (c.cliente_servicos ?? []).filter(s => s.ativo);
+                const servicosAtivos = servicosAtivosArr.length;
+                const valorMensalTotal = servicosAtivosArr.reduce((soma, s) => soma + (Number(s.valor_mensal) || 0), 0);
+                const situacao = situacaoRecenciaVisita(c, hoje);
 
                 return (
                   <tr
@@ -564,12 +601,19 @@ export default function Clientes() {
                     </td>
                     <td>
                       {c.ultima_visita ? (
-                        <span
-                          className={`clientes__recencia clientes__recencia--${classeRecencia(c.ultima_visita)}`}
-                          title={formatarData(c.ultima_visita)}
-                        >
-                          {tempoRelativo(c.ultima_visita)}
-                        </span>
+                        <>
+                          <span
+                            className={`clientes__recencia clientes__recencia--${situacao.status === 'sem_frequencia' ? classeRecencia(c.ultima_visita) : SITUACAO_COR[situacao.status]}`}
+                            title={formatarData(c.ultima_visita)}
+                          >
+                            {tempoRelativo(c.ultima_visita)}
+                          </span>
+                          {situacao.status !== 'sem_frequencia' && (
+                            <span className="clientes__cel-sub">{SITUACAO_LABEL[situacao.status](situacao.dias)}</span>
+                          )}
+                        </>
+                      ) : situacao.status === 'sem_visita' ? (
+                        <span className="clientes__aviso">⚠ nunca visitado</span>
                       ) : (
                         <span className="clientes__dash">—</span>
                       )}
@@ -578,6 +622,9 @@ export default function Clientes() {
                       {servicosAtivos > 0
                         ? <span className="clientes__badge clientes__badge--servico">{servicosAtivos}</span>
                         : <span className="clientes__dash">—</span>}
+                      {valorMensalTotal > 0 && (
+                        <span className="clientes__cel-sub">{formatarMoeda(valorMensalTotal)}/mês</span>
+                      )}
                     </td>
                     <td>
                       <span className={`clientes__badge ${c.ativo ? 'clientes__badge--ativo' : 'clientes__badge--inativo'}`}>

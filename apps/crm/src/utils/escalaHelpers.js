@@ -256,6 +256,22 @@ export function calcClientesAtrasados(clientes, hoje) {
   return { atrasado, vencendo };
 }
 
+// Situação de recência de visita de UM cliente (mesma base de cálculo de
+// calcClientesAtrasados, mas devolve um resultado pra qualquer cliente —
+// inclusive os "em dia" — em vez de só listar quem está atrasado/vencendo).
+// Usada na lista de Clientes pra substituir a cor por dias corridos fixos
+// (que ignora a frequência) por uma leitura que considera a frequência real.
+export function situacaoRecenciaVisita(cliente, hoje) {
+  const intervalo = FREQ_INTERVALO[cliente?.frequencia_visita];
+  if (!intervalo) return { status: 'sem_frequencia', dias: null };
+  if (!cliente.ultima_visita) return { status: 'sem_visita', dias: null };
+  const dias = diasEntre(cliente.ultima_visita, hoje);
+  const atraso = dias - intervalo;
+  if (atraso > 0)   return { status: 'atrasado', dias: atraso };
+  if (atraso >= -3) return { status: 'vencendo', dias: -atraso };
+  return { status: 'em_dia', dias: -atraso };
+}
+
 // Detecta conflitos de tempo em uma lista de visitas do dia
 export function calcConflitosDia(visitas, dailyHours) {
   const sobreposicoes = [];
