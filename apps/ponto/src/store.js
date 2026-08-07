@@ -6,6 +6,7 @@ export const state = {
   PS:  {},
   HIST: {},
   JUSTS: [],
+  BLOQ: new Map(), // employee_id -> motivo (ausência justificada hoje: férias/folga/atestado — ver employee_bloqueios)
   cu: 0,
   eu: 0,
   pendingFiles: [],
@@ -82,6 +83,17 @@ export async function load() {
       return { _id: j.id, user: idx, date: j.date, type: j.type, desc: j.description, status: j.status, files: [] };
     });
   }
+
+  // Ausências já aprovadas no CRM (Escala > Bloqueios: férias/folga/feriado/
+  // atestado) — mesma tabela que impede agendamento de visita lá. Usada aqui
+  // pra não marcar como "Ausente"/gerar alerta quem já está de folga.
+  const hoje = getHoje();
+  const { data: bloqueios } = await supabase
+    .from('employee_bloqueios')
+    .select('funcionario_id, motivo')
+    .lte('data_inicio', hoje)
+    .gte('data_fim', hoje);
+  state.BLOQ = new Map((bloqueios ?? []).map(b => [String(b.funcionario_id), b.motivo || 'Ausência justificada']));
 
   await closeOpenShifts();
 }

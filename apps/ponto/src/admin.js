@@ -2,14 +2,26 @@ import { state, save, dbAddPunch, dbDeletePunch, dbUpdateJustStatus } from './st
 import { HM, HMh, WDS, MESES, meta, calcWork, calcWorkClosed, TM, getHoje, toast, esc } from './utils.js';
 import * as XLSX from 'xlsx';
 
+// Tolerância antes de alertar ausência: gestor só quer saber depois que já
+// passou da hora normal de entrada de todo mundo, não às 07:01.
+const ALERTA_AUSENCIA_MIN = 9 * 60; // 09:00
+
 export function genAlerts() {
   const a = [];
+  const agoraMin = new Date().getHours() * 60 + new Date().getMinutes();
   state.EMP.forEach((e, i) => {
     if (e.bank <= -120) a.push({ type: 'err',  icon: 'fa-circle-exclamation',   title: `${e.name} — banco crítico`,   msg: `Saldo: ${HM(e.bank)}. Compensação urgente.` });
     else if (e.bank < 0) a.push({ type: 'warn', icon: 'fa-triangle-exclamation', title: `${e.name} — banco negativo`,  msg: `Saldo: ${HM(e.bank)}.` });
     if (e.due >= 4) a.push({ type: 'warn', icon: 'fa-clock', title: `${e.name} — horas devidas`, msg: `${HMh(e.due)} devidas no mês.` });
-    const late = (state.PS[i] || []).find(p => p.type === 'entry');
-    if (late) { const [h, m] = late.time.split(':').map(Number); if (h * 60 + m > 8 * 60 + 20) a.push({ type: 'warn', icon: 'fa-clock', title: `${e.name} — entrada tardia`, msg: `Entrada às ${late.time}.` }); }
+    const entry = (state.PS[i] || []).find(p => p.type === 'entry');
+    if (entry) {
+      const [h, m] = entry.time.split(':').map(Number);
+      if (h * 60 + m > 8 * 60 + 20) a.push({ type: 'warn', icon: 'fa-clock', title: `${e.name} — entrada tardia`, msg: `Entrada às ${entry.time}.` });
+    } else if (!state.BLOQ.has(String(e.id)) && agoraMin > ALERTA_AUSENCIA_MIN) {
+      // Sem justificativa/bloqueio aprovado e já passou da tolerância — sinaliza,
+      // mas não afirma falta: pode ser atraso grande, é o gestor quem confirma.
+      a.push({ type: 'warn', icon: 'fa-user-clock', title: `${e.name} — sem ponto registrado`, msg: 'Nenhuma entrada até agora hoje.' });
+    }
   });
   return a;
 }
@@ -42,7 +54,11 @@ export function renderAdmin() {
 
   const stOf = i => {
     const p = state.PS[i] || [];
-    if (!p.length)                     return { dot: 'dr', lbl: 'Ausente' };
+    if (!p.length) {
+      const motivo = state.BLOQ.get(String(state.EMP[i]?.id));
+      if (motivo) return { dot: 'dj', lbl: motivo };
+      return { dot: 'dr', lbl: 'Ausente' };
+    }
     const l = p[p.length - 1];
     if (l.type === 'exit')             return { dot: 'dz', lbl: 'Encerrado' };
     if (l.type === 'break')            return { dot: 'da', lbl: 'Intervalo' };

@@ -102,7 +102,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tt tr:last-child td{border-bottom:none}
 .tt tr:hover td{background:var(--bg)}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
-.dg{background:#1D9E75}.dr{background:#E24B4A}.da{background:#EF9F27}.dz{background:#B4B2A9}
+.dg{background:#1D9E75}.dr{background:#E24B4A}.da{background:#EF9F27}.dz{background:#B4B2A9}.dj{background:#6366F1}
 .bc{font-size:11px;padding:2px 7px;border-radius:8px;font-weight:600;background:#e6f1fb;color:#0C447C}
 
 /* BANCO */
