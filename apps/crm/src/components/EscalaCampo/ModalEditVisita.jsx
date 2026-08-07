@@ -62,12 +62,17 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
     if (!form.endereco?.trim()) return;
     const timer = setTimeout(async () => {
       setGeocodando(true);
-      const resultado = await geocodeEndereco({ endereco: form.endereco, bairro: clienteCompleto?.bairro });
+      // endereco aqui já vem completo (rua, bairro, cidade, UF, CEP) —
+      // diferente do cadastro de cliente, que tem campos separados. Passar
+      // bairro/cidade/UF de novo duplicava tudo na busca e confundia o
+      // geocodificador (cidade/uf têm default dentro de geocodeEndereco,
+      // por isso zeramos explicitamente em vez de só omitir).
+      const resultado = await geocodeEndereco({ endereco: form.endereco, cidade: '', uf: '' });
       setGeocodando(false);
       if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
     }, 800);
     return () => clearTimeout(timer);
-  }, [form.endereco]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form.endereco]);
 
   function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
 

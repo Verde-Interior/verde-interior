@@ -18,7 +18,11 @@ export default function MiniMapaVisita({ lat, lng }) {
   if (!lat || !lng) return null;
   return (
     <div className="mmv">
+      {/* key força remontar o mapa quando a coordenada muda — MapContainer só
+          usa `center` na primeira renderização, mudar o prop depois não move
+          o mapa sozinho (limitação conhecida do react-leaflet). */}
       <MapContainer
+        key={`${lat},${lng}`}
         center={[lat, lng]}
         zoom={15}
         className="mmv__map"

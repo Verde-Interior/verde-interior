@@ -116,7 +116,11 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
     if (!form.enderecoTarefa?.trim()) { setMapaCoords({ lat: null, lng: null }); return; }
     const timer = setTimeout(async () => {
       setGeocodando(true);
-      const resultado = await geocodeEndereco({ endereco: form.enderecoTarefa });
+      // cidade/uf têm default dentro de geocodeEndereco (São Paulo/SP) —
+      // zera explicitamente porque o endereço digitado aqui costuma já vir
+      // completo (o placeholder do campo até sugere isso), evitando duplicar
+      // cidade/UF na busca e confundir o geocodificador.
+      const resultado = await geocodeEndereco({ endereco: form.enderecoTarefa, cidade: '', uf: '' });
       setGeocodando(false);
       if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
     }, 800);
