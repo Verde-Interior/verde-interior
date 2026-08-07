@@ -926,7 +926,9 @@ export default function EscalaCampo() {
       <header className="ec__header">
         <div className="ec__header-esq">
           <h2 className="ec__titulo">Escala de Campo</h2>
-          <p className="ec__sub">Agenda semanal de visitas · {employees.length} funcionários</p>
+          <p className="ec__sub">
+            Agenda {modoVisao === 'semana' ? 'semanal' : modoVisao === 'quinzenal' ? 'quinzenal' : 'mensal'} de visitas · {employees.length} funcionários
+          </p>
         </div>
         <div className="ec__header-dir">
           <button
