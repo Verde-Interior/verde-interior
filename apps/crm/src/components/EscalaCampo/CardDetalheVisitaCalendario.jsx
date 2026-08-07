@@ -4,12 +4,14 @@
 // colunas com mapa discreto — inspirado num sistema de referência que o
 // usuário mostrou, adaptado aos campos que realmente temos (sem "código da
 // tarefa", "criado por" ou "tipo de check-in", que não existem no modelo).
+import { useState } from 'react';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { TIPO_LABEL, PRIORIDADE_LABEL, labelStatusVisita, corStatusVisita, textoObsDeTipos } from '../../utils/escalaHelpers';
 import { FREQ_VISITA_LABEL } from '../../utils/clienteConstants';
 import { formatarDataLonga } from '../../utils/calendarioUtils';
 import { formatarDuracao } from '../../utils/formatUtils';
 import MiniMapaVisita from './MiniMapaVisita';
+import ModalRelatorioVisita from './ModalRelatorioVisita';
 import './CardDetalheVisitaCalendario.css';
 
 function horaCurta(iso) {
@@ -28,6 +30,7 @@ function duracaoReal(checkinAt, checkoutAt) {
 
 export default function CardDetalheVisitaCalendario({ visita, onFechar }) {
   const overlayClose = useOverlayClose(onFechar);
+  const [verRelatorio, setVerRelatorio] = useState(false);
   const descricao = visita.observacoes?.trim() || textoObsDeTipos(visita.tiposTarefa) || 'Sem descrição.';
   const tiposLabel = visita.tiposTarefa.length
     ? visita.tiposTarefa.map(t => TIPO_LABEL[t] ?? t).join(', ')
@@ -35,6 +38,19 @@ export default function CardDetalheVisitaCalendario({ visita, onFechar }) {
   const checkin  = horaCurta(visita.checkinAt);
   const checkout = horaCurta(visita.checkoutAt);
   const realMin  = duracaoReal(visita.checkinAt, visita.checkoutAt);
+
+  // ModalRelatorioVisita busca o relatório sozinho a partir do id da visita —
+  // só precisa desse shim mínimo (mesmos campos que ele já usa como fallback
+  // de cabeçalho enquanto carrega).
+  if (verRelatorio) {
+    return (
+      <ModalRelatorioVisita
+        visita={{ id: visita.id, data_agendada: visita.dataAgendada, clientes: { nome_empresa: visita.cliente } }}
+        funcNome={visita.funcionario}
+        onFechar={onFechar}
+      />
+    );
+  }
 
   return (
     <div className="ec-overlay" {...overlayClose}>
@@ -114,6 +130,12 @@ export default function CardDetalheVisitaCalendario({ visita, onFechar }) {
             </div>
           </div>
         </div>
+
+        {visita.status === 'concluido' && (
+          <footer className="ec-modal__footer">
+            <button className="ec-btn ec-btn--pri" onClick={() => setVerRelatorio(true)}>📋 Ver relatório</button>
+          </footer>
+        )}
       </div>
     </div>
   );
