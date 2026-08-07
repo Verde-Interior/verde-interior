@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
-import { dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
+import { dateParaISO, addDias, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
 import {
   DIAS_LABEL, DIAS_NOME,
@@ -21,6 +21,8 @@ import ModalRedistribuir from './ModalRedistribuir';
 import ModalBloqueios from './ModalBloqueios';
 import PainelAtrasados from './PainelAtrasados';
 import ModalCopiarAgenda from './ModalCopiarAgenda';
+import EscalaCalendario from './EscalaCalendario';
+import { addMes } from '../../utils/calendarioUtils';
 import './EscalaCampo.css';
 
 // ── Wrappers finos para os utils centralizados (mantém API interna do arquivo) ──
@@ -63,6 +65,15 @@ export default function EscalaCampo() {
   const [loading,     setLoading]     = useState(true);
   const [modal,       setModal]       = useState(null);
   const [salvando,    setSalvando]    = useState(false);
+
+  // ── Visão de calendário (quinzenal/mês) — complementa a Semana ──────────────
+  const [modoVisao,   setModoVisao]   = useState('semana'); // 'semana' | 'quinzenal' | 'mes'
+  const hojeDate = new Date();
+  const [calAno,       setCalAno]       = useState(hojeDate.getFullYear());
+  const [calMes,       setCalMes]       = useState(hojeDate.getMonth());
+  const [quinzenaBase, setQuinzenaBase] = useState(getHoje);
+  const [agendaCalendario, setAgendaCalendario] = useState([]);
+  const [loadingCal,       setLoadingCal]       = useState(false);
 
   // ── Drag & Drop ──────────────────────────────────────────────────────────────
   const [dragId,      setDragId]      = useState(null); // id da visita sendo arrastada
@@ -241,6 +252,75 @@ export default function EscalaCampo() {
   }
 
   useEffect(() => { carregarAgenda(); }, [semana]); // eslint-disable-line
+
+  // ── Dados pra visão de calendário (quinzenal/mês) ───────────────────────────
+  // Busca separada da agenda da Semana: intervalo maior (14 ou ~35 dias) e só
+  // os campos necessários pro resumo por dia — não reaproveita `agenda`/
+  // `carregarAgenda` pra não arriscar mexer no pipeline já testado da Semana.
+  function rangeDoMes(ano, mes) {
+    const primeiro = new Date(ano, mes, 1);
+    const inicio = new Date(primeiro); inicio.setDate(inicio.getDate() - primeiro.getDay());
+    const ultimoDiaMes = new Date(ano, mes + 1, 0);
+    const fim = new Date(ultimoDiaMes); fim.setDate(fim.getDate() + (6 - ultimoDiaMes.getDay()));
+    return [dateParaISO(inicio), dateParaISO(fim)];
+  }
+  function rangeDaQuinzena(baseIso) {
+    const inicio = getSemana(baseIso)[0];
+    return [inicio, addDias(inicio, 13)];
+  }
+
+  useEffect(() => {
+    if (modoVisao === 'semana') return;
+    let cancelado = false;
+    (async () => {
+      setLoadingCal(true);
+      const [inicio, fim] = modoVisao === 'mes' ? rangeDoMes(calAno, calMes) : rangeDaQuinzena(quinzenaBase);
+      const { data } = await supabase
+        .from('agenda')
+        .select(`
+          id, data_agendada, hora_estimada_chegada, funcionario_id, status,
+          nome_cliente, cliente:clientes(nome_empresa), lead:leads(empresa)
+        `)
+        .gte('data_agendada', inicio)
+        .lte('data_agendada', fim)
+        .neq('status', 'cancelado')
+        .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
+      if (cancelado) return;
+      setAgendaCalendario(data ?? []);
+      setLoadingCal(false);
+    })();
+    return () => { cancelado = true; };
+  }, [modoVisao, calAno, calMes, quinzenaBase]);
+
+  const visitasPorDia = useMemo(() => {
+    const empMap = new Map(employees.map(e => [String(e.id), e.name]));
+    const mapa = new Map();
+    agendaCalendario.forEach(v => {
+      const cliente = v.cliente?.nome_empresa ?? v.lead?.empresa ?? v.nome_cliente ?? '—';
+      const item = {
+        id: v.id,
+        hora: v.hora_estimada_chegada?.slice(0, 5) ?? null,
+        cliente,
+        funcionario: empMap.get(String(v.funcionario_id)) ?? '—',
+        status: v.status,
+      };
+      if (!mapa.has(v.data_agendada)) mapa.set(v.data_agendada, []);
+      mapa.get(v.data_agendada).push(item);
+    });
+    return mapa;
+  }, [agendaCalendario, employees]);
+
+  function navMes(delta) {
+    const { ano, mes } = addMes(calAno, calMes, delta);
+    setCalAno(ano);
+    setCalMes(mes);
+  }
+
+  function abrirDiaNoCalendario(iso) {
+    setDiaSel(iso);
+    setSemana(getSemana(new Date(iso + 'T12:00')));
+    setModoVisao('semana');
+  }
 
   // ── Derivações ─────────────────────────────────────────────────────────────
 
@@ -883,15 +963,49 @@ export default function EscalaCampo() {
           >
             ↺ Copiar agenda
           </button>
-          <div className="ec__nav-semana">
-            <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
-            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[6])}</span>
-            <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
+          <div className="ec__modo-visao">
+            {[
+              { id: 'semana',    label: 'Semana' },
+              { id: 'quinzenal', label: 'Quinzenal' },
+              { id: 'mes',       label: 'Mês' },
+            ].map(m => (
+              <button
+                key={m.id}
+                className={`ec__modo-pill ${modoVisao === m.id ? 'ec__modo-pill--ativo' : ''}`}
+                onClick={() => setModoVisao(m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
-          <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
+          {modoVisao === 'semana' && (
+            <>
+              <div className="ec__nav-semana">
+                <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
+                <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[6])}</span>
+                <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
+              </div>
+              <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
+            </>
+          )}
         </div>
       </header>
 
+      {modoVisao !== 'semana' ? (
+        <EscalaCalendario
+          modo={modoVisao}
+          visitasPorDia={visitasPorDia}
+          loading={loadingCal}
+          calAno={calAno}
+          calMes={calMes}
+          onNavMes={navMes}
+          quinzenaBase={quinzenaBase}
+          onNavQuinzena={deltaDias => setQuinzenaBase(b => addDias(b, deltaDias))}
+          hojeIso={hoje}
+          onAbrirDia={abrirDiaNoCalendario}
+        />
+      ) : (
+      <>
       {/* ── Tabs dos dias ── */}
       <div className="ec__tabs">
         {semana.map(d => {
@@ -1113,9 +1227,11 @@ export default function EscalaCampo() {
           })}
         </div>
       )}
+      </>
+      )}
 
       {/* ── Barra de ação: mover/reverter/cancelar selecionadas ── */}
-      {modoSelecao && (
+      {modoVisao === 'semana' && modoSelecao && (
         <div className="ec__bulk-bar">
           <span className="ec__bulk-info">
             {qtdSel === 0

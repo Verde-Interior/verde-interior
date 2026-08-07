@@ -1,0 +1,232 @@
+/* src/components/EscalaCampo/EscalaCalendario.css */
+/* Visão de calendário (quinzenal/mês) da Escala */
+
+.ec-cal {
+  background: var(--glass-light);
+  border: 1px solid var(--glass-light-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.ec-cal__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.ec-cal__nav-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
+}
+.ec-cal__nav-btn:hover { background: var(--cream-100); }
+
+.ec-cal__label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: capitalize;
+  min-width: 160px;
+  text-align: center;
+}
+
+.ec-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.ec-cal__dow {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-bottom: 4px;
+}
+
+.ec-cal__cel {
+  min-height: 78px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ec-cal__cel:hover { background: var(--cream-100); }
+
+.ec-cal__cel--vazia {
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+.ec-cal__cel--hoje {
+  border-color: var(--forest-500);
+}
+
+.ec-cal__cel--ativa {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.ec-cal__cel-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ec-cal__cel-resumo {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ec-cal__cel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ec-cal__loading {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+/* ── Popover do dia ── */
+.ec-cal__pop {
+  margin-top: 14px;
+  border-top: 1px solid var(--glass-light-border);
+  padding-top: 14px;
+}
+
+.ec-cal__pop-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ec-cal__pop-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.ec-cal__pop-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.ec-cal__pop-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ec-cal__pop-ver {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--forest-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ec-cal__pop-ver:hover { color: var(--forest-700); }
+
+.ec-cal__pop-fechar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ec-cal__pop-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ec-cal__pop-item {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.ec-cal__pop-hora {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.ec-cal__pop-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ec-cal__pop-cliente {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ec-cal__pop-func {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.ec-cal__pop-status {
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 720px) {
+  .ec-cal__cel { min-height: 56px; padding: 6px; }
+  .ec-cal__cel-num { font-size: 11px; }
+  .ec-cal__cel-resumo { font-size: 10px; }
+  .ec-cal__pop-item { grid-template-columns: 36px 1fr; }
+  .ec-cal__pop-status { grid-column: 1 / -1; justify-self: start; }
+}
