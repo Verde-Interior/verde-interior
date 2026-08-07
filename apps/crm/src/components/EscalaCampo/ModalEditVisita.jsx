@@ -1,10 +1,10 @@
 // src/components/EscalaCampo/ModalEditVisita.jsx
 // Modal de editar visita — extraído de EscalaCampo.jsx (Fase 3.2)
 import { useState, useMemo } from 'react';
-import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario } from '../../utils/escalaHelpers';
+import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 
-export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onDuplicarFuncionario, onDuplicar }) {
+export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, alerta, onDuplicarFuncionario, onDuplicar }) {
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
   // se é visita de lead (cliente_id null), usa o `visita.clientes` sintético
   // já enriquecido pela EscalaCampo — traz cliente_servicos como array de 1 item
@@ -184,6 +184,14 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
             />
           </div>
 
+          {alerta && (
+            <div className="ec-alertas">
+              <div className="ec-alerta ec-alerta--falta">
+                {alerta === 'falta_provavel' ? '🔴' : '⚠'} {ALERTA_FALTA_LABEL[alerta]} — sem check-in registrado até agora.
+              </div>
+            </div>
+          )}
+
           {avisos.length > 0 && (
             <div className="ec-alertas">
               {avisos.map((a, i) => <div key={i} className="ec-alerta ec-alerta--aviso">⚠ {a}</div>)}
@@ -203,6 +211,16 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
                 >
                   ✕ Cancelar visita
                 </button>
+                {onMarcarFalta && (
+                  <button
+                    className="ec-btn ec-btn--perigo"
+                    onClick={onMarcarFalta}
+                    disabled={salvando}
+                    title="Marca que o colaborador não compareceu. Diferente de cancelar: fica registrado como falta, não como cancelamento do gestor."
+                  >
+                    ⛔ Marcar falta
+                  </button>
+                )}
                 <button
                   className="ec-btn ec-btn--sec"
                   onClick={onDespublicar}

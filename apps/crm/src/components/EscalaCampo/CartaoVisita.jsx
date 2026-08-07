@@ -1,6 +1,6 @@
 // src/components/EscalaCampo/CartaoVisita.jsx
 // Cartão de visita — extraído de EscalaCampo.jsx (Fase 3.1)
-import { TIPO_LABEL, TIPO_COR, PRIORIDADE_LABEL } from '../../utils/escalaHelpers';
+import { TIPO_LABEL, TIPO_COR, PRIORIDADE_LABEL, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
 
 export default function CartaoVisita({
   visita, isFirst, isLast,
@@ -16,6 +16,8 @@ export default function CartaoVisita({
   mostrarPrioridade,
   // restrições (violação de dia/janela do cliente)
   restricao,
+  // alerta de atraso/possível falta (calcularAlertaFalta) — sinalização, não status oficial
+  alerta,
   // edição
   onEditar,
   // relatório (em_execucao / concluido)
@@ -37,12 +39,14 @@ export default function CartaoVisita({
     mostrarPrioridade && prioridade ? `ec-cartao--prio-${prioridade}` : '',
     restricao?.restricaoDia ? 'ec-cartao--restr-dia' : '',
     restricao?.restricaoHora ? 'ec-cartao--restr-hora' : '',
+    alerta ? `ec-cartao--alerta-${alerta}` : '',
   ].filter(Boolean).join(' ');
 
   const tooltipConf = [
     emSobreposicao ? 'Horário sobreposto com outra visita' : null,
     estouraDia ? 'Esta visita passa do fim do expediente' : null,
     mostrarPrioridade && prioridade ? `Prioridade: ${PRIORIDADE_LABEL[prioridade] ?? prioridade}` : null,
+    alerta ? `${ALERTA_FALTA_LABEL[alerta]} — sem check-in registrado` : null,
     ...(restricao?.motivos ?? []),
   ].filter(Boolean).join(' · ');
 
@@ -136,6 +140,11 @@ export default function CartaoVisita({
             {restricao.restricaoHora && <span className="ec-cartao__restr-tag">⚠ hora</span>}
           </div>
         )}
+        {alerta && (
+          <span className={`ec-cartao__alerta-tag ec-cartao__alerta-tag--${alerta}`}>
+            {alerta === 'falta_provavel' ? '🔴' : '⚠'} {ALERTA_FALTA_LABEL[alerta]}
+          </span>
+        )}
       </div>
 
       {editavel && !modoSelecao && (
@@ -148,13 +157,15 @@ export default function CartaoVisita({
             status === 'publicado'   ? 'Aguardando início' :
             status === 'em_execucao' ? 'Em execução' :
             status === 'concluido'   ? 'Concluída' :
-            status === 'cancelado'   ? 'Cancelada' : ''
+            status === 'cancelado'   ? 'Cancelada' :
+            status === 'faltou'      ? 'Colaborador faltou' : ''
           }
         >
           {status === 'publicado'   && '●'}
           {status === 'em_execucao' && '▶'}
           {status === 'concluido'   && '✓'}
           {status === 'cancelado'   && '✕'}
+          {status === 'faltou'      && '⛔'}
         </span>
       )}
     </div>

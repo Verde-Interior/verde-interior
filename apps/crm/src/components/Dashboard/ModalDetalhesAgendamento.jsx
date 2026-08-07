@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
-import { TIPOS_TAREFA, STATUS_VISITA_LABEL } from '../../utils/escalaHelpers';
+import { TIPOS_TAREFA, STATUS_VISITA_LABEL, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
 import '../ModalDetalhesCliente/ModalDetalhesCliente.css';
 
 const TAREFA_LABEL = Object.fromEntries(TIPOS_TAREFA.map((t) => [t.id, t.label]));
@@ -24,7 +24,7 @@ function formatarHora(iso) {
 // visual, já ajustado pro modo escuro) sem precisar de CSS próprio.
 // Busca o relatório vinculado (se já existir check-in) só pra mostrar um
 // resumo — o relatório completo continua só na tela de Relatórios.
-export default function ModalDetalhesAgendamento({ visita, funcionarioNome, onFechar, onVerNaEscala, onVerRelatorio }) {
+export default function ModalDetalhesAgendamento({ visita, funcionarioNome, alerta, onFechar, onVerNaEscala, onVerRelatorio }) {
   const overlayClose = useOverlayClose(onFechar);
   const cliente = visita.cliente ?? {};
   const dataFmt = visita.data_agendada
@@ -65,6 +65,17 @@ export default function ModalDetalhesAgendamento({ visita, funcionarioNome, onFe
           </div>
           <button className="mdc-modal__fechar" onClick={onFechar}>✕</button>
         </header>
+
+        {alerta && (
+          <div style={{
+            margin: '0 20px', padding: '8px 12px', borderRadius: 8,
+            background: alerta === 'falta_provavel' ? 'color-mix(in srgb, #DC2626 16%, transparent)' : 'color-mix(in srgb, #F59E0B 14%, transparent)',
+            color: alerta === 'falta_provavel' ? '#DC2626' : '#B45309',
+            fontSize: 13, fontWeight: 600,
+          }}>
+            {alerta === 'falta_provavel' ? '🔴' : '⚠'} {ALERTA_FALTA_LABEL[alerta]} — sem check-in registrado até agora
+          </div>
+        )}
 
         <div className="mdc-modal__corpo">
           <section className="mdc-sec">

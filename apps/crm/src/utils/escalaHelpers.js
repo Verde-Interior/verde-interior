@@ -29,6 +29,7 @@ export const STATUS_VISITA_COR = {
   em_execucao:  '#3B82F6',
   concluido:    '#10B981',
   cancelado:    '#EF4444',
+  faltou:       '#991B1B',
 };
 export function corStatusVisita(status) {
   return STATUS_VISITA_COR[status] ?? '#9CA3AF';
@@ -43,9 +44,42 @@ export const STATUS_VISITA_LABEL = {
   em_execucao:  'Em execução',
   concluido:    'Concluído',
   cancelado:    'Cancelado',
+  faltou:       'Faltou',
 };
 export function labelStatusVisita(status) {
   return STATUS_VISITA_LABEL[status] ?? status;
+}
+
+// ── Alerta de falta (detecção automática, não confirmada) ─────────────
+// Compara hora_estimada_chegada com o horário atual pra sinalizar visitas
+// publicadas sem check-in — sem mudar o status oficial (isso só acontece
+// quando o gestor confirma manualmente via "Marcar falta"). Ausências já
+// justificadas (employee_bloqueios) e visitas com check-in não alertam.
+export const ALERTA_FALTA_MIN_ATRASO    = 15; // min sem check-in pra virar "atrasado"
+export const ALERTA_FALTA_MIN_PROVAVEL  = 60; // min sem check-in pra virar "possível falta"
+
+export const ALERTA_FALTA_LABEL = {
+  atrasado:       'Atrasado',
+  falta_provavel: 'Possível falta',
+};
+export const ALERTA_FALTA_COR = {
+  atrasado:       '#F59E0B',
+  falta_provavel: '#DC2626',
+};
+
+// `agora`: Date atual. `temCheckin`/`estaBloqueado`: já resolvidos por quem
+// chama (mapa de relatorios.checkin_at e employee_bloqueios), pra essa
+// função não depender de fazer query.
+export function calcularAlertaFalta(visita, agora, temCheckin, estaBloqueado) {
+  if (estaBloqueado) return null;
+  if (temCheckin) return null;
+  if (visita.status !== 'publicado') return null;
+  if (!visita.data_agendada || !visita.hora_estimada_chegada) return null;
+  const previsto = new Date(`${visita.data_agendada}T${visita.hora_estimada_chegada}`);
+  if (Number.isNaN(previsto.getTime())) return null;
+  const minutosAtraso = (agora.getTime() - previsto.getTime()) / 60000;
+  if (minutosAtraso < ALERTA_FALTA_MIN_ATRASO) return null;
+  return minutosAtraso >= ALERTA_FALTA_MIN_PROVAVEL ? 'falta_provavel' : 'atrasado';
 }
 
 export const TIPOS_TAREFA = [

@@ -387,7 +387,8 @@
 .ec-cartao--publicado,
 .ec-cartao--em_execucao,
 .ec-cartao--concluido,
-.ec-cartao--cancelado { border-left: 4px solid transparent; }
+.ec-cartao--cancelado,
+.ec-cartao--faltou { border-left: 4px solid transparent; }
 /* Tons batidos com color-mix sobre var(--surface-card) em vez de pastéis
    fixos: no claro dá quase o mesmo resultado de antes, no escuro vira um
    tingimento sutil sobre o fundo escuro em vez de um card branco. */
@@ -399,6 +400,9 @@
 .ec-cartao--concluido   { border-left-color: #059669; background: color-mix(in srgb, #059669 10%, var(--surface-card)); }
 /* Cancelada: vermelho apagado */
 .ec-cartao--cancelado   { border-left-color: #ef4444; background: color-mix(in srgb, #ef4444 8%, var(--surface-card)); opacity: 0.65; }
+/* Faltou: vermelho mais escuro que cancelado — visualmente distinto pra não
+   confundir "gestor cancelou" com "colaborador não apareceu" */
+.ec-cartao--faltou      { border-left-color: #991b1b; background: color-mix(in srgb, #991b1b 10%, var(--surface-card)); opacity: 0.75; }
 
 /* Conflitos de horário — fundo sólido, sem gradientes */
 .ec-cartao--conflito-sob {
@@ -443,6 +447,31 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Alerta de atraso/possível falta — sinalização calculada (calcularAlertaFalta),
+   distinta do status oficial. "Atrasado" ainda pode virar check-in a qualquer
+   momento; "possível falta" é o gestor quem decide confirmar via botão. */
+.ec-cartao--alerta-atrasado {
+  background: color-mix(in srgb, #F59E0B 12%, var(--surface-card));
+  border-color: color-mix(in srgb, #F59E0B 45%, var(--surface-border));
+}
+.ec-cartao--alerta-falta_provavel {
+  background: color-mix(in srgb, #DC2626 16%, var(--surface-card));
+  border-color: color-mix(in srgb, #DC2626 50%, var(--surface-border));
+}
+.ec-cartao__alerta-tag {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 8px;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ec-cartao__alerta-tag--atrasado       { background: #F59E0B; }
+.ec-cartao__alerta-tag--falta_provavel { background: #DC2626; }
 
 /* ── Prioridade (só via toggle 🎯) ──────────────────────────────
    Antes: gradiente + borda + cor forte. Agora: só borda esquerda
@@ -958,6 +987,7 @@
 .ec-cartao__pub--em_execucao { color: #fff;    background: #2563eb; animation: ec-pulsa 1.6s ease-in-out infinite; }
 .ec-cartao__pub--concluido   { color: #fff;    background: #059669; }
 .ec-cartao__pub--cancelado   { color: #fff;    background: #ef4444; }
+.ec-cartao__pub--faltou      { color: #fff;    background: #991b1b; }
 @keyframes ec-pulsa {
   0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .55); }
   50%      { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0); }
@@ -1213,6 +1243,7 @@
 .ec-alerta--erro  { background: color-mix(in srgb, #EF4444 14%, var(--surface-card)); color: #EF4444; border: 1px solid color-mix(in srgb, #EF4444 40%, var(--surface-border)); }
 .ec-alerta--aviso { background: color-mix(in srgb, var(--color-warning) 14%, var(--surface-card)); color: var(--color-warning); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--surface-border)); }
 .ec-alerta--ok    { background: color-mix(in srgb, var(--forest-500) 14%, var(--surface-card)); color: var(--forest-500); border: 1px solid color-mix(in srgb, var(--forest-500) 40%, var(--surface-border)); font-size: 12px; }
+.ec-alerta--falta { background: color-mix(in srgb, #991B1B 14%, var(--surface-card)); color: #991B1B; border: 1px solid color-mix(in srgb, #991B1B 40%, var(--surface-border)); }
 
 /* ── Botões do modal ── */
 .ec-btn {

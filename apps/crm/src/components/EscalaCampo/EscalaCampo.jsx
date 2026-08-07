@@ -8,6 +8,7 @@ import {
   DIAS_LABEL, DIAS_NOME,
   checarRestricoes, bloqueioNoDia,
   calcPrioridade, calcClientesAtrasados, calcConflitosDia,
+  calcularAlertaFalta,
 } from '../../utils/escalaHelpers';
 import { minutosParaHora, otimizarRotaComRestricoes } from '../../utils/otimizadorRota';
 import CartaoVisita from './CartaoVisita';
@@ -37,6 +38,7 @@ export default function EscalaCampo() {
   const [clientes,    setClientes]    = useState([]);
   const [agenda,      setAgenda]      = useState([]);
   const [bloqueios,   setBloqueios]   = useState([]);
+  const [checkins,    setCheckins]    = useState(new Map()); // agendamento_id -> checkin_at
   const [modalBloqueio, setModalBloqueio] = useState(null); // { funcionarioId? }
   const [modalRedistrib, setModalRedistrib] = useState(false);
   const [loading,     setLoading]     = useState(true);
@@ -70,6 +72,15 @@ export default function EscalaCampo() {
   const [previewRota, setPreviewRota] = useState(null); // { empId, resultado }
 
   const hoje = getHoje();
+
+  // ── Relógio pro alerta de falta (atrasado / possível falta) ────────────────
+  // Recalcula a cada minuto pra o alerta avançar sozinho na tela, sem precisar
+  // recarregar a agenda.
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Dados estáticos ────────────────────────────────────────────────────────
 
@@ -172,6 +183,20 @@ export default function EscalaCampo() {
         return v;
       });
       setAgenda(enriched);
+
+      // Busca check-ins da semana carregada, pra saber quais visitas
+      // publicadas já tiveram o colaborador chegando de fato (usado no
+      // alerta de atraso/possível falta — ver calcularAlertaFalta).
+      const ids = enriched.map(v => v.id);
+      if (ids.length) {
+        const { data: relData } = await supabase
+          .from('relatorios')
+          .select('agendamento_id, checkin_at')
+          .in('agendamento_id', ids);
+        setCheckins(new Map((relData ?? []).map(r => [r.agendamento_id, r.checkin_at])));
+      } else {
+        setCheckins(new Map());
+      }
     }
   }
 
@@ -221,15 +246,31 @@ export default function EscalaCampo() {
   // visita agendada nesse dia)
   const visitasConflitantesComBloq = useMemo(() => {
     return agenda.filter(v => {
-      if (v.status === 'concluido' || v.status === 'cancelado') return false;
+      if (v.status === 'concluido' || v.status === 'cancelado' || v.status === 'faltou') return false;
       return !!bloqueioNoDia(bloqueios, v.funcionario_id, v.data_agendada);
     });
   }, [agenda, bloqueios]);
 
+  // Alerta de atraso/possível falta por visita (id -> 'atrasado' | 'falta_provavel').
+  // Não mexe no status oficial — é só sinalização até o gestor confirmar
+  // manualmente com "Marcar falta" (ver marcarFalta).
+  const alertasPorVisita = useMemo(() => {
+    const map = new Map();
+    agenda.forEach(v => {
+      const bloqueado = !!bloqueioNoDia(bloqueios, v.funcionario_id, v.data_agendada);
+      const temCheckin = !!checkins.get(v.id);
+      const alerta = calcularAlertaFalta(v, agora, temCheckin, bloqueado);
+      if (alerta) map.set(v.id, alerta);
+    });
+    return map;
+  }, [agenda, bloqueios, checkins, agora]);
+
   const conflitosPorEmp = useMemo(() => {
     const c = {};
     employees.forEach(emp => {
-      const visitas = agendaOrg[diaSel]?.[emp.id] ?? [];
+      // 'faltou' não ocupou tempo de fato — exclui do cálculo de sobreposição/
+      // estouro de expediente, senão um horário livre acusaria conflito.
+      const visitas = (agendaOrg[diaSel]?.[emp.id] ?? []).filter(v => v.status !== 'faltou');
       c[emp.id] = calcConflitosDia(visitas, emp.daily_hours);
     });
     return c;
@@ -520,6 +561,24 @@ export default function EscalaCampo() {
       await carregarAgenda();
     } catch (e) {
       alert('Erro ao cancelar: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
+  // ── Marcar falta (confirmação manual do alerta de atraso) ──────────────────
+  async function marcarFalta() {
+    if (!modalEdit) return;
+    const v = modalEdit;
+    if (!confirm(`Marcar falta de ${employees.find(e => String(e.id) === String(v.funcionario_id))?.name ?? 'colaborador'} em "${v.clientes?.nome_empresa ?? '—'}"?\n\nA visita fica registrada como falta — você ainda pode duplicá-la pra outro funcionário se precisar cobrir o cliente.`)) return;
+    setSalvandoEdit(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'faltou' }).eq('id', v.id);
+      if (error) throw error;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao marcar falta: ' + e.message);
     } finally {
       setSalvandoEdit(false);
     }
@@ -938,6 +997,7 @@ export default function EscalaCampo() {
                         prioridade={calcPrioridade(v.clientes, v.data_agendada)}
                         mostrarPrioridade={mostrarPrioridade}
                         restricao={checarRestricoes(v.clientes, v.data_agendada, v.hora_estimada_chegada)}
+                        alerta={alertasPorVisita.get(v.id)}
                         onEditar={() => setModalEdit(v)}
                         onVerRelatorio={(vis) => setModalRel(vis)}
                       />
@@ -1039,6 +1099,8 @@ export default function EscalaCampo() {
           onFechar={() => setModalEdit(null)}
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
+          onMarcarFalta={marcarFalta}
+          alerta={alertasPorVisita.get(modalEdit.id)}
           onDuplicarFuncionario={abrirPickerDuplicar}
           onDuplicar={abrirModalDuplicar}
           salvando={salvandoEdit}

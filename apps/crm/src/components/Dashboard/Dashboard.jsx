@@ -6,7 +6,7 @@ import { useToast } from '../Toast/Toast';
 import DashboardCeasa from '../CeasaHolambra/DashboardCeasa';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import ModalDetalhesAgendamento from './ModalDetalhesAgendamento';
-import { corStatusVisita, labelStatusVisita } from '../../utils/escalaHelpers';
+import { corStatusVisita, labelStatusVisita, calcularAlertaFalta, ALERTA_FALTA_LABEL, ALERTA_FALTA_COR } from '../../utils/escalaHelpers';
 import { enderecoSimplificado } from '../../utils/geoUtils';
 import './Dashboard.css';
 
@@ -1142,6 +1142,8 @@ function DashboardOperacional({ onNavegar }) {
   const [loading, setLoading] = useState(true);
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState(null);
   const [filtroAgendaHoje, setFiltroAgendaHoje] = useState('');
+  const [checkinsHoje, setCheckinsHoje] = useState(new Map()); // agendamento_id -> checkin_at
+  const [bloqueadosHoje, setBloqueadosHoje] = useState(new Set()); // funcionario_ids com ausência justificada hoje
   const [dados, setDados] = useState({
     agendaHoje: [],
     agendaSemana: [],
@@ -1150,6 +1152,14 @@ function DashboardOperacional({ onNavegar }) {
     clientes: [],
     employees: [],
   });
+
+  // Relógio pro alerta de atraso/possível falta avançar sozinho na tela
+  // (mesma lógica de EscalaCampo.jsx) sem precisar recarregar os dados.
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -1162,7 +1172,7 @@ function DashboardOperacional({ onNavegar }) {
       setePassados.setDate(setePassados.getDate() - 7);
       const setePassadosIso = setePassados.toISOString();
 
-      const [ag, agSem, relSem, ultimosRel, cli, emp] = await Promise.all([
+      const [ag, agSem, relSem, ultimosRel, cli, emp, bloq] = await Promise.all([
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
           observacoes_gestor, nome_cliente, endereco_tarefa,
@@ -1180,7 +1190,9 @@ function DashboardOperacional({ onNavegar }) {
         `).order('checkin_at', { ascending: false }).limit(6),
         supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
+        supabase.from('employee_bloqueios').select('funcionario_id').lte('data_inicio', hoje).gte('data_fim', hoje),
       ]);
+      setBloqueadosHoje(new Set((bloq.data ?? []).map(b => String(b.funcionario_id))));
 
       // A visita pode estar vinculada a um cliente cadastrado, a um lead
       // (migration 016) ou ser uma tarefa interna sem cadastro (nome_cliente/
@@ -1199,6 +1211,19 @@ function DashboardOperacional({ onNavegar }) {
         return v;
       });
 
+      // Check-ins de hoje — usado pelo alerta de atraso/possível falta
+      // (calcularAlertaFalta): visita publicada sem check-in até agora.
+      const idsHoje = agendaHojeNormalizada.map(v => v.id);
+      if (idsHoje.length) {
+        const { data: relHoje } = await supabase
+          .from('relatorios')
+          .select('agendamento_id, checkin_at')
+          .in('agendamento_id', idsHoje);
+        setCheckinsHoje(new Map((relHoje ?? []).map(r => [r.agendamento_id, r.checkin_at])));
+      } else {
+        setCheckinsHoje(new Map());
+      }
+
       setDados({
         agendaHoje:        agendaHojeNormalizada,
         agendaSemana:      agSem.data ?? [],
@@ -1212,6 +1237,19 @@ function DashboardOperacional({ onNavegar }) {
   }, []);
 
   const empMap = useMemo(() => new Map((dados.employees ?? []).map(e => [String(e.id), e.name])), [dados.employees]);
+
+  const alertasPorVisita = useMemo(() => {
+    const map = new Map();
+    dados.agendaHoje.forEach(v => {
+      const temCheckin = !!checkinsHoje.get(v.id);
+      const bloqueado = bloqueadosHoje.has(String(v.funcionario_id));
+      const alerta = calcularAlertaFalta(v, agora, temCheckin, bloqueado);
+      if (alerta) map.set(v.id, alerta);
+    });
+    return map;
+  }, [dados.agendaHoje, checkinsHoje, bloqueadosHoje, agora]);
+
+  const totalAlertas = alertasPorVisita.size;
 
   const agendaHojeFiltrada = useMemo(() => {
     const termo = filtroAgendaHoje.trim().toLowerCase();
@@ -1289,7 +1327,14 @@ function DashboardOperacional({ onNavegar }) {
         {/* Agenda de hoje */}
         <section className="dashboard__secao dashboard__card dashboard__card--scroll">
           <div className="dashboard__card-header">
-            <h2 className="dashboard__secao-titulo">Agenda de hoje</h2>
+            <h2 className="dashboard__secao-titulo">
+              Agenda de hoje
+              {totalAlertas > 0 && (
+                <span className="dashboard-op__agenda-alerta-count" title="Visitas publicadas sem check-in, atrasadas ou com possível falta">
+                  ⚠️ {totalAlertas}
+                </span>
+              )}
+            </h2>
             <button className="dashboard__ver-todos" onClick={() => onNavegar('escala')}>Ver Escala →</button>
           </div>
           {dados.agendaHoje.length > 0 && (
@@ -1308,12 +1353,14 @@ function DashboardOperacional({ onNavegar }) {
           ) : (
             <div className="dashboard-op__agenda-lista dashboard-op__agenda-lista--scroll">
               {agendaHojeFiltrada.map((v) => {
-                const stCor = corStatusVisita(v.status);
+                const alerta = alertasPorVisita.get(v.id);
+                const stCor = alerta ? ALERTA_FALTA_COR[alerta] : corStatusVisita(v.status);
+                const stLabel = alerta ? ALERTA_FALTA_LABEL[alerta] : labelStatusVisita(v.status ?? 'rascunho');
                 const endSimples = enderecoSimplificado(v.cliente?.endereco);
                 return (
                   <div
                     key={v.id}
-                    className="dashboard-op__agenda-item dashboard-op__agenda-item--clicavel"
+                    className={`dashboard-op__agenda-item dashboard-op__agenda-item--clicavel ${alerta ? `dashboard-op__agenda-item--alerta-${alerta}` : ''}`}
                     onClick={() => setAgendamentoSelecionado(v)}
                   >
                     <span className="dashboard-op__agenda-hora">{v.hora_estimada_chegada?.slice(0, 5) ?? '—'}</span>
@@ -1322,7 +1369,7 @@ function DashboardOperacional({ onNavegar }) {
                       {endSimples && <div className="dashboard-op__agenda-end" title={endSimples}>{endSimples}</div>}
                       <div className="dashboard-op__agenda-func">👤 {empMap.get(String(v.funcionario_id)) ?? '—'}{v.cliente?.regiao ? ` · 📍 ${v.cliente.regiao}` : ''}</div>
                     </div>
-                    <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{labelStatusVisita(v.status ?? 'rascunho')}</span>
+                    <span className="dashboard-op__agenda-status" style={{ background: stCor }}>{stLabel}</span>
                   </div>
                 );
               })}
@@ -1426,6 +1473,7 @@ function DashboardOperacional({ onNavegar }) {
         <ModalDetalhesAgendamento
           visita={agendamentoSelecionado}
           funcionarioNome={empMap.get(String(agendamentoSelecionado.funcionario_id))}
+          alerta={alertasPorVisita.get(agendamentoSelecionado.id)}
           onFechar={() => setAgendamentoSelecionado(null)}
           onVerNaEscala={() => { setAgendamentoSelecionado(null); onNavegar?.('escala'); }}
           onVerRelatorio={(relatorioId) => {

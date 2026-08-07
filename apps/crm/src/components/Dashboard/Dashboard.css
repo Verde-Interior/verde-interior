@@ -1695,6 +1695,27 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+/* Contador de alerta no título "Agenda de hoje" — visitas publicadas sem
+   check-in (atrasadas ou possível falta), calculado em calcularAlertaFalta. */
+.dashboard-op__agenda-alerta-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #DC2626;
+}
+
+/* Linha da Agenda de hoje com alerta — mesmo tratamento de cor usado nos
+   cartões da Escala (ec-cartao--alerta-*), pra ficar consistente entre telas. */
+.dashboard-op__agenda-item--alerta-atrasado {
+  background: color-mix(in srgb, #F59E0B 12%, var(--cream-50));
+}
+.dashboard-op__agenda-item--alerta-falta_provavel {
+  background: color-mix(in srgb, #DC2626 16%, var(--cream-50));
+}
+
 /* Card com scroll interno (Agenda de hoje) — cabeçalho fixo, lista rola.
    min-height:0 no filho flex é o que permite o overflow funcionar dentro
    de um flex column (senão o item cresce e empurra o card inteiro). */
