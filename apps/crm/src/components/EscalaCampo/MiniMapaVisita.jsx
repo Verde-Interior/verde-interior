@@ -6,6 +6,7 @@
 // zoom e um botão "expandir" que abre o mesmo mapa bem maior e totalmente
 // interativo.
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -51,7 +52,11 @@ export default function MiniMapaVisita({ lat, lng }) {
         </MapContainer>
       </div>
 
-      {expandido && (
+      {/* Portal pro body: os modais que usam este componente (ec-modal) têm
+          backdrop-filter, que cria um novo containing block pra descendentes
+          position:fixed — sem o portal, esse overlay ficaria preso dentro
+          dos limites do modal pai em vez de cobrir a tela toda. */}
+      {expandido && createPortal(
         <div className="ec-overlay" {...overlayClose}>
           <div className="ec-modal mmv__modal">
             <header className="ec-modal__header">
@@ -79,7 +84,8 @@ export default function MiniMapaVisita({ lat, lng }) {
               </MapContainer>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
