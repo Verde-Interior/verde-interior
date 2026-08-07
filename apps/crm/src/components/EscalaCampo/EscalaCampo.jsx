@@ -1,5 +1,5 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
@@ -29,6 +29,25 @@ const getDiaId    = iso => getDiaSlugUtil(iso);
 const formatarDia = iso => formatarDataCurta(iso);
 const getHoje     = () => dateParaISO(new Date());
 
+const ORDEM_COLUNAS_KEY = 'vi-escala-ordem-funcionarios';
+
+// Ícone de "pode arrastar" — mesmo desenho do DragHandle do Dashboard, pra
+// manter o mesmo sinal visual de reordenável em telas diferentes.
+function DragHandleColuna() {
+  return (
+    <span className="ec__coluna-handle" title="Arraste para reorganizar">
+      <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+        <circle cx="3" cy="2.5"  r="1.4" fill="currentColor"/>
+        <circle cx="7" cy="2.5"  r="1.4" fill="currentColor"/>
+        <circle cx="3" cy="7"    r="1.4" fill="currentColor"/>
+        <circle cx="7" cy="7"    r="1.4" fill="currentColor"/>
+        <circle cx="3" cy="11.5" r="1.4" fill="currentColor"/>
+        <circle cx="7" cy="11.5" r="1.4" fill="currentColor"/>
+      </svg>
+    </span>
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function EscalaCampo() {
@@ -48,6 +67,24 @@ export default function EscalaCampo() {
   // ── Drag & Drop ──────────────────────────────────────────────────────────────
   const [dragId,      setDragId]      = useState(null); // id da visita sendo arrastada
   const [dragOverEmp, setDragOverEmp] = useState(null); // empId da coluna com hover
+
+  // ── Ordem das colunas de funcionário (arrastar pra reorganizar) ────────────
+  // Salva só no navegador (localStorage), igual ao mesmo recurso já usado nos
+  // blocos do Dashboard — cada gestor organiza do seu jeito, sem afetar os
+  // outros. Se um dia precisar ficar igual pra todo mundo, troca só a leitura/
+  // gravação abaixo por uma tabela no banco; o drag-and-drop em si não muda.
+  const [ordemColunas, setOrdemColunas] = useState(() => {
+    try {
+      const s = localStorage.getItem(ORDEM_COLUNAS_KEY);
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
+  const colDragSrc = useRef(null); // id do funcionário sendo arrastado (coluna)
+  const [colDragOver, setColDragOver] = useState(null); // id do funcionário-alvo
+
+  useEffect(() => {
+    localStorage.setItem(ORDEM_COLUNAS_KEY, JSON.stringify(ordemColunas));
+  }, [ordemColunas]);
 
   // ── Seleção múltipla ─────────────────────────────────────────────────────────
   const [modoSelecao,  setModoSelecao]  = useState(false);
@@ -203,6 +240,31 @@ export default function EscalaCampo() {
   useEffect(() => { carregarAgenda(); }, [semana]); // eslint-disable-line
 
   // ── Derivações ─────────────────────────────────────────────────────────────
+
+  // employees na ordem alfabética (vinda do banco) reorganizada pela
+  // preferência salva em ordemColunas — funcionário novo (ainda não presente
+  // na ordem salva) aparece no fim, sem precisar resetar tudo.
+  const employeesOrdenados = useMemo(() => {
+    if (!ordemColunas.length) return employees;
+    const porId = new Map(employees.map(e => [String(e.id), e]));
+    const ordenados = ordemColunas.map(id => porId.get(id)).filter(Boolean);
+    const faltando  = employees.filter(e => !ordemColunas.includes(String(e.id)));
+    return [...ordenados, ...faltando];
+  }, [employees, ordemColunas]);
+
+  function reordenarColunas(fromId, toId) {
+    if (fromId === toId) return;
+    setOrdemColunas(prev => {
+      const base = prev.length ? [...prev] : employees.map(e => String(e.id));
+      employees.forEach(e => { if (!base.includes(String(e.id))) base.push(String(e.id)); });
+      const from = base.indexOf(fromId);
+      const to   = base.indexOf(toId);
+      if (from < 0 || to < 0) return prev;
+      base.splice(from, 1);
+      base.splice(to, 0, fromId);
+      return base;
+    });
+  }
 
   const agendaOrg = useMemo(() => {
     const org = {};
@@ -749,7 +811,7 @@ export default function EscalaCampo() {
                   && v.data_agendada === modalEdit.data_agendada)
         .map(v => String(v.funcionario_id))
     );
-    return employees.filter(e => !idsExistentes.has(String(e.id)));
+    return employeesOrdenados.filter(e => !idsExistentes.has(String(e.id)));
   })() : [];
 
   // ── Adicionar visita a partir do painel "atrasados" ────────────────────────
@@ -888,26 +950,56 @@ export default function EscalaCampo() {
         <div className="ec__estado"><p>Nenhum funcionário de campo cadastrado.</p></div>
       ) : (
         <div className="ec__colunas">
-          {employees.map(emp => {
+          {employeesOrdenados.map(emp => {
+            const empId      = String(emp.id);
             const visitas    = visitasDiaSel[emp.id] ?? [];
-            const isDragAlvo = dragOverEmp === String(emp.id);
+            const isDragAlvo = dragOverEmp === empId;
             const conflitos  = conflitosPorEmp[emp.id] ?? { sobreposicoes: [], estouraDia: false, fimMin: 0 };
             const rascunhos  = visitas.filter(v => v.status === 'rascunho').length;
             const podeOtimizar = rascunhos >= 2 && !modoSelecao;
             const bloqueio   = bloqueioNoDia(bloqueios, emp.id, diaSel);
+            const isColDragSrc = colDragSrc.current === empId;
+            const isColDropTgt = colDragOver === empId;
 
             return (
               <div
                 key={emp.id}
-                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''} ${bloqueio ? 'ec__coluna--bloqueada' : ''}`}
-                onDragOver={e => { if (bloqueio) return; e.preventDefault(); setDragOverEmp(String(emp.id)); }}
+                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''} ${bloqueio ? 'ec__coluna--bloqueada' : ''} ${isColDragSrc ? 'ec__coluna--arrastando' : ''}`}
+                onDragOver={e => { if (bloqueio) return; e.preventDefault(); setDragOverEmp(empId); }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverEmp(null); }}
                 onDrop={() => { if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; } handleDrop(emp.id); }}
               >
-                <div className="ec__coluna-header">
-                  <div>
-                    <span className="ec__coluna-nome">{emp.name}</span>
-                    <span className="ec__coluna-cargo">{emp.cargo}</span>
+                <div
+                  className={`ec__coluna-header ${isColDropTgt ? 'ec__coluna-header--drop' : ''}`}
+                  draggable
+                  onDragStart={e => {
+                    if (e.target.closest('button')) { e.preventDefault(); return; }
+                    colDragSrc.current = empId;
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={e => {
+                    if (!colDragSrc.current) return; // não é drag de coluna — deixa borbulhar pro drop de visita
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (colDragSrc.current !== empId) setColDragOver(empId);
+                  }}
+                  onDragLeave={() => setColDragOver(null)}
+                  onDrop={e => {
+                    if (!colDragSrc.current) return; // idem — deixa a visita cair na coluna normalmente
+                    e.preventDefault();
+                    e.stopPropagation();
+                    reordenarColunas(colDragSrc.current, empId);
+                    colDragSrc.current = null;
+                    setColDragOver(null);
+                  }}
+                  onDragEnd={() => { colDragSrc.current = null; setColDragOver(null); }}
+                >
+                  <div className="ec__coluna-titulo">
+                    <DragHandleColuna />
+                    <div>
+                      <span className="ec__coluna-nome">{emp.name}</span>
+                      <span className="ec__coluna-cargo">{emp.cargo}</span>
+                    </div>
                   </div>
                   <div className="ec__coluna-header-dir">
                     <button
@@ -1034,7 +1126,7 @@ export default function EscalaCampo() {
               value={movParaEmp}
               onChange={e => setMovParaEmp(e.target.value)}
             >
-              {employees.map(emp => (
+              {employeesOrdenados.map(emp => (
                 <option key={emp.id} value={String(emp.id)}>{emp.name}</option>
               ))}
             </select>
@@ -1070,7 +1162,7 @@ export default function EscalaCampo() {
       {modal && (
         <ModalAddVisita
           clientes={clientes}
-          funcionarios={employees}
+          funcionarios={employeesOrdenados}
           dataInicial={diaSel}
           funcionarioIdInicial={modal.funcionarioId}
           clienteIdPre={modal.clienteIdPre}
@@ -1093,7 +1185,7 @@ export default function EscalaCampo() {
       {modalEdit && (
         <ModalEditVisita
           visita={modalEdit}
-          funcionarios={employees}
+          funcionarios={employeesOrdenados}
           clientes={clientes}
           onSalvar={salvarEdicao}
           onFechar={() => setModalEdit(null)}
@@ -1110,7 +1202,7 @@ export default function EscalaCampo() {
       {modalDuplicar && (
         <ModalDuplicarVisita
           visita={modalEdit}
-          funcionarios={employees}
+          funcionarios={employeesOrdenados}
           duplicando={salvandoEdit}
           onFechar={() => setModalDuplicar(null)}
           onDuplicar={executarDuplicacaoGeral}
@@ -1192,7 +1284,7 @@ export default function EscalaCampo() {
       {modalRedistrib && (
         <ModalRedistribuir
           visitas={visitasConflitantesComBloq}
-          employees={employees}
+          employees={employeesOrdenados}
           agendaOrg={agendaOrg}
           bloqueios={bloqueios}
           clientes={clientes}
@@ -1204,7 +1296,7 @@ export default function EscalaCampo() {
       {/* ── Modal de copiar agenda (dia+pessoa origem → dia+pessoa destino) ── */}
       {modalCopiar && (
         <ModalCopiarAgenda
-          employees={employees}
+          employees={employeesOrdenados}
           clientes={clientes}
           diaSel={diaSel}
           onFechar={() => setModalCopiar(false)}

@@ -281,6 +281,36 @@
   border-bottom: 1px solid var(--glass-light-border);
   background: transparent;
   flex-shrink: 0;
+  cursor: grab;
+}
+.ec__coluna-header:active { cursor: grabbing; }
+
+.ec__coluna-titulo {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* Ícone de "pode arrastar" — só aparece no hover do cabeçalho, mesmo
+   comportamento do handle equivalente no Dashboard. */
+.ec__coluna-handle {
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 0;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.ec__coluna-header:hover .ec__coluna-handle { opacity: 0.6; }
+
+/* Coluna sendo arrastada (reordenação) — mesma opacidade usada no Dashboard */
+.ec__coluna--arrastando { opacity: 0.45; }
+
+/* Cabeçalho-alvo durante o arraste de outra coluna */
+.ec__coluna-header--drop {
+  outline: 2px dashed var(--forest-500);
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
 }
 
 .ec__coluna-nome {
