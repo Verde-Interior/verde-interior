@@ -40,7 +40,11 @@
 
 .ec-cal__grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr), não só 1fr: sem isso, uma coluna com texto longo (nome
+     de cliente comprido) força a trilha inteira a crescer além de 1fr pra
+     caber o conteúdo, empurrando as colunas seguintes pra fora da tela sem
+     scroll horizontal — era o bug do "falta sábado/domingo" nos prints. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -57,6 +61,7 @@
    vários alvos clicáveis dentro: número do dia, cada visita, "mais +N"). */
 .ec-cal__cel {
   min-height: 64px;
+  min-width: 0; /* deixa a célula encolher com a coluna — ver nota no .ec-cal__grid */
   border-radius: var(--radius-md);
   border: 1px solid var(--surface-border);
   background: var(--surface-card);
@@ -106,6 +111,7 @@
 .ec-cal__cel-lista {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 1px;
   max-height: 76px;
   overflow-y: auto;
@@ -126,6 +132,7 @@
   align-items: center;
   gap: 4px;
   width: 100%;
+  min-width: 0;
   background: none;
   border: none;
   border-radius: 4px;
@@ -152,6 +159,8 @@
 }
 
 .ec-cal__cel-item-nome {
+  flex: 1;
+  min-width: 0;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
