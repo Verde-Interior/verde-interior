@@ -508,8 +508,8 @@ export default function Clientes() {
               <tr>
                 <th>Nome / Bairro</th>
                 <th>Grupo</th>
-                <th>Dias disponíveis</th>
-                <th>Duração / Freq.</th>
+                <th>Dias disponíveis / Freq.</th>
+                <th>Duração</th>
                 <th>Última visita</th>
                 <th>Contratos</th>
                 <th>Status</th>
@@ -551,16 +551,16 @@ export default function Clientes() {
                     </td>
                     <td>
                       {diasLabel
-                        ? <span className="clientes__dias-str">{diasLabel}</span>
+                        ? <span className="clientes__dias-str clientes__cel-principal">{diasLabel}</span>
                         : <span className="clientes__aviso">⚠ não definido</span>}
-                    </td>
-                    <td>
-                      {c.duracao_estimada_min
-                        ? <span className="clientes__cel-principal">{c.duracao_estimada_min} min</span>
-                        : <span className="clientes__aviso">⚠ —</span>}
                       {c.frequencia_visita && (
                         <span className="clientes__cel-sub">{FREQ_VISITA_LABEL[c.frequencia_visita] ?? c.frequencia_visita}</span>
                       )}
+                    </td>
+                    <td>
+                      {c.duracao_estimada_min
+                        ? <span>{c.duracao_estimada_min} min</span>
+                        : <span className="clientes__aviso">⚠ —</span>}
                     </td>
                     <td>
                       {c.ultima_visita ? (
