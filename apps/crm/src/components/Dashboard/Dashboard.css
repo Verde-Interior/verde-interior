@@ -182,6 +182,18 @@
 
 .kpi-card--destaque .kpi-card__sub { color: rgba(255,255,255,0.50); }
 
+/* Faltas hoje > 0 — mesmo padrão visual de "destaque", mas em vermelho pra
+   chamar atenção em vez de reforçar (que é o que o verde da Escala/Clientes
+   já significa em outros KPIs). */
+.kpi-card--alerta {
+  background: color-mix(in srgb, #DC2626 10%, var(--glass-light));
+  border-color: color-mix(in srgb, #DC2626 35%, var(--glass-light-border));
+}
+.kpi-card--alerta .kpi-card__valor { color: #DC2626; }
+.kpi-card--alerta.kpi-card--clicavel:hover {
+  background: color-mix(in srgb, #DC2626 16%, var(--glass-light));
+}
+
 /* ── Grid 2 colunas ── */
 .dashboard__grid-2 {
   display: grid;

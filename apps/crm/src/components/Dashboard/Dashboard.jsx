@@ -42,10 +42,10 @@ function saudacao() {
   return `Boa noite${sfx} 👋`;
 }
 
-function KpiCard({ label, valor, sub, destaque, onClick }) {
+function KpiCard({ label, valor, sub, destaque, alerta, onClick }) {
   return (
     <button
-      className={`kpi-card ${destaque ? 'kpi-card--destaque' : ''} ${onClick ? 'kpi-card--clicavel' : ''}`}
+      className={`kpi-card ${destaque ? 'kpi-card--destaque' : ''} ${alerta ? 'kpi-card--alerta' : ''} ${onClick ? 'kpi-card--clicavel' : ''}`}
       onClick={onClick}
       disabled={!onClick}
     >
@@ -1249,6 +1249,18 @@ function DashboardOperacional({ onNavegar }) {
     return map;
   }, [dados.agendaHoje, checkinsHoje, bloqueadosHoje, agora]);
 
+  // Funcionários com pelo menos uma visita marcada como 'faltou' hoje (nome
+  // único mesmo que tenham mais de uma tarefa faltada no dia).
+  const nomesFaltaramHoje = useMemo(() => {
+    const nomes = new Map(); // funcionario_id -> nome
+    dados.agendaHoje.forEach(v => {
+      if (v.status === 'faltou') {
+        nomes.set(String(v.funcionario_id), empMap.get(String(v.funcionario_id)) ?? '—');
+      }
+    });
+    return [...nomes.values()];
+  }, [dados.agendaHoje, empMap]);
+
   const totalAlertas = alertasPorVisita.size;
 
   const agendaHojeFiltrada = useMemo(() => {
@@ -1317,6 +1329,13 @@ function DashboardOperacional({ onNavegar }) {
         <div className="dashboard__kpis">
           <KpiCard label="Visitas Hoje" valor={kpis.visitasHoje} sub={`${kpis.concluidasHoje} concluída${kpis.concluidasHoje !== 1 ? 's' : ''}`} onClick={() => onNavegar('escala')} />
           <KpiCard label="Funcionários em campo" valor={kpis.funcAtivosHoje} sub="com visitas hoje" />
+          <KpiCard
+            label="Faltas hoje"
+            valor={nomesFaltaramHoje.length}
+            sub={nomesFaltaramHoje.length === 0 ? 'nenhuma' : nomesFaltaramHoje.length <= 2 ? nomesFaltaramHoje.join(', ') : `${nomesFaltaramHoje.length} funcionários`}
+            onClick={() => onNavegar('escala')}
+            alerta={nomesFaltaramHoje.length > 0}
+          />
           <KpiCard label="Clientes ativos" valor={kpis.clientesAtivos} sub="base atual" onClick={() => onNavegar('clientes')} destaque />
           <KpiCard label="Trocas na semana" valor={kpis.trocasSemana} sub={`de ${kpis.visitasSemana} visitas`} />
         </div>
