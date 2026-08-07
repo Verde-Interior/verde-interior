@@ -73,6 +73,8 @@ const FORM_VAZIO = {
   dias_disponiveis: [],
   janela_entrada_inicio: '',
   janela_entrada_fim: '',
+  janela_bloqueada_inicio: '',
+  janela_bloqueada_fim: '',
   duracao_estimada_min: '',
   grupo_servico: '',
   tem_orquidea: false,
@@ -215,10 +217,12 @@ export default function Clientes() {
       regiao:                c.regiao                ?? '',
       lat:                   c.lat                   ?? '',
       lng:                   c.lng                   ?? '',
-      dias_disponiveis:      c.dias_disponiveis      ?? [],
-      janela_entrada_inicio: c.janela_entrada_inicio ?? '',
-      janela_entrada_fim:    c.janela_entrada_fim    ?? '',
-      duracao_estimada_min:  c.duracao_estimada_min  ?? '',
+      dias_disponiveis:        c.dias_disponiveis        ?? [],
+      janela_entrada_inicio:   c.janela_entrada_inicio   ?? '',
+      janela_entrada_fim:      c.janela_entrada_fim      ?? '',
+      janela_bloqueada_inicio: c.janela_bloqueada_inicio ?? '',
+      janela_bloqueada_fim:    c.janela_bloqueada_fim    ?? '',
+      duracao_estimada_min:    c.duracao_estimada_min    ?? '',
       grupo_servico:         c.grupo_servico         ?? '',
       tem_orquidea:          c.tem_orquidea          ?? false,
       frequencia_visita:     c.frequencia_visita     ?? '',
@@ -267,8 +271,10 @@ export default function Clientes() {
         lat:                   dados.lat                   !== '' ? Number(dados.lat)                   : 0,
         lng:                   dados.lng                   !== '' ? Number(dados.lng)                   : 0,
         duracao_estimada_min:  dados.duracao_estimada_min  !== '' ? Number(dados.duracao_estimada_min)  : null,
-        janela_entrada_inicio: dados.janela_entrada_inicio  || null,
-        janela_entrada_fim:    dados.janela_entrada_fim     || null,
+        janela_entrada_inicio:   dados.janela_entrada_inicio   || null,
+        janela_entrada_fim:      dados.janela_entrada_fim      || null,
+        janela_bloqueada_inicio: dados.janela_bloqueada_inicio || null,
+        janela_bloqueada_fim:    dados.janela_bloqueada_fim    || null,
         data_inicio_contrato:  dados.data_inicio_contrato   || null,
         cnpj:                  dados.cnpj                   || null,
         grupo_servico:         dados.grupo_servico          || null,
@@ -705,6 +711,22 @@ export default function Clientes() {
                       type="time"
                       value={form.janela_entrada_fim}
                       onChange={e => setF('janela_entrada_fim', e.target.value)}
+                    />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Horário bloqueado — de <span className="cl-label-hint">ex: almoço; opcional</span></label>
+                    <input
+                      type="time"
+                      value={form.janela_bloqueada_inicio}
+                      onChange={e => setF('janela_bloqueada_inicio', e.target.value)}
+                    />
+                  </div>
+                  <div className="cl-campo">
+                    <label>Horário bloqueado — até</label>
+                    <input
+                      type="time"
+                      value={form.janela_bloqueada_fim}
+                      onChange={e => setF('janela_bloqueada_fim', e.target.value)}
                     />
                   </div>
                   <div className="cl-campo">

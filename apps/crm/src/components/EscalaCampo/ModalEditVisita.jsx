@@ -1,7 +1,7 @@
 // src/components/EscalaCampo/ModalEditVisita.jsx
 // Modal de editar visita — extraído de EscalaCampo.jsx (Fase 3.2)
 import { useState, useMemo } from 'react';
-import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
+import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario, verificarBloqueioHorario, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 
 export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, alerta, onDuplicarFuncionario, onDuplicar }) {
@@ -64,6 +64,14 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
   const avisos = useMemo(() => {
     if (!clienteCompleto) return [];
     return verificarHorario(clienteCompleto, form.hora);
+  }, [clienteCompleto, form.hora]);
+
+  // Horário bloqueado (janela_bloqueada) impede salvar por padrão — diferente
+  // dos avisos acima (janela de entrada), que são só sinalização. Mesmo
+  // padrão de "erros" + forçar já usado em ModalAddVisita.
+  const erros = useMemo(() => {
+    if (!clienteCompleto) return [];
+    return verificarBloqueioHorario(clienteCompleto, form.hora);
   }, [clienteCompleto, form.hora]);
 
   const nomeCliente = visita.clientes?.nome_empresa ?? clienteCompleto?.nome_empresa ?? '—';
@@ -192,6 +200,12 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
             </div>
           )}
 
+          {erros.length > 0 && (
+            <div className="ec-alertas">
+              {erros.map((e, i) => <div key={i} className="ec-alerta ec-alerta--erro">✗ {e}</div>)}
+            </div>
+          )}
+
           {avisos.length > 0 && (
             <div className="ec-alertas">
               {avisos.map((a, i) => <div key={i} className="ec-alerta ec-alerta--aviso">⚠ {a}</div>)}
@@ -254,10 +268,22 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
               </button>
             )}
             <button className="ec-btn ec-btn--sec" onClick={onFechar}>Fechar</button>
+            {erros.length > 0 && !salvando && (
+              <button
+                className="ec-btn ec-btn--forcar"
+                onClick={() => {
+                  if (confirm(`Este cliente tem restrição de agendamento, mas você quer forçar mesmo assim.\n\n${erros.join('\n')}\n\nContinuar mesmo assim?`)) {
+                    onSalvar(form);
+                  }
+                }}
+              >
+                ⚠ Salvar mesmo assim
+              </button>
+            )}
             <button
               className="ec-btn ec-btn--pri"
               onClick={() => onSalvar(form)}
-              disabled={salvando || !form.funcionarioId}
+              disabled={salvando || !form.funcionarioId || erros.length > 0}
             >
               {salvando ? 'Salvando...' : 'Salvar alterações'}
             </button>

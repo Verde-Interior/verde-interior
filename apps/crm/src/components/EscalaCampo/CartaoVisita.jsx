@@ -31,7 +31,7 @@ export default function CartaoVisita({
   const abrirModal = editavel || editavelComAviso;
   const clicavelPorStatus = abrirModal || temRelatorio;
 
-  const temRestricao = restricao?.restricaoDia || restricao?.restricaoHora;
+  const temRestricao = restricao?.restricaoDia || restricao?.restricaoHora || restricao?.restricaoBloqueio;
 
   const classesConf = [
     emSobreposicao ? 'ec-cartao--conflito-sob' : '',
@@ -39,6 +39,7 @@ export default function CartaoVisita({
     mostrarPrioridade && prioridade ? `ec-cartao--prio-${prioridade}` : '',
     restricao?.restricaoDia ? 'ec-cartao--restr-dia' : '',
     restricao?.restricaoHora ? 'ec-cartao--restr-hora' : '',
+    restricao?.restricaoBloqueio ? 'ec-cartao--restr-bloqueio' : '',
     alerta ? `ec-cartao--alerta-${alerta}` : '',
   ].filter(Boolean).join(' ');
 
@@ -138,6 +139,7 @@ export default function CartaoVisita({
           <div className="ec-cartao__restr" title={restricao.motivos.join('\n')}>
             {restricao.restricaoDia && <span className="ec-cartao__restr-tag">⚠ dia</span>}
             {restricao.restricaoHora && <span className="ec-cartao__restr-tag">⚠ hora</span>}
+            {restricao.restricaoBloqueio && <span className="ec-cartao__restr-tag">🚫 bloqueado</span>}
           </div>
         )}
         {alerta && (

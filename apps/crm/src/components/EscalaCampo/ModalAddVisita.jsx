@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   TIPO_LABEL, TIPOS_TAREFA,
-  textoObsDeTipos, verificarConflitos, verificarHorario,
+  textoObsDeTipos, verificarConflitos, verificarHorario, verificarBloqueioHorario,
 } from '../../utils/escalaHelpers';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 
@@ -88,7 +88,10 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
 
   const { erros, avisos } = useMemo(() => {
     if (!clienteSel) return { erros: [], avisos: [] };
-    return { erros: verificarConflitos(clienteSel, form.data), avisos: verificarHorario(clienteSel, form.hora) };
+    return {
+      erros:  [...verificarConflitos(clienteSel, form.data), ...verificarBloqueioHorario(clienteSel, form.hora)],
+      avisos: verificarHorario(clienteSel, form.hora),
+    };
   }, [clienteSel, form.data, form.hora]);
 
   // Cliente digitado mas não selecionado da lista = não cadastrado
@@ -303,7 +306,7 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
             <button
               className="ec-btn ec-btn--forcar"
               onClick={() => {
-                if (confirm(`Este cliente tem restrição de dia, mas você quer forçar o agendamento.\n\n${erros.join('\n')}\n\nContinuar mesmo assim?`)) {
+                if (confirm(`Este cliente tem restrição de agendamento, mas você quer forçar mesmo assim.\n\n${erros.join('\n')}\n\nContinuar mesmo assim?`)) {
                   handleSubmit(true);
                 }
               }}

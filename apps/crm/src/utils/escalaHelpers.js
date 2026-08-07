@@ -142,10 +142,34 @@ export function calcularFimDoDia(visitas, dailyHours) {
   return inicio + dh * 60;
 }
 
-// Verifica restrições do cliente para uma visita (dia + janela de horário)
+// Checa se um horário cai dentro da faixa bloqueada do cliente
+// (janela_bloqueada_inicio/fim — ex: horário de almoço). Diferente de
+// janela_entrada_inicio/fim, que define a janela PERMITIDA de chegada, este
+// é um intervalo PROIBIDO dentro do dia.
+function horaNoBloqueio(cliente, hora) {
+  const ini = cliente?.janela_bloqueada_inicio?.slice(0, 5) ?? null;
+  const fim = cliente?.janela_bloqueada_fim?.slice(0, 5) ?? null;
+  if (!hora || !ini || !fim) return null;
+  const h = hora.slice(0, 5);
+  if (h < ini || h > fim) return null;
+  return `Cliente não recebe entre ${ini} e ${fim} · marcado ${h}`;
+}
+
+// Igual checarRestricoes, mas só a checagem de horário bloqueado — usada nos
+// modais de criar/editar visita pra bloquear o salvamento (com opção de
+// forçar), separado da checagem de dia (verificarConflitos) porque tem
+// semântica diferente (dia é aviso de "fora da rotina", bloqueio é
+// restrição direta do cliente).
+export function verificarBloqueioHorario(cliente, hora) {
+  const motivo = horaNoBloqueio(cliente, hora);
+  return motivo ? [motivo] : [];
+}
+
+// Verifica restrições do cliente para uma visita (dia + janela de horário +
+// horário bloqueado)
 export function checarRestricoes(cliente, dataAgendada, horaChegada) {
   const motivos = [];
-  let restricaoDia = false, restricaoHora = false;
+  let restricaoDia = false, restricaoHora = false, restricaoBloqueio = false;
 
   if (cliente?.dias_disponiveis?.length > 0) {
     const diaId = getDiaSlugUtil(dataAgendada);
@@ -174,7 +198,13 @@ export function checarRestricoes(cliente, dataAgendada, horaChegada) {
     }
   }
 
-  return { restricaoDia, restricaoHora, motivos };
+  const motivoBloqueio = horaNoBloqueio(cliente, horaChegada);
+  if (motivoBloqueio) {
+    restricaoBloqueio = true;
+    motivos.push(motivoBloqueio);
+  }
+
+  return { restricaoDia, restricaoHora, restricaoBloqueio, motivos };
 }
 
 // Retorna o bloqueio ativo para um funcionário em uma data, se houver
