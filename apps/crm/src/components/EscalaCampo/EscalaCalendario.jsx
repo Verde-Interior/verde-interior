@@ -33,11 +33,21 @@ export default function EscalaCalendario({
   onAbrirDia,
   onSelecionarDia,
   onAdicionarTarefa,
+  onReagendar,
 }) {
   const [diaAberto, setDiaAberto] = useState(null); // iso do dia (modal "ver tudo")
   const [visitaAberta, setVisitaAberta] = useState(null); // visita clicada (card de detalhe)
   const [tooltip, setTooltip] = useState(null); // { x, y, visita }
+  const [dragVisitaId, setDragVisitaId] = useState(null); // id da visita sendo arrastada
+  const [dragOverIso, setDragOverIso] = useState(null); // dia com hover durante o arraste
   const overlayClose = useOverlayClose(() => setDiaAberto(null));
+
+  function soltarEm(iso) {
+    setDragOverIso(null);
+    if (!dragVisitaId) return;
+    onReagendar(dragVisitaId, iso);
+    setDragVisitaId(null);
+  }
 
   const grid = modo === 'mes' ? buildGrid(calAno, calMes) : buildGridQuinzena(quinzenaBase);
   const dow  = modo === 'mes' ? DIAS_SEMANA_CURTO : DIAS_SEMANA_SEG;
@@ -86,18 +96,27 @@ export default function EscalaCalendario({
             return (
               <button
                 key={iso}
-                className="ec-cal__cel ec-cal__cel--vazia-clicavel"
+                className={`ec-cal__cel ec-cal__cel--vazia-clicavel ${dragOverIso === iso ? 'ec-cal__cel--drag-over' : ''}`}
                 onClick={() => onAdicionarTarefa(iso)}
+                onDragOver={e => { if (dragVisitaId) { e.preventDefault(); setDragOverIso(iso); } }}
+                onDragLeave={() => setDragOverIso(null)}
+                onDrop={e => { e.preventDefault(); soltarEm(iso); }}
                 title="Adicionar tarefa nesse dia"
               >
                 <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
-                <span className="ec-cal__cel-add">+ tarefa</span>
+                <span className="ec-cal__cel-add">{dragVisitaId ? 'soltar aqui' : '+ tarefa'}</span>
               </button>
             );
           }
 
           return (
-            <div key={iso} className="ec-cal__cel">
+            <div
+              key={iso}
+              className={`ec-cal__cel ${dragOverIso === iso ? 'ec-cal__cel--drag-over' : ''}`}
+              onDragOver={e => { if (dragVisitaId) { e.preventDefault(); setDragOverIso(iso); } }}
+              onDragLeave={() => setDragOverIso(null)}
+              onDrop={e => { e.preventDefault(); soltarEm(iso); }}
+            >
               <div className="ec-cal__cel-topo">
                 <button className="ec-cal__cel-num-btn" onClick={() => setDiaAberto(iso)} title="Ver o dia inteiro">
                   <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
@@ -116,7 +135,10 @@ export default function EscalaCalendario({
                 {visitas.map(v => (
                   <button
                     key={v.id}
-                    className="ec-cal__cel-item"
+                    className={`ec-cal__cel-item ${dragVisitaId === v.id ? 'ec-cal__cel-item--arrastando' : ''}`}
+                    draggable
+                    onDragStart={e => { setDragVisitaId(v.id); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragEnd={() => { setDragVisitaId(null); setDragOverIso(null); }}
                     onMouseEnter={e => mostrarTooltip(e, v)}
                     onMouseLeave={() => setTooltip(null)}
                     onClick={() => { setTooltip(null); setVisitaAberta(v); }}

@@ -211,10 +211,21 @@
   font: inherit;
   font-size: 11px;
   text-align: left;
-  cursor: pointer;
+  cursor: grab;
   transition: background 0.1s;
 }
 .ec-cal__cel-item:hover { background: var(--cream-100); }
+.ec-cal__cel-item:active { cursor: grabbing; }
+
+/* Visita sendo arrastada — mesma opacidade usada nos outros drags da Escala
+   (coluna de funcionário, cartão da Semana), pra manter o sinal consistente. */
+.ec-cal__cel-item--arrastando { opacity: 0.4; }
+
+/* Dia recebendo o arraste (célula com visita ou vazia) */
+.ec-cal__cel--drag-over {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
 
 .ec-cal__cel-item-dot {
   width: 6px;

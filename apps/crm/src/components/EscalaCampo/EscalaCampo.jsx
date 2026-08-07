@@ -33,6 +33,70 @@ const getHoje     = () => dateParaISO(new Date());
 
 const ORDEM_COLUNAS_KEY = 'vi-escala-ordem-funcionarios';
 
+// Enriquece uma visita crua vinda de agenda (join clientes/leads) — cartões e
+// modais da Escala esperam sempre v.clientes preenchido, mesmo quando a
+// visita veio de um lead ou é uma tarefa interna sem cadastro. Extraído de
+// carregarAgenda() pra também poder ser aplicado a uma única visita buscada
+// avulsa (reagendamento por drag no calendário Quinzenal/Mês).
+function normalizarVisita(v) {
+  // Tarefa interna: sem cliente nem lead — usa nome_cliente/endereco_tarefa
+  if (!v.clientes && !v.leads && v.nome_cliente) {
+    return {
+      ...v,
+      __isTarefa: true,
+      clientes: {
+        id:           null,
+        __isTarefa:   true,
+        nome_empresa: v.nome_cliente,
+        endereco:     v.endereco_tarefa ?? '',
+        bairro:       '',
+        lat:          null,
+        lng:          null,
+        cliente_servicos: [],
+      },
+    };
+  }
+  if (!v.clientes && v.leads) {
+    const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
+      ? v.leads.tipos_servico[0]
+      : null;
+    // Serviço sintético com id prefixado — ArrayVisita e ModalEditVisita
+    // usam esse id como chave; prefixo `lead-` evita colisão com id real.
+    const servicoSintetico = tipoPrimario ? {
+      id:           `lead-${v.leads.id}-${tipoPrimario}`,
+      tipo_servico: tipoPrimario,
+      frequencia:   v.leads.frequencia_visita ?? null,
+      ativo:        true,
+      __isLead:     true,
+    } : null;
+    return {
+      ...v,
+      __isLead: true,
+      leadId:   v.leads.id,
+      clientes: {
+        id:                `lead-${v.leads.id}`,   // id sintético prefixado
+        __isLead:          true,
+        nome_empresa:      v.leads.empresa,
+        bairro:            v.leads.bairro,
+        lat:               v.leads.lat,
+        lng:               v.leads.lng,
+        frequencia_visita: v.leads.frequencia_visita,
+        contato_nome:      v.leads.contato,
+        contato_telefone:  v.leads.telefone,
+        endereco:          v.leads.endereco,
+        // Array (mesma shape de cliente real) — consumido pelo ModalEditVisita
+        cliente_servicos:  servicoSintetico ? [servicoSintetico] : [],
+        // dias_disponiveis, janela_entrada_* ausentes ⇒ sem restrição pro otimizador.
+      },
+      // Objeto único (join FK do agenda.cliente_servico_id) — consumido pelo CartaoVisita
+      cliente_servicos: v.cliente_servicos ?? servicoSintetico,
+    };
+  }
+  return v;
+}
+
+const SELECT_AGENDA_COMPLETA = '*, nome_cliente, endereco_tarefa, clientes(nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, janela_bloqueada_inicio, janela_bloqueada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)';
+
 // Ícone de "pode arrastar" — mesmo desenho do DragHandle do Dashboard, pra
 // manter o mesmo sinal visual de reordenável em telas diferentes.
 function DragHandleColuna() {
@@ -113,6 +177,7 @@ export default function EscalaCampo() {
 
   // ── Edição de visita ────────────────────────────────────────────────────────
   const [modalEdit,     setModalEdit]     = useState(null); // visita sendo editada
+  const [modalEditDataAlvo, setModalEditDataAlvo] = useState(null); // pré-preenche a data no form (reagendamento por drag), sem sobrescrever modalEdit.data_agendada
   const [modalRel,      setModalRel]      = useState(null); // visita cujo relatório está aberto
   const [salvandoEdit,  setSalvandoEdit]  = useState(false);
 
@@ -140,7 +205,7 @@ export default function EscalaCampo() {
       const [empRes, cliRes, bloqRes] = await Promise.all([
         supabase.from('employees').select('id, name, cargo, daily_hours').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
         supabase.from('clientes')
-          .select('id, nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
+          .select('id, nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, janela_bloqueada_inicio, janela_bloqueada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),
         supabase.from('employee_bloqueios').select('*').order('data_inicio'),
       ]);
@@ -165,7 +230,7 @@ export default function EscalaCampo() {
     // é a fonte de dados exibidos no cartão.
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, nome_cliente, endereco_tarefa, clientes(nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
+      .select(SELECT_AGENDA_COMPLETA)
       .gte('data_agendada', semana[0])
       .lte('data_agendada', semana[6])
       .neq('status', 'cancelado')
@@ -177,62 +242,7 @@ export default function EscalaCampo() {
       // copiamos os campos essenciais do lead pra dentro de `.clientes`,
       // marcamos `__isLead` e fabricamos um id sintético com prefixo `lead-`
       // pra distinguir claramente de ids reais de cliente cadastrado.
-      const enriched = (data ?? []).map((v) => {
-        // Tarefa interna: sem cliente nem lead — usa nome_cliente/endereco_tarefa
-        if (!v.clientes && !v.leads && v.nome_cliente) {
-          return {
-            ...v,
-            __isTarefa: true,
-            clientes: {
-              id:           null,
-              __isTarefa:   true,
-              nome_empresa: v.nome_cliente,
-              endereco:     v.endereco_tarefa ?? '',
-              bairro:       '',
-              lat:          null,
-              lng:          null,
-              cliente_servicos: [],
-            },
-          };
-        }
-        if (!v.clientes && v.leads) {
-          const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
-            ? v.leads.tipos_servico[0]
-            : null;
-          // Serviço sintético com id prefixado — ArrayVisita e ModalEditVisita
-          // usam esse id como chave; prefixo `lead-` evita colisão com id real.
-          const servicoSintetico = tipoPrimario ? {
-            id:           `lead-${v.leads.id}-${tipoPrimario}`,
-            tipo_servico: tipoPrimario,
-            frequencia:   v.leads.frequencia_visita ?? null,
-            ativo:        true,
-            __isLead:     true,
-          } : null;
-          return {
-            ...v,
-            __isLead: true,
-            leadId:   v.leads.id,
-            clientes: {
-              id:                `lead-${v.leads.id}`,   // id sintético prefixado
-              __isLead:          true,
-              nome_empresa:      v.leads.empresa,
-              bairro:            v.leads.bairro,
-              lat:               v.leads.lat,
-              lng:               v.leads.lng,
-              frequencia_visita: v.leads.frequencia_visita,
-              contato_nome:      v.leads.contato,
-              contato_telefone:  v.leads.telefone,
-              endereco:          v.leads.endereco,
-              // Array (mesma shape de cliente real) — consumido pelo ModalEditVisita
-              cliente_servicos:  servicoSintetico ? [servicoSintetico] : [],
-              // dias_disponiveis, janela_entrada_* ausentes ⇒ sem restrição pro otimizador.
-            },
-            // Objeto único (join FK do agenda.cliente_servico_id) — consumido pelo CartaoVisita
-            cliente_servicos: v.cliente_servicos ?? servicoSintetico,
-          };
-        }
-        return v;
-      });
+      const enriched = (data ?? []).map(normalizarVisita);
       setAgenda(enriched);
 
       // Busca check-ins da semana carregada, pra saber quais visitas
@@ -282,7 +292,8 @@ export default function EscalaCampo() {
           duracao_estimada_min, observacoes_gestor, tipos_tarefa,
           nome_cliente, endereco_tarefa,
           cliente:clientes(nome_empresa, endereco, lat, lng, frequencia_visita, ultima_visita),
-          lead:leads(empresa, endereco, lat, lng)
+          lead:leads(empresa, endereco, lat, lng),
+          relatorios(checkin_at, checkout_at)
         `)
         .gte('data_agendada', inicio)
         .lte('data_agendada', fim)
@@ -303,6 +314,7 @@ export default function EscalaCampo() {
       const endereco = v.cliente?.endereco ?? v.lead?.endereco ?? v.endereco_tarefa ?? null;
       const lat = v.cliente?.lat ?? v.lead?.lat ?? null;
       const lng = v.cliente?.lng ?? v.lead?.lng ?? null;
+      const relatorio = Array.isArray(v.relatorios) ? v.relatorios[0] : v.relatorios;
       const item = {
         id: v.id,
         hora: v.hora_estimada_chegada?.slice(0, 5) ?? null,
@@ -315,6 +327,9 @@ export default function EscalaCampo() {
         observacoes: v.observacoes_gestor ?? null,
         tiposTarefa: v.tipos_tarefa ?? [],
         prioridade: v.cliente ? calcPrioridade(v.cliente, v.data_agendada) : null,
+        frequenciaVisita: v.cliente?.frequencia_visita ?? null,
+        checkinAt: relatorio?.checkin_at ?? null,
+        checkoutAt: relatorio?.checkout_at ?? null,
         dataAgendada: v.data_agendada,
       };
       if (!mapa.has(v.data_agendada)) mapa.set(v.data_agendada, []);
@@ -349,6 +364,26 @@ export default function EscalaCampo() {
   function abrirAdicionarTarefaNoCalendario(iso) {
     setDiaSel(iso);
     setModal({ funcionarioId: employeesOrdenados[0]?.id?.toString() ?? '' });
+  }
+
+  // Arrastar uma visita pra outro dia na Quinzenal/Mês não move direto —
+  // abre o modal de edição já com a nova data preenchida, reaproveitando
+  // toda a validação que ele já tem (restrição de dia, janela bloqueada
+  // etc.) em vez de gravar uma mudança de data sem checar nada. Importante:
+  // NÃO sobrescreve data_agendada na própria visita — salvarEdicao compara
+  // campos.data com modalEdit.data_agendada pra saber se "mudou de destino"
+  // (e recalcular ordem_rota); se os dois já viessem iguais, achava que não
+  // mudou nada. O valor pré-preenchido vai só no form via dataAlvo.
+  async function reagendarPorDrag(visitaId, novoIso) {
+    const { data, error } = await supabase
+      .from('agenda')
+      .select(SELECT_AGENDA_COMPLETA)
+      .eq('id', visitaId)
+      .single();
+    if (error || !data) return;
+    if (data.data_agendada === novoIso) return; // soltou no mesmo dia — nada a fazer
+    setModalEdit(normalizarVisita(data));
+    setModalEditDataAlvo(novoIso);
   }
 
   // ── Derivações ─────────────────────────────────────────────────────────────
@@ -818,6 +853,7 @@ export default function EscalaCampo() {
       const { error } = await supabase.from('agenda').update(payload).eq('id', modalEdit.id);
       if (error) throw error;
       setModalEdit(null);
+      setModalEditDataAlvo(null);
       await carregarAgenda();
     } catch (e) {
       alert('Erro ao salvar: ' + e.message);
@@ -1041,6 +1077,7 @@ export default function EscalaCampo() {
           onAbrirDia={abrirDiaNoCalendario}
           onSelecionarDia={abrirSelecaoNoDia}
           onAdicionarTarefa={abrirAdicionarTarefaNoCalendario}
+          onReagendar={reagendarPorDrag}
         />
       ) : (
       <>
@@ -1342,10 +1379,11 @@ export default function EscalaCampo() {
       {modalEdit && (
         <ModalEditVisita
           visita={modalEdit}
+          dataAlvo={modalEditDataAlvo}
           funcionarios={employeesOrdenados}
           clientes={clientes}
           onSalvar={salvarEdicao}
-          onFechar={() => setModalEdit(null)}
+          onFechar={() => { setModalEdit(null); setModalEditDataAlvo(null); }}
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
           onMarcarFalta={marcarFalta}

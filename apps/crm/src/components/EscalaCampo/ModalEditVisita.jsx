@@ -2,9 +2,10 @@
 // Modal de editar visita — extraído de EscalaCampo.jsx (Fase 3.2)
 import { useState, useMemo } from 'react';
 import { TIPO_LABEL, TIPOS_TAREFA, textoObsDeTipos, verificarHorario, verificarBloqueioHorario, ALERTA_FALTA_LABEL } from '../../utils/escalaHelpers';
+import { formatarDataCurta } from '../../utils/dateUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 
-export default function ModalEditVisita({ visita, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, alerta, onDuplicarFuncionario, onDuplicar }) {
+export default function ModalEditVisita({ visita, dataAlvo, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, alerta, onDuplicarFuncionario, onDuplicar }) {
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
   // se é visita de lead (cliente_id null), usa o `visita.clientes` sintético
   // já enriquecido pela EscalaCampo — traz cliente_servicos como array de 1 item
@@ -28,7 +29,10 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
 
   const [form, setForm] = useState({
     funcionarioId: String(visita.funcionario_id ?? ''),
-    data:          visita.data_agendada ?? '',
+    // dataAlvo pré-preenche com um dia diferente (reagendamento por drag no
+    // calendário) sem alterar visita.data_agendada — quem decide se "mudou
+    // de destino" (salvarEdicao) precisa do valor original intacto.
+    data:          dataAlvo ?? visita.data_agendada ?? '',
     hora:          (visita.hora_estimada_chegada ?? '').slice(0, 5),
     duracao:       visita.duracao_estimada_min ? String(visita.duracao_estimada_min) : '',
     servicoId:     visita.cliente_servico_id ?? '',
@@ -191,6 +195,14 @@ export default function ModalEditVisita({ visita, funcionarios, clientes, onSalv
               placeholder="Instruções específicas para esta visita..."
             />
           </div>
+
+          {dataAlvo && dataAlvo !== visita.data_agendada && (
+            <div className="ec-alertas">
+              <div className="ec-alerta ec-alerta--ok">
+                📅 Reagendando de {formatarDataCurta(visita.data_agendada)} para {formatarDataCurta(dataAlvo)} — confira os dados e clique em Salvar pra confirmar.
+              </div>
+            </div>
+          )}
 
           {alerta && (
             <div className="ec-alertas">
