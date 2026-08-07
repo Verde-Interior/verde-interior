@@ -993,18 +993,23 @@ export default function EscalaCampo() {
               </button>
             ))}
           </div>
-          {modoVisao === 'semana' && (
-            <>
-              <div className="ec__nav-semana">
-                <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
-                <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[6])}</span>
-                <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
-              </div>
-              <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
-            </>
-          )}
         </div>
       </header>
+
+      {/* ── Navegação de Semana — linha própria, igual Quinzenal/Mês já fazem
+          com a data deles, pra fileira de cima (Atrasados/Prioridade/Copiar
+          agenda/pills) nunca mudar de largura nem de posição ao trocar de
+          modo. ── */}
+      {modoVisao === 'semana' && (
+        <div className="ec__semana-toolbar">
+          <div className="ec__nav-semana">
+            <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
+            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[6])}</span>
+            <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
+          </div>
+          <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
+        </div>
+      )}
 
       {modoVisao !== 'semana' ? (
         <EscalaCalendario
