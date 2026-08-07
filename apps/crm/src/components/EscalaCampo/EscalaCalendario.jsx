@@ -1,19 +1,21 @@
 // src/components/EscalaCampo/EscalaCalendario.jsx
 // Visão de calendário (quinzenal/mês) da Escala — complementa a visão de
 // Semana (colunas por funcionário), que continua sendo a padrão pro dia a
-// dia. Aqui a unidade é o DIA, não o funcionário: célula por dia com resumo
-// (contagem + status), clique abre um modal com a lista de visitas — mesmo
-// padrão de modal (ec-overlay/ec-modal) usado no resto da Escala, pra não
-// quebrar a consistência nem desconectar o clique do resultado (um painel
-// inline embaixo de uma grade de 6 linhas ficava fora da tela).
+// dia. Estrutura inspirada num sistema de referência que o usuário mostrou:
+// cada célula lista as visitas do dia (hora + cliente), hover mostra um
+// balão com detalhes rápidos, clique abre o card completo da visita (com
+// mapa discreto). "mais +N" e o número do dia abrem o dia inteiro num modal.
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { buildGrid, MESES_PT, DIAS_SEMANA_CURTO, formatarDataLonga } from '../../utils/calendarioUtils';
 import { getSemana as getSemanaUtil, addDias, formatarDataCurta } from '../../utils/dateUtils';
 import { STATUS_VISITA_COR, labelStatusVisita } from '../../utils/escalaHelpers';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import CardDetalheVisitaCalendario from './CardDetalheVisitaCalendario';
 import './EscalaCalendario.css';
 
 const DIAS_SEMANA_SEG = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const MAX_LINHAS_CELULA = 4;
 
 // Quinzena = 2 semanas consecutivas (Seg–Dom, mesma semântica da visão de
 // Semana) — reaproveita getSemana em vez de reinventar o alinhamento de dias.
@@ -21,26 +23,18 @@ function buildGridQuinzena(baseIso) {
   return [...getSemanaUtil(baseIso), ...getSemanaUtil(addDias(baseIso, 7))];
 }
 
-// Cor que resume o dia na célula — pior caso primeiro (faltou > rascunho
-// pendente > publicado/em execução > tudo concluído).
-function corResumoDia(visitas) {
-  if (!visitas?.length) return null;
-  if (visitas.some(v => v.status === 'faltou'))     return STATUS_VISITA_COR.faltou;
-  if (visitas.some(v => v.status === 'rascunho'))   return '#9CA3AF';
-  if (visitas.every(v => v.status === 'concluido')) return STATUS_VISITA_COR.concluido;
-  return STATUS_VISITA_COR.publicado;
-}
-
 export default function EscalaCalendario({
   modo, // 'quinzenal' | 'mes'
-  visitasPorDia, // Map<iso, Array<{ id, hora, cliente, funcionario, status }>>
+  visitasPorDia, // Map<iso, Array<{ id, hora, cliente, endereco, lat, lng, funcionario, status, duracao, observacoes, tiposTarefa, prioridade, dataAgendada }>>
   loading,
   calAno, calMes, onNavMes,
   quinzenaBase, onNavQuinzena,
   hojeIso,
   onAbrirDia,
 }) {
-  const [diaAberto, setDiaAberto] = useState(null);
+  const [diaAberto, setDiaAberto] = useState(null); // iso do dia (modal "ver tudo")
+  const [visitaAberta, setVisitaAberta] = useState(null); // visita clicada (card de detalhe)
+  const [tooltip, setTooltip] = useState(null); // { x, y, visita }
   const overlayClose = useOverlayClose(() => setDiaAberto(null));
 
   const grid = modo === 'mes' ? buildGrid(calAno, calMes) : buildGridQuinzena(quinzenaBase);
@@ -53,6 +47,11 @@ export default function EscalaCalendario({
   function navegar(delta) {
     if (modo === 'mes') onNavMes(delta);
     else onNavQuinzena(delta * 14);
+  }
+
+  function mostrarTooltip(e, visita) {
+    const r = e.currentTarget.getBoundingClientRect();
+    setTooltip({ x: r.right + 10, y: r.top, visita });
   }
 
   const visitasDoDiaAberto = diaAberto ? (visitasPorDia.get(diaAberto) ?? []) : [];
@@ -70,28 +69,60 @@ export default function EscalaCalendario({
         {grid.map((iso, i) => {
           if (!iso) return <span key={i} className="ec-cal__cel ec-cal__cel--vazia" />;
           const visitas = visitasPorDia.get(iso) ?? [];
-          const cor = corResumoDia(visitas);
           const isHoje = iso === hojeIso;
           const dia = parseInt(iso.split('-')[2], 10);
+          const visiveis = visitas.slice(0, MAX_LINHAS_CELULA);
+          const extras = visitas.length - visiveis.length;
           return (
-            <button
-              key={iso}
-              className="ec-cal__cel ec-cal__cel--btn"
-              onClick={() => setDiaAberto(iso)}
-            >
-              <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
-              {visitas.length > 0 && (
-                <span className="ec-cal__cel-pill" style={{ '--cor-resumo': cor }}>
-                  {visitas.length}
-                </span>
+            <div key={iso} className="ec-cal__cel">
+              <button className="ec-cal__cel-num-btn" onClick={() => setDiaAberto(iso)} title="Ver o dia inteiro">
+                <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
+              </button>
+              {visiveis.length > 0 && (
+                <div className="ec-cal__cel-lista">
+                  {visiveis.map(v => (
+                    <button
+                      key={v.id}
+                      className="ec-cal__cel-item"
+                      onMouseEnter={e => mostrarTooltip(e, v)}
+                      onMouseLeave={() => setTooltip(null)}
+                      onClick={() => { setTooltip(null); setVisitaAberta(v); }}
+                    >
+                      <span className="ec-cal__cel-item-dot" style={{ background: STATUS_VISITA_COR[v.status] ?? '#9CA3AF' }} />
+                      {v.hora && <span className="ec-cal__cel-item-hora">{v.hora}</span>}
+                      <span className="ec-cal__cel-item-nome">{v.cliente}</span>
+                    </button>
+                  ))}
+                  {extras > 0 && (
+                    <button className="ec-cal__cel-mais" onClick={() => setDiaAberto(iso)}>
+                      mais +{extras}
+                    </button>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
 
       {loading && <p className="ec-cal__loading">Carregando…</p>}
 
+      {/* ── Balão de hover — detalhe rápido ── */}
+      {tooltip && createPortal(
+        <div className="ec-cal__tt" style={{ left: tooltip.x, top: tooltip.y }}>
+          <div className="ec-cal__tt-linha">
+            <span className="ec-cal__tt-dot" style={{ background: STATUS_VISITA_COR[tooltip.visita.status] ?? '#9CA3AF' }} />
+            <strong>{labelStatusVisita(tooltip.visita.status)}</strong>
+          </div>
+          <div className="ec-cal__tt-linha">🏢 <strong>{tooltip.visita.cliente}</strong></div>
+          {tooltip.visita.endereco && <div className="ec-cal__tt-linha">📍 {tooltip.visita.endereco}</div>}
+          {tooltip.visita.duracao && <div className="ec-cal__tt-linha">⏱ {tooltip.visita.duracao} min</div>}
+          <div className="ec-cal__tt-linha">👤 {tooltip.visita.funcionario}</div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Modal "ver o dia inteiro" (número do dia / "mais +N") ── */}
       {diaAberto && (
         <div className="ec-overlay" {...overlayClose}>
           <div className="ec-modal ec-cal__modal">
@@ -113,7 +144,11 @@ export default function EscalaCalendario({
               ) : (
                 <div className="ec-cal__pop-lista">
                   {visitasDoDiaAberto.map(v => (
-                    <div key={v.id} className="ec-cal__pop-item">
+                    <div
+                      key={v.id}
+                      className="ec-cal__pop-item ec-cal__pop-item--clicavel"
+                      onClick={() => { setDiaAberto(null); setVisitaAberta(v); }}
+                    >
                       <span className="ec-cal__pop-hora">{v.hora ?? '—'}</span>
                       <div className="ec-cal__pop-info">
                         <span className="ec-cal__pop-cliente">{v.cliente}</span>
@@ -134,6 +169,11 @@ export default function EscalaCalendario({
             </footer>
           </div>
         </div>
+      )}
+
+      {/* ── Card de detalhe de uma visita específica ── */}
+      {visitaAberta && (
+        <CardDetalheVisitaCalendario visita={visitaAberta} onFechar={() => setVisitaAberta(null)} />
       )}
     </div>
   );

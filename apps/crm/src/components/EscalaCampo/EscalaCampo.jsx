@@ -279,7 +279,10 @@ export default function EscalaCampo() {
         .from('agenda')
         .select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status,
-          nome_cliente, cliente:clientes(nome_empresa), lead:leads(empresa)
+          duracao_estimada_min, observacoes_gestor, tipos_tarefa,
+          nome_cliente, endereco_tarefa,
+          cliente:clientes(nome_empresa, endereco, lat, lng, frequencia_visita, ultima_visita),
+          lead:leads(empresa, endereco, lat, lng)
         `)
         .gte('data_agendada', inicio)
         .lte('data_agendada', fim)
@@ -296,13 +299,23 @@ export default function EscalaCampo() {
     const empMap = new Map(employees.map(e => [String(e.id), e.name]));
     const mapa = new Map();
     agendaCalendario.forEach(v => {
-      const cliente = v.cliente?.nome_empresa ?? v.lead?.empresa ?? v.nome_cliente ?? '—';
+      const cliente  = v.cliente?.nome_empresa ?? v.lead?.empresa ?? v.nome_cliente ?? '—';
+      const endereco = v.cliente?.endereco ?? v.lead?.endereco ?? v.endereco_tarefa ?? null;
+      const lat = v.cliente?.lat ?? v.lead?.lat ?? null;
+      const lng = v.cliente?.lng ?? v.lead?.lng ?? null;
       const item = {
         id: v.id,
         hora: v.hora_estimada_chegada?.slice(0, 5) ?? null,
         cliente,
+        endereco,
+        lat, lng,
         funcionario: empMap.get(String(v.funcionario_id)) ?? '—',
         status: v.status,
+        duracao: v.duracao_estimada_min ?? null,
+        observacoes: v.observacoes_gestor ?? null,
+        tiposTarefa: v.tipos_tarefa ?? [],
+        prioridade: v.cliente ? calcPrioridade(v.cliente, v.data_agendada) : null,
+        dataAgendada: v.data_agendada,
       };
       if (!mapa.has(v.data_agendada)) mapa.set(v.data_agendada, []);
       mapa.get(v.data_agendada).push(item);

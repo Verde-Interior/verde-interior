@@ -1,0 +1,27 @@
+/* src/components/EscalaCampo/MiniMapaVisita.css */
+
+.mmv {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+}
+
+.mmv__map {
+  height: 130px;
+  width: 100%;
+  /* Preview estático — sem interação, então o cursor de "mão" do Leaflet
+     confundiria (parece arrastável mas não é). */
+  cursor: default;
+}
+
+.mmv-pin-wrap { background: transparent; border: none; }
+.mmv-pin {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--color-primary);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  transform: rotate(-45deg);
+}

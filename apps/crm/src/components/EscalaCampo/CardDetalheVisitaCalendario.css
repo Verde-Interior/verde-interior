@@ -1,0 +1,57 @@
+/* src/components/EscalaCampo/CardDetalheVisitaCalendario.css */
+
+.ec-cdv { max-width: 640px; }
+
+.ec-cdv__corpo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.ec-cdv__col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ec-cdv__grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ec-cdv__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ec-cdv__lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ec-cdv__val {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.ec-cdv__status {
+  align-self: flex-start;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 640px) {
+  .ec-cdv__corpo { grid-template-columns: 1fr; }
+}
