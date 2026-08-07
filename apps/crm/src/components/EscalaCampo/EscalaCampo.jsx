@@ -1,5 +1,5 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
@@ -79,7 +79,10 @@ export default function EscalaCampo() {
       return s ? JSON.parse(s) : [];
     } catch { return []; }
   });
-  const colDragSrc = useRef(null); // id do funcionário sendo arrastado (coluna)
+  // Estado de verdade (não ref) — mutar uma ref não re-renderiza, então a
+  // classe visual de "arrastando" ficava dependendo de algum outro re-render
+  // acontecer por acaso pra atualizar, travando cinza às vezes.
+  const [colDragSrc, setColDragSrc] = useState(null); // id do funcionário sendo arrastado (coluna)
   const [colDragOver, setColDragOver] = useState(null); // id do funcionário-alvo
 
   useEffect(() => {
@@ -958,7 +961,7 @@ export default function EscalaCampo() {
             const rascunhos  = visitas.filter(v => v.status === 'rascunho').length;
             const podeOtimizar = rascunhos >= 2 && !modoSelecao;
             const bloqueio   = bloqueioNoDia(bloqueios, emp.id, diaSel);
-            const isColDragSrc = colDragSrc.current === empId;
+            const isColDragSrc = colDragSrc === empId;
             const isColDropTgt = colDragOver === empId;
 
             return (
@@ -974,25 +977,25 @@ export default function EscalaCampo() {
                   draggable
                   onDragStart={e => {
                     if (e.target.closest('button')) { e.preventDefault(); return; }
-                    colDragSrc.current = empId;
+                    setColDragSrc(empId);
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   onDragOver={e => {
-                    if (!colDragSrc.current) return; // não é drag de coluna — deixa borbulhar pro drop de visita
+                    if (!colDragSrc) return; // não é drag de coluna — deixa borbulhar pro drop de visita
                     e.preventDefault();
                     e.stopPropagation();
-                    if (colDragSrc.current !== empId) setColDragOver(empId);
+                    if (colDragSrc !== empId) setColDragOver(empId);
                   }}
                   onDragLeave={() => setColDragOver(null)}
                   onDrop={e => {
-                    if (!colDragSrc.current) return; // idem — deixa a visita cair na coluna normalmente
+                    if (!colDragSrc) return; // idem — deixa a visita cair na coluna normalmente
                     e.preventDefault();
                     e.stopPropagation();
-                    reordenarColunas(colDragSrc.current, empId);
-                    colDragSrc.current = null;
+                    reordenarColunas(colDragSrc, empId);
+                    setColDragSrc(null);
                     setColDragOver(null);
                   }}
-                  onDragEnd={() => { colDragSrc.current = null; setColDragOver(null); }}
+                  onDragEnd={() => { setColDragSrc(null); setColDragOver(null); }}
                 >
                   <div className="ec__coluna-titulo">
                     <DragHandleColuna />
