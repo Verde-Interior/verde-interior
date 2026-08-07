@@ -55,21 +55,22 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
     lng: clienteCompleto?.lng ?? null,
   }));
   const [geocodando, setGeocodando] = useState(false);
+  const [naoEncontrado, setNaoEncontrado] = useState(false);
   const enderecoOriginal = useRef(form.endereco);
 
   useEffect(() => {
     if (form.endereco === enderecoOriginal.current) return; // endereço não mudou — mantém a coordenada do cadastro
-    if (!form.endereco?.trim()) return;
+    if (!form.endereco?.trim()) { setNaoEncontrado(false); return; }
     const timer = setTimeout(async () => {
       setGeocodando(true);
-      // endereco aqui já vem completo (rua, bairro, cidade, UF, CEP) —
-      // diferente do cadastro de cliente, que tem campos separados. Passar
-      // bairro/cidade/UF de novo duplicava tudo na busca e confundia o
-      // geocodificador (cidade/uf têm default dentro de geocodeEndereco,
-      // por isso zeramos explicitamente em vez de só omitir).
-      const resultado = await geocodeEndereco({ endereco: form.endereco, cidade: '', uf: '' });
+      setNaoEncontrado(false);
+      // geocodeEndereco já tenta primeiro cru (cobre endereço já completo,
+      // caso comum aqui) e só complementa com cidade/UF numa 2ª tentativa
+      // se não achar nada — não precisa de tratamento especial aqui.
+      const resultado = await geocodeEndereco({ endereco: form.endereco });
       setGeocodando(false);
       if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
+      else setNaoEncontrado(true); // mapa fica com a última localização válida — só avisa que essa busca não achou nada
     }, 800);
     return () => clearTimeout(timer);
   }, [form.endereco]);
@@ -200,6 +201,9 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
               placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
             />
             {geocodando && <span className="ec-hint">🔎 Buscando localização...</span>}
+            {!geocodando && naoEncontrado && (
+              <span className="ec-hint">⚠ Endereço não encontrado — mapa mantém a última localização válida.</span>
+            )}
             <MiniMapaVisita lat={mapaCoords.lat} lng={mapaCoords.lng} />
           </div>
 

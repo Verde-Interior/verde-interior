@@ -29,12 +29,12 @@ export function enderecoSimplificado(endereco) {
   return `${partes[0]}, ${partes[1]}`;
 }
 
-// Geocoding via Nominatim (OpenStreetMap) — grátis, respeitar 1 req/s e enviar User-Agent.
-// Retorna { lat, lng, display_name } ou null se não achou.
-export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo', uf = 'SP' }) {
-  const partes = [endereco, bairro, cidade, uf, 'Brasil'].filter(Boolean).join(', ');
-  if (!partes) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=br&q=${encodeURIComponent(partes)}`;
+// Uma chamada ao Nominatim — usado internamente por geocodeEndereco (2
+// tentativas). countrycodes=br já restringe ao Brasil, não precisa repetir
+// "Brasil" no texto da busca (só some espaço útil e pode até atrapalhar).
+async function buscarNominatim(query) {
+  if (!query) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=br&q=${encodeURIComponent(query)}`;
   try {
     const r = await fetch(url, {
       headers: { 'Accept-Language': 'pt-BR' },
@@ -51,6 +51,30 @@ export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo',
   } catch {
     return null;
   }
+}
+
+// Geocoding via Nominatim (OpenStreetMap) — grátis, respeitar 1 req/s.
+// Retorna { lat, lng, display_name } ou null se não achou.
+//
+// Duas tentativas, porque o "endereco" recebido varia de lugar pra lugar no
+// app: às vezes já vem completo (rua+bairro+cidade+UF+CEP, como o cadastro
+// de cliente formata), às vezes é só "Rua X, 64" digitado corrido, sem
+// cidade nenhuma. Tentar sempre com cidade/UF grudados quebra o primeiro
+// caso (duplica e confunde a busca); nunca tentar quebra o segundo (Nominatim
+// não acha uma rua sem nenhuma pista de região). Por isso: tenta cru primeiro
+// (resolve o caso "já está completo" com precisão), só complementa com
+// cidade/UF se a primeira tentativa não achar nada.
+export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo', uf = 'SP' }) {
+  if (!endereco?.trim()) return null;
+
+  const bruto = [endereco, bairro].filter(Boolean).join(', ');
+  const resultadoBruto = await buscarNominatim(bruto);
+  if (resultadoBruto) return resultadoBruto;
+
+  await new Promise(resolve => setTimeout(resolve, 1000)); // respeita o limite de ~1 req/s do Nominatim antes de tentar de novo
+
+  const completo = [endereco, bairro, cidade, uf].filter(Boolean).join(', ');
+  return buscarNominatim(completo);
 }
 
 // Reverse geocoding via Nominatim (OpenStreetMap) — free, sem chave de API.

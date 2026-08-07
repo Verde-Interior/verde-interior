@@ -105,6 +105,7 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
   // debounce pra não estourar o limite do Nominatim (~1 req/s).
   const [mapaCoords, setMapaCoords] = useState({ lat: null, lng: null });
   const [geocodando, setGeocodando] = useState(false);
+  const [naoEncontrado, setNaoEncontrado] = useState(false);
 
   useEffect(() => {
     if (clienteSel?.lat && clienteSel?.lng) setMapaCoords({ lat: clienteSel.lat, lng: clienteSel.lng });
@@ -113,16 +114,17 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
 
   useEffect(() => {
     if (clienteSel) return; // cliente cadastrado já resolvido acima
-    if (!form.enderecoTarefa?.trim()) { setMapaCoords({ lat: null, lng: null }); return; }
+    if (!form.enderecoTarefa?.trim()) { setMapaCoords({ lat: null, lng: null }); setNaoEncontrado(false); return; }
     const timer = setTimeout(async () => {
       setGeocodando(true);
-      // cidade/uf têm default dentro de geocodeEndereco (São Paulo/SP) —
-      // zera explicitamente porque o endereço digitado aqui costuma já vir
-      // completo (o placeholder do campo até sugere isso), evitando duplicar
-      // cidade/UF na busca e confundir o geocodificador.
-      const resultado = await geocodeEndereco({ endereco: form.enderecoTarefa, cidade: '', uf: '' });
+      setNaoEncontrado(false);
+      // geocodeEndereco já tenta cru primeiro e só complementa com cidade/UF
+      // (São Paulo/SP por padrão) se não achar nada — cobre tanto endereço
+      // já completo quanto texto curto tipo "Rua X, 64" sem cidade nenhuma.
+      const resultado = await geocodeEndereco({ endereco: form.enderecoTarefa });
       setGeocodando(false);
       if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
+      else { setMapaCoords({ lat: null, lng: null }); setNaoEncontrado(true); }
     }, 800);
     return () => clearTimeout(timer);
   }, [form.enderecoTarefa, clienteSel]);
@@ -266,6 +268,9 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
                 onChange={e => setF('enderecoTarefa', e.target.value)}
               />
               {geocodando && <span className="ec-hint">🔎 Buscando localização...</span>}
+              {!geocodando && naoEncontrado && (
+                <span className="ec-hint">⚠ Endereço não encontrado no mapa (a tarefa pode ser salva normalmente).</span>
+              )}
               <MiniMapaVisita lat={mapaCoords.lat} lng={mapaCoords.lng} />
             </div>
           )}
