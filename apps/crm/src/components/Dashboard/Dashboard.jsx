@@ -1148,7 +1148,6 @@ function DashboardOperacional({ onNavegar }) {
   const [dados, setDados] = useState({
     agendaHoje: [],
     agendaSemana: [],
-    relatoriosSemana: [],
     ultimosRelatorios: [],
     clientes: [],
     employees: [],
@@ -1169,11 +1168,8 @@ function DashboardOperacional({ onNavegar }) {
       const daquiSete = new Date();
       daquiSete.setDate(daquiSete.getDate() + 7);
       const daquiSeteStr = daquiSete.toISOString().split('T')[0];
-      const setePassados = new Date();
-      setePassados.setDate(setePassados.getDate() - 7);
-      const setePassadosIso = setePassados.toISOString();
 
-      const [ag, agSem, relSem, ultimosRel, cli, emp, bloq] = await Promise.all([
+      const [ag, agSem, ultimosRel, cli, emp, bloq] = await Promise.all([
         supabase.from('agenda').select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
           observacoes_gestor, nome_cliente, endereco_tarefa,
@@ -1184,7 +1180,6 @@ function DashboardOperacional({ onNavegar }) {
           id, data_agendada, funcionario_id, status, tipos_tarefa,
           cliente:clientes(id, nome_empresa)
         `).gte('data_agendada', hoje).lte('data_agendada', daquiSeteStr),
-        supabase.from('relatorios').select('id, funcionario_id, checkin_at, checkout_at, agendamento_id').gte('checkin_at', setePassadosIso),
         supabase.from('relatorios').select(`
           id, funcionario_id, checkin_at, checkout_at,
           agenda:agenda(cliente:clientes(nome_empresa, regiao))
@@ -1228,7 +1223,6 @@ function DashboardOperacional({ onNavegar }) {
       setDados({
         agendaHoje:        agendaHojeNormalizada,
         agendaSemana:      agSem.data ?? [],
-        relatoriosSemana:  relSem.data ?? [],
         ultimosRelatorios: ultimosRel.data ?? [],
         clientes:          cli.data ?? [],
         employees:         emp.data ?? [],
@@ -1275,16 +1269,23 @@ function DashboardOperacional({ onNavegar }) {
   }, [dados.agendaHoje, filtroAgendaHoje, empMap]);
 
   const kpis = useMemo(() => {
-    const visitasHoje = dados.agendaHoje.length;
-    const publicadasHoje = dados.agendaHoje.filter(v => v.status === 'publicado' || v.status === 'em_execucao' || v.status === 'concluido').length;
+    // Cancelada não vai acontecer — não conta em nenhum lugar. Faltou já
+    // aconteceu (o horário passou), então ainda conta como "Visitas Hoje",
+    // mas não deixa o colaborador contar como "em campo" nem infla
+    // trocas/visitas da semana (ele não fez o trabalho).
+    const visitasHoje = dados.agendaHoje.filter(v => v.status !== 'cancelado').length;
     const concluidasHoje = dados.agendaHoje.filter(v => v.status === 'concluido').length;
-    const funcAtivosHoje = new Set(dados.agendaHoje.filter(v => v.funcionario_id).map(v => String(v.funcionario_id))).size;
-    const visitasSemana = dados.agendaSemana.length;
-    const trocasSemana = dados.agendaSemana.filter(v => (v.tipos_tarefa ?? []).includes('troca')).length;
+    const funcAtivosHoje = new Set(
+      dados.agendaHoje
+        .filter(v => v.funcionario_id && v.status !== 'cancelado' && v.status !== 'faltou')
+        .map(v => String(v.funcionario_id))
+    ).size;
+    const agendaSemanaAtiva = dados.agendaSemana.filter(v => v.status !== 'cancelado' && v.status !== 'faltou');
+    const visitasSemana = agendaSemanaAtiva.length;
+    const trocasSemana = agendaSemanaAtiva.filter(v => (v.tipos_tarefa ?? []).includes('troca')).length;
     return {
-      visitasHoje, publicadasHoje, concluidasHoje, funcAtivosHoje, visitasSemana, trocasSemana,
+      visitasHoje, concluidasHoje, funcAtivosHoje, visitasSemana, trocasSemana,
       clientesAtivos: dados.clientes.length,
-      relatoriosSemana: dados.relatoriosSemana.length,
     };
   }, [dados]);
 
