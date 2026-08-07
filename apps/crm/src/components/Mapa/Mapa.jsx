@@ -224,13 +224,29 @@ export default function Mapa({ onNavegar }) {
         .from('agenda')
         .select(`
           id, data_agendada, hora_estimada_chegada, funcionario_id, status, tipos_tarefa,
-          cliente:clientes(id, nome_empresa, bairro, lat, lng)
+          nome_cliente, endereco_tarefa,
+          cliente:clientes(id, nome_empresa, bairro, lat, lng),
+          lead:leads(empresa, bairro, lat, lng)
         `)
         .eq('funcionario_id', rotaFuncionarioId)
         .eq('data_agendada', rotaData)
         .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
       if (cancelado) return;
-      setRotaVisitas(data ?? []);
+      // Mesma normalização de Dashboard.jsx/EscalaCampo.jsx: visita pode vir
+      // de cliente cadastrado, lead, ou tarefa interna (nome_cliente) — sem
+      // isso, os dois últimos casos mostravam "—" na lista e ficavam de fora
+      // do mapa mesmo quando o lead tinha lat/lng cadastrados.
+      const normalizadas = (data ?? []).map((v) => {
+        if (v.cliente) return v;
+        if (v.lead) {
+          return { ...v, cliente: { nome_empresa: v.lead.empresa, bairro: v.lead.bairro, lat: v.lead.lat, lng: v.lead.lng } };
+        }
+        if (v.nome_cliente) {
+          return { ...v, cliente: { nome_empresa: v.nome_cliente, bairro: null, lat: null, lng: null } };
+        }
+        return v;
+      });
+      setRotaVisitas(normalizadas);
       setRotaLoading(false);
     })();
     return () => { cancelado = true; };

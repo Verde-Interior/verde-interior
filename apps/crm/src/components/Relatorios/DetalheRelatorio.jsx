@@ -21,8 +21,9 @@ export const SELECT_RELATORIO = `
   agendamento_id,
   agenda:agenda(
     id, data_agendada, hora_estimada_chegada, duracao_estimada_min,
-    observacoes_gestor, ordem_rota,
-    cliente:clientes(id, nome_empresa, endereco, bairro, lat, lng, contato_nome, grupo_servico)
+    observacoes_gestor, ordem_rota, nome_cliente, endereco_tarefa,
+    cliente:clientes(id, nome_empresa, endereco, bairro, lat, lng, contato_nome, grupo_servico),
+    lead:leads(empresa, endereco, bairro, lat, lng, contato)
   ),
   fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem, tamanho_bytes)
 `;
@@ -46,8 +47,30 @@ async function signedUrl(path, ttlSec = 60 * 60) {
   return data?.signedUrl ?? null;
 }
 
+// Normaliza a origem da visita (cliente cadastrado, lead, ou tarefa interna
+// sem cadastro — nome_cliente/endereco_tarefa) num único formato de leitura,
+// mesma lógica usada em Dashboard.jsx/EscalaCampo.jsx pra esse mesmo problema.
+export function clienteDaVisita(agenda) {
+  if (!agenda) return null;
+  if (agenda.cliente) return agenda.cliente;
+  if (agenda.lead) {
+    return {
+      nome_empresa: agenda.lead.empresa,
+      endereco:     agenda.lead.endereco,
+      bairro:       agenda.lead.bairro,
+      lat:          agenda.lead.lat,
+      lng:          agenda.lead.lng,
+      contato_nome: agenda.lead.contato,
+    };
+  }
+  if (agenda.nome_cliente) {
+    return { nome_empresa: agenda.nome_cliente, endereco: agenda.endereco_tarefa };
+  }
+  return null;
+}
+
 export default function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido, onEditarAgendamento }) {
-  const c = r.agenda?.cliente;
+  const c = clienteDaVisita(r.agenda);
   const [fotoAmpIdx, setFotoAmpIdx] = useState(null); // índice em r.fotos, ou null se fechado
   const [urlsFotos, setUrlsFotos] = useState({}); // fotoId -> signed url
   const [assinUrl, setAssinUrl] = useState(null);
@@ -59,14 +82,13 @@ export default function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onR
   const [cancelados,  setCancelados]  = useState([]);
 
   function exportarPDF() {
-    const c = r.agenda?.cliente;
     const fotosComUrl = (r.fotos ?? []).map((f) => ({
       url: urlsFotos[f.id] ?? f.url ?? '',
       observacao: f.observacao ?? '',
     })).filter((f) => f.url);
 
     baixarPDF({
-      cliente:      c?.nome_empresa ?? r.agenda?.nome_cliente ?? '—',
+      cliente:      c?.nome_empresa ?? '—',
       bairro:       c?.bairro ?? '',
       data:         formatarData(r.agenda?.data_agendada),
       status:       { em_execucao: 'Em execução', concluido: 'Concluída' }[r.status] ?? r.status,

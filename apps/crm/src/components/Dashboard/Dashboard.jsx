@@ -1182,7 +1182,7 @@ function DashboardOperacional({ onNavegar }) {
         `).gte('data_agendada', hoje).lte('data_agendada', daquiSeteStr),
         supabase.from('relatorios').select(`
           id, funcionario_id, checkin_at, checkout_at,
-          agenda:agenda(cliente:clientes(nome_empresa, regiao))
+          agenda:agenda(nome_cliente, cliente:clientes(nome_empresa, regiao), lead:leads(empresa, bairro))
         `).order('checkin_at', { ascending: false }).limit(6),
         supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
         supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
@@ -1220,10 +1220,25 @@ function DashboardOperacional({ onNavegar }) {
         setCheckinsHoje(new Map());
       }
 
+      // Mesmo caso de "Agenda de hoje": a visita do relatório pode ser de
+      // cliente cadastrado, lead, ou tarefa interna (nome_cliente) — sem essa
+      // normalização, os dois últimos casos caem no "—" em vez do nome.
+      const ultimosRelatoriosNormalizados = (ultimosRel.data ?? []).map((r) => {
+        const ag = r.agenda;
+        if (!ag || ag.cliente) return r;
+        if (ag.lead) {
+          return { ...r, agenda: { ...ag, cliente: { nome_empresa: ag.lead.empresa, regiao: ag.lead.bairro } } };
+        }
+        if (ag.nome_cliente) {
+          return { ...r, agenda: { ...ag, cliente: { nome_empresa: ag.nome_cliente, regiao: null } } };
+        }
+        return r;
+      });
+
       setDados({
         agendaHoje:        agendaHojeNormalizada,
         agendaSemana:      agSem.data ?? [],
-        ultimosRelatorios: ultimosRel.data ?? [],
+        ultimosRelatorios: ultimosRelatoriosNormalizados,
         clientes:          cli.data ?? [],
         employees:         emp.data ?? [],
       });

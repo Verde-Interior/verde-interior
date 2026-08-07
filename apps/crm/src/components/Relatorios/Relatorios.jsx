@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { formatarData } from '../../utils/dateUtils';
 import { distanciaMetros } from '../../utils/geoUtils';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
-import DetalheRelatorio, { SELECT_RELATORIO, duracaoEntre } from './DetalheRelatorio';
+import DetalheRelatorio, { SELECT_RELATORIO, duracaoEntre, clienteDaVisita } from './DetalheRelatorio';
 import './Relatorios.css';
 
 function formatarBytes(n) {
@@ -61,7 +61,14 @@ export default function Relatorios() {
     ]);
 
     setEmployees(empRes.data ?? []);
-    setRelatorios(relRes.data ?? []);
+    // A lista, busca e filtro por grupo leem r.agenda.cliente direto — sem
+    // normalizar aqui, visita de lead/tarefa avulsa (sem cliente cadastrado)
+    // sumia da busca/filtro e aparecia com "—" na lista.
+    setRelatorios((relRes.data ?? []).map((r) => (
+      r.agenda && !r.agenda.cliente
+        ? { ...r, agenda: { ...r.agenda, cliente: clienteDaVisita(r.agenda) } }
+        : r
+    )));
     setLoading(false);
   }
 
@@ -170,12 +177,15 @@ export default function Relatorios() {
     const itens = [];
     for (const r of relatorios) {
       const c = r.agenda?.cliente;
-      if (!c || vistos.has(c.id)) continue;
+      // Lead/tarefa avulsa não tem id real (cliente sintético) — usa o nome
+      // como chave de dedupe pra não sumir depois da primeira ocorrência.
+      const chave = c?.id ?? c?.nome_empresa;
+      if (!c || vistos.has(chave)) continue;
       const nome = c.nome_empresa?.toLowerCase() ?? '';
       const bairro = c.bairro?.toLowerCase() ?? '';
       if (!nome.includes(q) && !bairro.includes(q)) continue;
-      vistos.add(c.id);
-      itens.push({ id: c.id, label: c.nome_empresa, sublabel: c.bairro });
+      vistos.add(chave);
+      itens.push({ id: chave, label: c.nome_empresa, sublabel: c.bairro });
       if (itens.length >= 8) break;
     }
     return itens;
