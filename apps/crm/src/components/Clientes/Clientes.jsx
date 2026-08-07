@@ -6,7 +6,7 @@ import { tempoRelativo } from '../../utils/formatUtils';
 import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
-import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL } from '../../utils/clienteConstants';
+import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL, FREQ_VISITA_LABEL } from '../../utils/clienteConstants';
 import './Clientes.css';
 
 const GRUPO_OPTIONS = [
@@ -509,7 +509,7 @@ export default function Clientes() {
                 <th>Nome / Bairro</th>
                 <th>Grupo</th>
                 <th>Dias disponíveis</th>
-                <th>Duração</th>
+                <th>Duração / Freq.</th>
                 <th>Última visita</th>
                 <th>Contratos</th>
                 <th>Status</th>
@@ -556,8 +556,11 @@ export default function Clientes() {
                     </td>
                     <td>
                       {c.duracao_estimada_min
-                        ? <span>{c.duracao_estimada_min} min</span>
+                        ? <span className="clientes__cel-principal">{c.duracao_estimada_min} min</span>
                         : <span className="clientes__aviso">⚠ —</span>}
+                      {c.frequencia_visita && (
+                        <span className="clientes__cel-sub">{FREQ_VISITA_LABEL[c.frequencia_visita] ?? c.frequencia_visita}</span>
+                      )}
                     </td>
                     <td>
                       {c.ultima_visita ? (

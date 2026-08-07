@@ -308,6 +308,20 @@
   margin-top: 2px;
 }
 
+/* Segunda linha discreta genérica pra qualquer célula (ex: frequência sob
+   duração) — mesmo visual de .clientes__row-bairro, sem o nome específico
+   de bairro pra não confundir semântica ao reaproveitar em outra coluna. */
+.clientes__cel-principal {
+  display: block;
+}
+
+.clientes__cel-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
 .clientes__dias-str {
   font-size: 12px;
   color: var(--forest-700);
