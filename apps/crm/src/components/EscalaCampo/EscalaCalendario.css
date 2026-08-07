@@ -99,11 +99,25 @@
   color: white;
 }
 
+/* Altura travada em ~4 linhas (igual antes), mas agora rolável em vez de
+   cortada — quem prefere não clicar em "mais +N" vê o resto rolando a roda
+   do mouse por cima da célula. overscroll-behavior contém o scroll aqui
+   dentro, sem "vazar" pra rolagem da página quando chega no fim da lista. */
 .ec-cal__cel-lista {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  max-height: 76px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
+.ec-cal__cel-lista::-webkit-scrollbar { width: 4px; }
+.ec-cal__cel-lista::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 2px;
+}
+.ec-cal__cel-lista::-webkit-scrollbar-track { background: transparent; }
 
 /* Cada visita — linha compacta (bolinha + hora + cliente), botão de largura
    total pra ficar fácil de acertar o hover/clique mesmo sendo pequeno. */

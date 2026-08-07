@@ -71,34 +71,39 @@ export default function EscalaCalendario({
           const visitas = visitasPorDia.get(iso) ?? [];
           const isHoje = iso === hojeIso;
           const dia = parseInt(iso.split('-')[2], 10);
-          const visiveis = visitas.slice(0, MAX_LINHAS_CELULA);
-          const extras = visitas.length - visiveis.length;
+          const extras = Math.max(visitas.length - MAX_LINHAS_CELULA, 0);
           return (
             <div key={iso} className="ec-cal__cel">
               <button className="ec-cal__cel-num-btn" onClick={() => setDiaAberto(iso)} title="Ver o dia inteiro">
                 <span className={`ec-cal__cel-num ${isHoje ? 'ec-cal__cel-num--hoje' : ''}`}>{dia}</span>
               </button>
-              {visiveis.length > 0 && (
-                <div className="ec-cal__cel-lista">
-                  {visiveis.map(v => (
-                    <button
-                      key={v.id}
-                      className="ec-cal__cel-item"
-                      onMouseEnter={e => mostrarTooltip(e, v)}
-                      onMouseLeave={() => setTooltip(null)}
-                      onClick={() => { setTooltip(null); setVisitaAberta(v); }}
-                    >
-                      <span className="ec-cal__cel-item-dot" style={{ background: STATUS_VISITA_COR[v.status] ?? '#9CA3AF' }} />
-                      {v.hora && <span className="ec-cal__cel-item-hora">{v.hora}</span>}
-                      <span className="ec-cal__cel-item-nome">{v.cliente}</span>
-                    </button>
-                  ))}
+              {visitas.length > 0 && (
+                <>
+                  {/* Rola com a roda do mouse quando passa por cima — quem
+                      prefere não clicar em "mais" vê tudo aqui dentro. */}
+                  <div className="ec-cal__cel-lista">
+                    {visitas.map(v => (
+                      <button
+                        key={v.id}
+                        className="ec-cal__cel-item"
+                        onMouseEnter={e => mostrarTooltip(e, v)}
+                        onMouseLeave={() => setTooltip(null)}
+                        onClick={() => { setTooltip(null); setVisitaAberta(v); }}
+                      >
+                        <span className="ec-cal__cel-item-dot" style={{ background: STATUS_VISITA_COR[v.status] ?? '#9CA3AF' }} />
+                        {v.hora && <span className="ec-cal__cel-item-hora">{v.hora}</span>}
+                        <span className="ec-cal__cel-item-nome">{v.cliente}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Fora da área de scroll — sempre visível, pra quem prefere
+                      clicar em vez de rolar. */}
                   {extras > 0 && (
                     <button className="ec-cal__cel-mais" onClick={() => setDiaAberto(iso)}>
                       mais +{extras}
                     </button>
                   )}
-                </div>
+                </>
               )}
             </div>
           );
