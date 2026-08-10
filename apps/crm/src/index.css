@@ -166,6 +166,8 @@
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
+* { caret-color: transparent; }
+input, textarea, [contenteditable] { caret-color: auto; }
 
 body {
   font-family: var(--font-body);
