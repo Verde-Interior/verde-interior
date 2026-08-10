@@ -112,20 +112,25 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
     else if (clienteSel) setMapaCoords({ lat: null, lng: null });
   }, [clienteSel]);
 
+  // Extraído do efeito de debounce pra também poder ser chamado na hora
+  // (botão do alfinete), sem esperar os 800ms nem precisar editar o texto.
+  async function buscarEnderecoTarefa(endereco) {
+    if (!endereco?.trim()) return;
+    setGeocodando(true);
+    setNaoEncontrado(false);
+    // geocodeEndereco já tenta cru primeiro e só complementa com cidade/UF
+    // (São Paulo/SP por padrão) se não achar nada — cobre tanto endereço
+    // já completo quanto texto curto tipo "Rua X, 64" sem cidade nenhuma.
+    const resultado = await geocodeEndereco({ endereco });
+    setGeocodando(false);
+    if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
+    else { setMapaCoords({ lat: null, lng: null }); setNaoEncontrado(true); }
+  }
+
   useEffect(() => {
     if (clienteSel) return; // cliente cadastrado já resolvido acima
     if (!form.enderecoTarefa?.trim()) { setMapaCoords({ lat: null, lng: null }); setNaoEncontrado(false); return; }
-    const timer = setTimeout(async () => {
-      setGeocodando(true);
-      setNaoEncontrado(false);
-      // geocodeEndereco já tenta cru primeiro e só complementa com cidade/UF
-      // (São Paulo/SP por padrão) se não achar nada — cobre tanto endereço
-      // já completo quanto texto curto tipo "Rua X, 64" sem cidade nenhuma.
-      const resultado = await geocodeEndereco({ endereco: form.enderecoTarefa });
-      setGeocodando(false);
-      if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
-      else { setMapaCoords({ lat: null, lng: null }); setNaoEncontrado(true); }
-    }, 800);
+    const timer = setTimeout(() => buscarEnderecoTarefa(form.enderecoTarefa), 800);
     return () => clearTimeout(timer);
   }, [form.enderecoTarefa, clienteSel]);
 
@@ -261,12 +266,23 @@ export default function ModalAddVisita({ clientes, funcionarios, dataInicial, fu
                 Endereço
                 <span className="ec-hint" style={{ marginLeft: 6 }}>(aparece no app para o colaborador abrir no Maps)</span>
               </label>
-              <input
-                type="text"
-                placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
-                value={form.enderecoTarefa}
-                onChange={e => setF('enderecoTarefa', e.target.value)}
-              />
+              <div className="ec-endereco-linha">
+                <input
+                  type="text"
+                  placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
+                  value={form.enderecoTarefa}
+                  onChange={e => setF('enderecoTarefa', e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="ec-btn-pin"
+                  onClick={() => buscarEnderecoTarefa(form.enderecoTarefa)}
+                  disabled={geocodando || !form.enderecoTarefa?.trim()}
+                  title="Buscar esse endereço agora"
+                >
+                  📍
+                </button>
+              </div>
               {geocodando && <span className="ec-hint">🔎 Buscando localização...</span>}
               {!geocodando && naoEncontrado && (
                 <span className="ec-hint">⚠ Endereço não encontrado no mapa (a tarefa pode ser salva normalmente).</span>

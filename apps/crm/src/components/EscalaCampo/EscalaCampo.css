@@ -1306,6 +1306,29 @@
   text-align: center;
 }
 
+/* Campo de endereço + botão de alfinete — busca automática (debounce) já
+   roda ao digitar; o alfinete só força repetir a busca na hora, sem
+   esperar nem precisar editar o texto de novo. */
+.ec-endereco-linha {
+  display: flex;
+  gap: 6px;
+}
+.ec-endereco-linha input { flex: 1; min-width: 0; }
+
+.ec-btn-pin {
+  flex-shrink: 0;
+  width: 38px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.ec-btn-pin:hover:not(:disabled) { background: var(--cream-100); border-color: var(--color-primary); }
+.ec-btn-pin:disabled { opacity: 0.5; cursor: default; }
+
 /* ── Alertas de conflito ── */
 .ec-alertas {
   display: flex;

@@ -58,22 +58,51 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
   const [naoEncontrado, setNaoEncontrado] = useState(false);
   const enderecoOriginal = useRef(form.endereco);
 
+  // Extraído do efeito de debounce pra também poder ser chamado na hora
+  // (botão do alfinete), sem esperar os 800ms nem precisar editar o texto.
+  async function buscarEndereco(endereco) {
+    if (!endereco?.trim()) return;
+    setGeocodando(true);
+    setNaoEncontrado(false);
+    // geocodeEndereco já tenta primeiro cru (cobre endereço já completo,
+    // caso comum aqui) e só complementa com cidade/UF numa 2ª tentativa
+    // se não achar nada — não precisa de tratamento especial aqui.
+    const resultado = await geocodeEndereco({ endereco });
+    setGeocodando(false);
+    if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
+    else setNaoEncontrado(true); // mapa fica com a última localização válida — só avisa que essa busca não achou nada
+  }
+
   useEffect(() => {
     if (form.endereco === enderecoOriginal.current) return; // endereço não mudou — mantém a coordenada do cadastro
     if (!form.endereco?.trim()) { setNaoEncontrado(false); return; }
-    const timer = setTimeout(async () => {
-      setGeocodando(true);
-      setNaoEncontrado(false);
-      // geocodeEndereco já tenta primeiro cru (cobre endereço já completo,
-      // caso comum aqui) e só complementa com cidade/UF numa 2ª tentativa
-      // se não achar nada — não precisa de tratamento especial aqui.
-      const resultado = await geocodeEndereco({ endereco: form.endereco });
-      setGeocodando(false);
-      if (resultado) setMapaCoords({ lat: resultado.lat, lng: resultado.lng });
-      else setNaoEncontrado(true); // mapa fica com a última localização válida — só avisa que essa busca não achou nada
-    }, 800);
+    const timer = setTimeout(() => buscarEndereco(form.endereco), 800);
     return () => clearTimeout(timer);
   }, [form.endereco]);
+
+  // Autocomplete do "Nome" (só existe pra tarefa avulsa) contra os clientes
+  // já cadastrados — mesmo texto podendo bater com um cliente real, sem
+  // vincular a tarefa a ele (ela continua avulsa), só copia nome/endereço
+  // pra agilizar o preenchimento.
+  const [buscaNomeAberta, setBuscaNomeAberta] = useState(false);
+  const sugestoesNome = useMemo(() => {
+    const q = form.nomeTarefa.trim().toLowerCase();
+    if (!q) return [];
+    return clientes.filter(c => c.nome_empresa.toLowerCase().includes(q)).slice(0, 8);
+  }, [clientes, form.nomeTarefa]);
+
+  function selecionarSugestaoNome(c) {
+    setBuscaNomeAberta(false);
+    setF('nomeTarefa', c.nome_empresa);
+    if (c.endereco) setF('endereco', c.endereco);
+    if (c.lat && c.lng) {
+      // Já é a coordenada do cadastro — marca como "original" pra não
+      // disparar uma geocodificação redundante (e menos precisa) por cima.
+      enderecoOriginal.current = c.endereco || enderecoOriginal.current;
+      setMapaCoords({ lat: c.lat, lng: c.lng });
+      setNaoEncontrado(false);
+    }
+  }
 
   function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -183,23 +212,50 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
           {semCliente && (
             <div className="ec-campo">
               <label>Nome <span className="ec-hint">(essa visita não está vinculada a um cliente ou lead cadastrado)</span></label>
-              <input
-                type="text"
-                value={form.nomeTarefa}
-                onChange={e => setF('nomeTarefa', e.target.value)}
-                placeholder="Ex: Nome da empresa ou do evento"
-              />
+              <div className="ec-busca">
+                <input
+                  className="ec-busca__input"
+                  type="text"
+                  value={form.nomeTarefa}
+                  onChange={e => { setF('nomeTarefa', e.target.value); setBuscaNomeAberta(true); }}
+                  onFocus={() => setBuscaNomeAberta(true)}
+                  onBlur={() => setTimeout(() => setBuscaNomeAberta(false), 150)}
+                  placeholder="Ex: Nome da empresa ou do evento"
+                  autoComplete="off"
+                />
+                {buscaNomeAberta && sugestoesNome.length > 0 && (
+                  <div className="ec-busca__lista">
+                    {sugestoesNome.map(c => (
+                      <button key={c.id} className="ec-busca__item" onMouseDown={() => selecionarSugestaoNome(c)}>
+                        <span className="ec-busca__item-nome">{c.nome_empresa}</span>
+                        {c.bairro && <span className="ec-busca__item-bairro">{c.bairro}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           <div className="ec-campo">
             <label>Local / Endereço <span className="ec-hint">(vale só para esta visita — não altera o cadastro do cliente)</span></label>
-            <input
-              type="text"
-              value={form.endereco}
-              onChange={e => setF('endereco', e.target.value)}
-              placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
-            />
+            <div className="ec-endereco-linha">
+              <input
+                type="text"
+                value={form.endereco}
+                onChange={e => setF('endereco', e.target.value)}
+                placeholder="Ex: Av. Paulista, 1000 — Bela Vista, São Paulo"
+              />
+              <button
+                type="button"
+                className="ec-btn-pin"
+                onClick={() => buscarEndereco(form.endereco)}
+                disabled={geocodando || !form.endereco?.trim()}
+                title="Buscar esse endereço agora"
+              >
+                📍
+              </button>
+            </div>
             {geocodando && <span className="ec-hint">🔎 Buscando localização...</span>}
             {!geocodando && naoEncontrado && (
               <span className="ec-hint">⚠ Endereço não encontrado — mapa mantém a última localização válida.</span>
