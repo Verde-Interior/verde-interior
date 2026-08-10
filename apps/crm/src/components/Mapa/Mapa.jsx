@@ -1,5 +1,5 @@
 // src/components/Mapa/Mapa.jsx
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -102,6 +102,21 @@ function FocoCliente({ alvo }) {
     L.popup().setLatLng([c.lat, c.lng]).setContent(popupHtml(c)).openOn(map);
     // alvo.ts muda a cada seleção (mesmo que seja o mesmo cliente de novo),
     // garantindo que o efeito rode de novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alvo?.ts, map]);
+
+  return null;
+}
+
+// Centraliza no candidato selecionado na lista do painel de troca — sem
+// isso, marcar um item na lista não dá nenhum feedback visual no mapa
+// quando há dezenas de pinos parecidos espalhados pela cidade.
+function FocoTroca({ alvo }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!alvo) return;
+    map.flyTo([alvo.lat, alvo.lng], Math.max(map.getZoom(), 14));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvo?.ts, map]);
 
@@ -303,6 +318,7 @@ export default function Mapa({ onNavegar }) {
   const [trocaData, setTrocaData] = useState(hojeStr);
   const [criandoTrocas, setCriandoTrocas] = useState(false);
   const [msgTroca, setMsgTroca] = useState('');
+  const [focoTroca, setFocoTroca] = useState(null); // { lat, lng, ts } — candidato focado via lista
 
   useEffect(() => {
     if (!modoTroca) return;
@@ -331,13 +347,16 @@ export default function Mapa({ onNavegar }) {
     return candidatosTroca({ clientes, ultimaTrocaPorCliente, semanaCiclo, hojeIso: hojeStr() });
   }, [modoTroca, clientes, agendaTrocas, semanaCiclo]);
 
-  function toggleCandidatoTroca(id) {
+  // useCallback com deps fixas: referência estável entre renders, senão o
+  // TrocaLayer recria todos os pinos do mapa a cada render do Mapa (mesmo
+  // sem a seleção ter mudado — ex: só digitar a data no rodapé já bastava).
+  const toggleCandidatoTroca = useCallback((id) => {
     setSelecionadosTroca((s) => {
       const n = new Set(s);
       if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
-  }
+  }, []);
 
   const trocaFuncionario = funcionarios.find((f) => String(f.id) === String(trocaFuncionarioId));
   const minutosSelecionados = candidatosDaSemana
@@ -583,7 +602,7 @@ export default function Mapa({ onNavegar }) {
                     <button
                       key={c.id}
                       className={`mapa__troca-item ${sel ? 'mapa__troca-item--sel' : ''}`}
-                      onClick={() => toggleCandidatoTroca(c.id)}
+                      onClick={() => { toggleCandidatoTroca(c.id); setFocoTroca({ lat: c.lat, lng: c.lng, ts: Date.now() }); }}
                     >
                       <span className="mapa__troca-item__check">{sel ? '✓' : ''}</span>
                       <span className="mapa__rota-item__info">
@@ -644,7 +663,10 @@ export default function Mapa({ onNavegar }) {
               {modoRota ? (
                 <RotaLayer key={`${rotaFuncionarioId}-${rotaData}`} visitas={rotaVisitas} onAbrirVisita={setAgendamentoSelecionado} />
               ) : modoTroca ? (
-                <TrocaLayer key={semanaCiclo} candidatos={candidatosDaSemana} selecionados={selecionadosTroca} onToggle={toggleCandidatoTroca} />
+                <>
+                  <TrocaLayer key={semanaCiclo} candidatos={candidatosDaSemana} selecionados={selecionadosTroca} onToggle={toggleCandidatoTroca} />
+                  <FocoTroca alvo={focoTroca} />
+                </>
               ) : (
                 <>
                   <ClusterLayer clientes={filtrados} />
