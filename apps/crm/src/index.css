@@ -167,14 +167,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
-/* Evita cursor de texto e seleção acidental em elementos de UI */
-* { user-select: none; -webkit-user-select: none; }
-input, textarea, select, [contenteditable] {
-  user-select: text;
-  -webkit-user-select: text;
-}
-/* Células de dados que o gestor pode precisar copiar */
-.selectable { user-select: text; -webkit-user-select: text; cursor: text; }
+/* Cursor de seta por padrão em toda a UI — evita o I-beam em títulos e labels */
+* { cursor: default; }
+input, textarea, select, [contenteditable] { cursor: text; }
+a, button, [role="button"], label[for], summary { cursor: pointer; }
 
 body {
   font-family: var(--font-body);
