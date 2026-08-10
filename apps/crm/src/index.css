@@ -167,6 +167,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
+/* Evita cursor de texto e seleção acidental em elementos de UI */
+* { user-select: none; -webkit-user-select: none; }
+input, textarea, select, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+/* Células de dados que o gestor pode precisar copiar */
+.selectable { user-select: text; -webkit-user-select: text; cursor: text; }
+
 body {
   font-family: var(--font-body);
   background:
