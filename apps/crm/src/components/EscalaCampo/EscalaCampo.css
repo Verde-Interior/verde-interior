@@ -1597,6 +1597,15 @@
 .ec__btn-copiar:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
 .ec__btn-copiar:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Entrada recomendada do fluxo guiado (Planejar semana) — mesmo estilo
+   base do ec__btn-copiar, só com um pouco mais de destaque. */
+.ec__btn-copiar--primario {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-lt);
+}
+.ec__btn-copiar--primario:hover:not(:disabled) { background: var(--color-primary); color: white; }
+
 /* ── Header de coluna: warnings + otimizar ── */
 .ec__coluna-header-dir {
   display: flex;

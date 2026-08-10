@@ -286,7 +286,7 @@ function AppLayout({ tema, onToggleTema }) {
         {tela === 'os'            && <OrdensServico />}
         {tela === 'clientes'      && <Clientes />}
         {tela === 'mapa'          && <Mapa onNavegar={setTela} />}
-        {tela === 'escala'        && <EscalaCampo />}
+        {tela === 'escala'        && <EscalaCampo onNavegar={setTela} />}
         {tela === 'relatorios'    && <Relatorios />}
         {tela === 'estoque'       && <Estoque />}
         {tela === 'agenda'        && <Agenda />}

@@ -23,6 +23,7 @@ import ModalBloqueios from './ModalBloqueios';
 import PainelAtrasados from './PainelAtrasados';
 import ModalCopiarAgenda from './ModalCopiarAgenda';
 import ModalGerarRega from './ModalGerarRega';
+import ModalRevisarSemana from './ModalRevisarSemana';
 import EscalaCalendario from './EscalaCalendario';
 import { addMes } from '../../utils/calendarioUtils';
 import './EscalaCampo.css';
@@ -118,7 +119,7 @@ function DragHandleColuna() {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function EscalaCampo() {
+export default function EscalaCampo({ onNavegar }) {
   const [semana,      setSemana]      = useState(() => getSemana(new Date()));
   const [diaSel,      setDiaSel]      = useState(getHoje);
   const [employees,   setEmployees]   = useState([]);
@@ -176,6 +177,8 @@ export default function EscalaCampo() {
   const [otimizando,      setOtimizando]      = useState(null); // empId em otimização
   const [modalCopiar,     setModalCopiar]     = useState(false);
   const [modalGerarRega,  setModalGerarRega]  = useState(false);
+  const [fluxoGuiado,     setFluxoGuiado]      = useState(false); // true quando "Planejar semana" abriu o Gerar Rega — oferece continuar pras trocas ao terminar
+  const [modalRevisar,    setModalRevisar]    = useState(false);
   const [mostrarPrioridade, setMostrarPrioridade] = useState(false);
 
   // ── Edição de visita ────────────────────────────────────────────────────────
@@ -526,6 +529,20 @@ export default function EscalaCampo() {
     cancelarSelecao();
   }
 
+  // ── Fluxo guiado de planejamento semanal (Fase C) ──────────────────────────
+  // "Planejar semana": abre o Gerar Rega; ao terminar, oferece seguir direto
+  // pro Planejador de Troca do Mapa, já na semana certa (deep-link via query
+  // param — Mapa lê ?trocaSemana na montagem).
+  function iniciarPlanejamentoSemana() {
+    setFluxoGuiado(true);
+    setModalGerarRega(true);
+  }
+
+  function irParaTrocaDaSemana() {
+    window.history.pushState({}, '', `?tela=mapa&trocaSemana=${semana[0]}`);
+    onNavegar?.('mapa');
+  }
+
   // ── Seleção ────────────────────────────────────────────────────────────────
 
   function toggleSel(id) {
@@ -712,6 +729,25 @@ export default function EscalaCampo() {
     if (!ids.length) return;
     await supabase.from('agenda').update({ status: 'publicado', publicado_em: new Date().toISOString() }).in('id', ids);
     await carregarAgenda();
+  }
+
+  // ── Publicar a semana inteira (Fase C — revisão consolidada) ───────────────
+  const [publicandoSemana, setPublicandoSemana] = useState(false);
+  async function publicarSemana() {
+    const ids = agenda.filter(v => v.status === 'rascunho').map(v => v.id);
+    if (!ids.length) return;
+    if (!confirm(`Publicar ${ids.length} tarefa${ids.length !== 1 ? 's' : ''} em rascunho dessa semana? Os funcionários passam a ver tudo no App Ponto.`)) return;
+    setPublicandoSemana(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'publicado', publicado_em: new Date().toISOString() }).in('id', ids);
+      if (error) throw error;
+      setModalRevisar(false);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao publicar semana: ' + e.message);
+    } finally {
+      setPublicandoSemana(false);
+    }
   }
 
   // ── Otimizar rota do funcionário no dia ────────────────────────────────────
@@ -1055,11 +1091,18 @@ export default function EscalaCampo() {
             ↺ Copiar agenda
           </button>
           <button
-            className="ec__btn-copiar"
-            onClick={() => setModalGerarRega(true)}
-            title="Copia a agenda de rega da semana anterior pra semana selecionada, removendo troca/quinzenais já feitas/pontuais já atendidas"
+            className="ec__btn-copiar ec__btn-copiar--primario"
+            onClick={iniciarPlanejamentoSemana}
+            title="Fluxo guiado: gera a rega da semana e, na sequência, oferece planejar as trocas do ciclo no Mapa"
           >
-            📋 Gerar rega da semana
+            🗓️ Planejar semana
+          </button>
+          <button
+            className="ec__btn-copiar"
+            onClick={() => setModalRevisar(true)}
+            title="Mostra tudo em rascunho nessa semana (rega + troca) pra revisar e publicar tudo de uma vez"
+          >
+            🔍 Revisar semana
           </button>
           <div className="ec__modo-visao">
             {[
@@ -1538,12 +1581,31 @@ export default function EscalaCampo() {
           employees={employeesOrdenados}
           clientes={clientes}
           semana={semana}
-          onFechar={() => setModalGerarRega(false)}
+          onFechar={() => { setModalGerarRega(false); setFluxoGuiado(false); }}
           onGerado={(qtd) => {
             setModalGerarRega(false);
             carregarAgenda();
             alert(`✓ ${qtd} tarefa${qtd !== 1 ? 's' : ''} de rega criada${qtd !== 1 ? 's' : ''} como rascunho — revise na Escala antes de publicar.`);
+            if (fluxoGuiado) {
+              setFluxoGuiado(false);
+              if (confirm('Rega gerada. Quer continuar agora planejando as trocas dessa semana no Mapa?')) {
+                irParaTrocaDaSemana();
+              }
+            }
           }}
+        />
+      )}
+
+      {/* ── Modal de revisão consolidada da semana (Fase C) ── */}
+      {modalRevisar && (
+        <ModalRevisarSemana
+          visitas={agenda}
+          employees={employeesOrdenados}
+          clientes={clientes}
+          semana={semana}
+          onFechar={() => setModalRevisar(false)}
+          onPublicar={publicarSemana}
+          publicando={publicandoSemana}
         />
       )}
 

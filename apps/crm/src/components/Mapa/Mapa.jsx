@@ -309,8 +309,15 @@ export default function Mapa({ onNavegar }) {
   // gestor) ── Semanas 1/3 do ciclo = candidatos com orquídea; 2/4 = troca
   // geral (Manutenção com troca / Locação). Não cria nada sozinho — só
   // sugere, você seleciona e confirma.
-  const [modoTroca, setModoTroca] = useState(false);
-  const [semanaCiclo, setSemanaCiclo] = useState(() => calcSemanaCiclo(hojeStr()));
+  // Deep-link vindo da Escala ("Planejar semana" → oferece continuar pras
+  // trocas): ?trocaSemana=<segunda-feira ISO da semana> já abre direto no
+  // modo troca, na semana/ciclo certos — sem isso o gestor cairia sempre na
+  // semana atual e teria que reajustar manualmente.
+  const [modoTroca, setModoTroca] = useState(() => new URLSearchParams(window.location.search).has('trocaSemana'));
+  const [semanaCiclo, setSemanaCiclo] = useState(() => {
+    const semanaParam = new URLSearchParams(window.location.search).get('trocaSemana');
+    return calcSemanaCiclo(semanaParam || hojeStr());
+  });
   const [agendaTrocas, setAgendaTrocas] = useState([]);
   const [trocasLoading, setTrocasLoading] = useState(false);
   const [selecionadosTroca, setSelecionadosTroca] = useState(new Set());
