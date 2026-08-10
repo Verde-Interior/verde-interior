@@ -1,5 +1,5 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { createPortal } from 'react-dom';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
@@ -47,24 +47,36 @@ export default function EscalaCampo() {
   const [dragId,      setDragId]      = useState(null);
   const [dragOverEmp, setDragOverEmp] = useState(null);
 
-  // ── Pan (arrastar header para rolar colunas) ─────────────────────────────────
-  const colunasRef = useRef(null);
-  const panRef     = useRef(null);
-  function iniciarPan(e) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    panRef.current = { startX: e.clientX, scrollX: colunasRef.current?.scrollLeft ?? 0 };
-    function onMove(ev) {
-      if (!panRef.current || !colunasRef.current) return;
-      colunasRef.current.scrollLeft = panRef.current.scrollX + (panRef.current.startX - ev.clientX);
+  // ── Reordenar colunas (arrastar header) ──────────────────────────────────────
+  const [dragColId,    setDragColId]    = useState(null);
+  const [ordemColunas, setOrdemColunas] = useState([]);
+
+  useEffect(() => {
+    if (employees.length === 0) return;
+    const saved = localStorage.getItem('escala-ordem-colunas');
+    if (saved) {
+      try {
+        const ids = JSON.parse(saved);
+        const conhecidos = ids.filter(id => employees.some(e => String(e.id) === id));
+        const novos = employees.filter(e => !ids.includes(String(e.id))).map(e => String(e.id));
+        setOrdemColunas([...conhecidos, ...novos]);
+        return;
+      } catch { /* segue para o fallback */ }
     }
-    function onUp() {
-      panRef.current = null;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    setOrdemColunas(employees.map(e => String(e.id)));
+  }, [employees]);
+
+  function reordenarColunas(fromId, toId) {
+    setOrdemColunas(prev => {
+      const arr = [...prev];
+      const fi = arr.indexOf(fromId), ti = arr.indexOf(toId);
+      if (fi === -1 || ti === -1) return prev;
+      arr.splice(fi, 1);
+      arr.splice(ti, 0, fromId);
+      localStorage.setItem('escala-ordem-colunas', JSON.stringify(arr));
+      return arr;
+    });
+    setDragOverEmp(null);
   }
 
   // ── Seleção múltipla ─────────────────────────────────────────────────────────
@@ -788,8 +800,12 @@ export default function EscalaCampo() {
       ) : employees.length === 0 ? (
         <div className="ec__estado"><p>Nenhum funcionário de campo cadastrado.</p></div>
       ) : (
-        <div className="ec__colunas" ref={colunasRef}>
-          {employees.map(emp => {
+        <div className="ec__colunas">
+          {[...employees].sort((a, b) => {
+            const ia = ordemColunas.indexOf(String(a.id));
+            const ib = ordemColunas.indexOf(String(b.id));
+            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+          }).map(emp => {
             const visitas    = visitasDiaSel[emp.id] ?? [];
             const isDragAlvo = dragOverEmp === String(emp.id);
             const conflitos  = conflitosPorEmp[emp.id] ?? { sobreposicoes: [], estouraDia: false, fimMin: 0 };
@@ -801,11 +817,20 @@ export default function EscalaCampo() {
               <div
                 key={emp.id}
                 className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''} ${bloqueio ? 'ec__coluna--bloqueada' : ''}`}
-                onDragOver={e => { if (bloqueio) return; e.preventDefault(); setDragOverEmp(String(emp.id)); }}
+                onDragOver={e => { e.preventDefault(); setDragOverEmp(String(emp.id)); }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverEmp(null); }}
-                onDrop={() => { if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; } handleDrop(emp.id); }}
+                onDrop={() => {
+                  if (dragColId) { reordenarColunas(dragColId, String(emp.id)); return; }
+                  if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; }
+                  handleDrop(emp.id);
+                }}
               >
-                <div className="ec__coluna-header" onMouseDown={iniciarPan}>
+                <div
+                  className="ec__coluna-header"
+                  draggable
+                  onDragStart={e => { e.dataTransfer.setData('col', String(emp.id)); setDragColId(String(emp.id)); }}
+                  onDragEnd={() => { setDragColId(null); setDragOverEmp(null); }}
+                >
                   <div>
                     <span className="ec__coluna-nome">{emp.name}</span>
                     <span className="ec__coluna-cargo">{emp.cargo}</span>
