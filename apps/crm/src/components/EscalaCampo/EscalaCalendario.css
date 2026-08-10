@@ -54,15 +54,6 @@
   gap: 6px;
 }
 
-/* Sem isso, cada semana (linha) do grid ganha altura independente, baseada
-   só no próprio conteúdo — uma semana cheia de visitas fica alta, uma quase
-   vazia (comum na última linha do mês) fica espremida no min-height da
-   célula, sumindo visualmente perto das linhas de cima. Altura fixa cobre
-   cabeçalho + as 4 visitas visíveis (.ec-cal__cel-lista, 76px) + padding, e
-   dias com menos conteúdo só sobram com espaço em branco embaixo — mesmo
-   padrão de quadrado uniforme do Auvo/Google Calendar. */
-.ec-cal__grid--mes { grid-auto-rows: 112px; }
-
 .ec-cal__dow {
   text-align: center;
   font-size: 11px;
@@ -89,6 +80,19 @@
 .ec-cal__cel--vazia {
   background: transparent;
   border-color: transparent;
+}
+
+/* Altura fixa só nos quadrados do dia (não na linha do grid inteira, que
+   também contém o cabeçalho DOM/SEG/... — fixar ali infla o cabeçalho
+   junto). Sem isso, cada semana tomava altura independente baseada no
+   próprio conteúdo: uma semana cheia de visitas ficava alta, uma quase
+   vazia (comum na última linha do mês) ficava espremida, sumindo perto das
+   linhas de cima. 112px cobre cabeçalho do dia + as 4 visitas visíveis
+   (.ec-cal__cel-lista, 76px) + padding — mesmo padrão de quadrado uniforme
+   do Auvo/Google Calendar. */
+.ec-cal__grid--mes .ec-cal__cel,
+.ec-cal__grid--mes .ec-cal__cel--vazia-clicavel {
+  height: 112px;
 }
 
 /* Dia sem nenhuma visita — a célula inteira vira um botão de "adicionar
