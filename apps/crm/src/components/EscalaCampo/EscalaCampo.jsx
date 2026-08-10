@@ -22,6 +22,7 @@ import ModalRedistribuir from './ModalRedistribuir';
 import ModalBloqueios from './ModalBloqueios';
 import PainelAtrasados from './PainelAtrasados';
 import ModalCopiarAgenda from './ModalCopiarAgenda';
+import ModalGerarRega from './ModalGerarRega';
 import EscalaCalendario from './EscalaCalendario';
 import { addMes } from '../../utils/calendarioUtils';
 import './EscalaCampo.css';
@@ -174,6 +175,7 @@ export default function EscalaCampo() {
   const [showAtrasados,   setShowAtrasados]   = useState(false);
   const [otimizando,      setOtimizando]      = useState(null); // empId em otimização
   const [modalCopiar,     setModalCopiar]     = useState(false);
+  const [modalGerarRega,  setModalGerarRega]  = useState(false);
   const [mostrarPrioridade, setMostrarPrioridade] = useState(false);
 
   // ── Edição de visita ────────────────────────────────────────────────────────
@@ -1052,6 +1054,13 @@ export default function EscalaCampo() {
           >
             ↺ Copiar agenda
           </button>
+          <button
+            className="ec__btn-copiar"
+            onClick={() => setModalGerarRega(true)}
+            title="Copia a agenda de rega da semana anterior pra semana selecionada, removendo troca/quinzenais já feitas/pontuais já atendidas"
+          >
+            📋 Gerar rega da semana
+          </button>
           <div className="ec__modo-visao">
             {[
               { id: 'semana',    label: 'Semana' },
@@ -1520,6 +1529,21 @@ export default function EscalaCampo() {
           diaSel={diaSel}
           onFechar={() => setModalCopiar(false)}
           onCopiado={() => { setModalCopiar(false); carregarAgenda(); }}
+        />
+      )}
+
+      {/* ── Modal de gerar rega da semana (copia semana anterior, filtra troca/quinzenal/pontual) ── */}
+      {modalGerarRega && (
+        <ModalGerarRega
+          employees={employeesOrdenados}
+          clientes={clientes}
+          semana={semana}
+          onFechar={() => setModalGerarRega(false)}
+          onGerado={(qtd) => {
+            setModalGerarRega(false);
+            carregarAgenda();
+            alert(`✓ ${qtd} tarefa${qtd !== 1 ? 's' : ''} de rega criada${qtd !== 1 ? 's' : ''} como rascunho — revise na Escala antes de publicar.`);
+          }}
         />
       )}
 
