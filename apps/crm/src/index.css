@@ -167,8 +167,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
-/* Cursor de seta por padrão em toda a UI — evita o I-beam em títulos e labels */
-* { cursor: default; caret-color: transparent; }
+/* Cursor de seta por padrão — via body para que herança funcione normalmente
+   e elementos com cursor explícito (grab, pointer, etc.) não sejam sobrescritos */
+body { cursor: default; }
+* { caret-color: transparent; }
 input, textarea, select, [contenteditable] { cursor: text; caret-color: auto; }
 a, button, [role="button"], label[for], summary { cursor: pointer; }
 
