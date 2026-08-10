@@ -167,25 +167,6 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
-/* Cursor de seta por padrão — via body para que herança funcione normalmente
-   e elementos com cursor explícito (grab, pointer, etc.) não sejam sobrescritos */
-body { cursor: default; }
-* { caret-color: transparent; }
-input, textarea, select, [contenteditable] { cursor: text; caret-color: auto; }
-a, button, [role="button"], label[for], summary { cursor: pointer; }
-
-/* Impede seleção de texto durante drag — só em elementos arrastáveis e
-   handles de reordenação (cursor grab). Texto continua selecionável no resto. */
-[draggable="true"],
-[draggable="true"] *,
-.ec__coluna-header,
-.ec__coluna-header *,
-.dashboard__bloco,
-.dashboard__bloco * {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 body {
   font-family: var(--font-body);
   background:

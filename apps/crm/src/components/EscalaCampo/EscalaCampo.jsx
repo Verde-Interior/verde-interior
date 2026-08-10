@@ -1,5 +1,5 @@
 // src/components/EscalaCampo/EscalaCampo.jsx
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { createPortal } from 'react-dom';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
@@ -43,31 +43,9 @@ export default function EscalaCampo() {
   const [modal,       setModal]       = useState(null);
   const [salvando,    setSalvando]    = useState(false);
 
-  // ── Drag & Drop (cartões de visita entre colunas) ────────────────────────────
-  const [dragId,      setDragId]      = useState(null);
-  const [dragOverEmp, setDragOverEmp] = useState(null);
-
-  // ── Pan (arrastar o header para rolar as colunas horizontalmente) ─────────────
-  const colunasRef = useRef(null);
-  const panRef     = useRef(null);
-
-  function iniciarPan(e) {
-    if (e.button !== 0) return; // só botão esquerdo
-    e.preventDefault();
-    panRef.current = { startX: e.clientX, scrollX: colunasRef.current?.scrollLeft ?? 0 };
-
-    function onMove(ev) {
-      if (!panRef.current || !colunasRef.current) return;
-      colunasRef.current.scrollLeft = panRef.current.scrollX + (panRef.current.startX - ev.clientX);
-    }
-    function onUp() {
-      panRef.current = null;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }
+  // ── Drag & Drop ──────────────────────────────────────────────────────────────
+  const [dragId,      setDragId]      = useState(null); // id da visita sendo arrastada
+  const [dragOverEmp, setDragOverEmp] = useState(null); // empId da coluna com hover
 
   // ── Seleção múltipla ─────────────────────────────────────────────────────────
   const [modoSelecao,  setModoSelecao]  = useState(false);
@@ -790,7 +768,7 @@ export default function EscalaCampo() {
       ) : employees.length === 0 ? (
         <div className="ec__estado"><p>Nenhum funcionário de campo cadastrado.</p></div>
       ) : (
-        <div className="ec__colunas" ref={colunasRef}>
+        <div className="ec__colunas">
           {employees.map(emp => {
             const visitas    = visitasDiaSel[emp.id] ?? [];
             const isDragAlvo = dragOverEmp === String(emp.id);
@@ -807,12 +785,12 @@ export default function EscalaCampo() {
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverEmp(null); }}
                 onDrop={() => { if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; } handleDrop(emp.id); }}
               >
-                <div className="ec__coluna-header" onMouseDown={iniciarPan}>
+                <div className="ec__coluna-header">
                   <div>
                     <span className="ec__coluna-nome">{emp.name}</span>
                     <span className="ec__coluna-cargo">{emp.cargo}</span>
                   </div>
-                  <div className="ec__coluna-header-dir" onMouseDown={e => e.stopPropagation()}>
+                  <div className="ec__coluna-header-dir">
                     <button
                       className="ec__coluna-bloq"
                       onClick={() => setModalBloqueio({ funcionarioId: String(emp.id), funcionarioNome: emp.name })}
@@ -889,7 +867,7 @@ export default function EscalaCampo() {
                         onCima={() => moverVisita(v, -1)}
                         onBaixo={() => moverVisita(v, +1)}
                         onDeletar={() => deletarVisita(v.id)}
-                        onDragStart={e => { e.dataTransfer.setData('text/plain', String(v.id)); handleDragStart(v.id); }}
+                        onDragStart={() => handleDragStart(v.id)}
                         onDragEnd={handleDragEnd}
                         isDragging={dragId === v.id}
                         modoSelecao={modoSelecao}
