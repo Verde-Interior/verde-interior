@@ -6,6 +6,7 @@ import { formatarDataHora, formatarData } from '../../utils/dateUtils';
 import { distanciaMetros } from '../../utils/geoUtils';
 import { formatarDuracao } from '../../utils/formatUtils';
 import ModalConfirmar from '../ModalConfirmar/ModalConfirmar';
+import ModalConsumo from '../ModalConsumo/ModalConsumo';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import { baixarPDF } from '../../lib/gerarRelatorio';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
@@ -327,59 +328,28 @@ export default function Relatorios() {
             <span className="rel__kpi-valor">{metricas.assinados}</span>
             <span className="rel__kpi-label">Assinados</span>
           </div>
+          <button
+            className="rel__kpi rel__kpi--storage"
+            onClick={() => setConsumoAberto(true)}
+            title="Ver uso de storage por colaborador"
+          >
+            <span className="rel__kpi-valor">📶</span>
+            <span className="rel__kpi-label">Storage</span>
+          </button>
         </div>
       </header>
 
-      <div className="rel__consumo">
-        <button
-          className="rel__consumo-toggle"
-          onClick={() => setConsumoAberto(v => !v)}
-          title="Estimativa de dados consumidos (fotos) por colaborador, no período selecionado"
-        >
-          📶 Consumo de dados por colaborador {consumoAberto ? '▲' : '▼'}
-        </button>
-        {consumoAberto && (
-          <>
-            <div className="rel__consumo-backfill">
-              <button
-                className="rel__consumo-toggle"
-                onClick={recalcularTamanhosAntigos}
-                disabled={backfillRodando}
-                title="Preenche o tamanho das fotos enviadas antes desse recurso existir, lendo direto do Storage"
-              >
-                {backfillRodando ? '⏳ Calculando...' : '🔄 Calcular fotos antigas (sem tamanho)'}
-              </button>
-              {backfillResultado && (
-                backfillResultado.erro
-                  ? <span className="rel__consumo-backfill-msg rel__consumo-backfill-msg--erro">Erro: {backfillResultado.erro}</span>
-                  : <span className="rel__consumo-backfill-msg">
-                      {backfillResultado.atualizadas} foto{backfillResultado.atualizadas !== 1 ? 's' : ''} atualizada{backfillResultado.atualizadas !== 1 ? 's' : ''}
-                      {backfillResultado.falhas > 0 && ` · ${backfillResultado.falhas} não encontrada(s) no Storage`}
-                      {backfillResultado.total === 0 && ' · nada pendente'}
-                    </span>
-              )}
-            </div>
-            {usoPorFuncionario.length === 0 ? (
-              <p className="rel__consumo-vazio">Sem fotos no período selecionado.</p>
-            ) : (
-              <table className="rel__consumo-tabela">
-                <thead>
-                  <tr><th>Colaborador</th><th>Fotos</th><th>Dados (estimado)</th></tr>
-                </thead>
-                <tbody>
-                  {usoPorFuncionario.map(u => (
-                    <tr key={u.nome}>
-                      <td>{u.nome}</td>
-                      <td>{u.fotos}</td>
-                      <td>{formatarBytes(u.bytes)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </>
-        )}
-      </div>
+      {consumoAberto && (
+        <ModalConsumo
+          dados={usoPorFuncionario}
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          backfillRodando={backfillRodando}
+          backfillResultado={backfillResultado}
+          onBackfill={recalcularTamanhosAntigos}
+          onFechar={() => setConsumoAberto(false)}
+        />
+      )}
 
       <div className="rel__filtros">
         <div className="rel__busca-wrap">
