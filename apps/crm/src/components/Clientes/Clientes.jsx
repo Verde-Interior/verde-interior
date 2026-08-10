@@ -1,5 +1,6 @@
 // src/components/Clientes/Clientes.jsx
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../Toast/Toast';
 import { tempoRelativo } from '../../utils/formatUtils';
@@ -164,6 +165,7 @@ export default function Clientes() {
   }
 
   useEffect(() => { carregar(); }, []);
+  useRealtimeRefresh('clientes', carregar);
 
   // Deep-link: ?tela=clientes&cliente=<id> (vindo do "Ver cadastro completo"
   // do Mapa) abre direto o modal de edição assim que a lista carrega.

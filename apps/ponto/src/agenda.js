@@ -245,30 +245,22 @@ function statusLabel(s) {
     cancelado:   { txt: 'Cancelada',    cls: 'ag-badge--cancel' },
   })[s] || { txt: s, cls: '' };
 }
-function getPosition(options) {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+async function captureGPS() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({ lat: null, lng: null, motivo: 'indisponivel' });
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, motivo: null }),
+      (err) => resolve({ lat: null, lng: null, motivo: err.code === 1 ? 'negado' : 'falhou' }),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
   });
 }
 
-// Tenta com alta precisão (GPS) primeiro; se falhar ou estourar o tempo
-// (comum dentro de prédios, onde o GPS demora ou não pega sinal), tenta de
-// novo com precisão menor (wifi/rede), que costuma responder mais rápido
-// em ambiente interno. maximumAge > 0 só reaproveita uma leitura recente
-// do próprio sensor do aparelho — não afeta a confiabilidade contra GPS
-// falsificado, que atua numa camada abaixo do navegador de qualquer forma.
-async function captureGPS() {
-  if (!navigator.geolocation) return { lat: null, lng: null };
-  try {
-    const p = await getPosition({ enableHighAccuracy: true, timeout: 20000, maximumAge: 20000 });
-    return { lat: p.coords.latitude, lng: p.coords.longitude };
-  } catch {
-    try {
-      const p = await getPosition({ enableHighAccuracy: false, timeout: 15000, maximumAge: 20000 });
-      return { lat: p.coords.latitude, lng: p.coords.longitude };
-    } catch {
-      return { lat: null, lng: null };
-    }
+function alertGPS(motivo) {
+  if (motivo === 'negado') {
+    alert('Localização bloqueada.\n\nVá nas configurações do celular, permita o acesso à localização para o navegador e recarregue o app.');
+  } else {
+    alert('Não foi possível capturar sua localização.\n\nVerifique se o GPS do celular está ativado e tente novamente.');
   }
 }
 
@@ -1223,15 +1215,14 @@ export async function checkIn() {
     toast('Capturando localização...');
     const gps = await captureGPS();
     const gpsFalhou = gps.lat == null || gps.lng == null;
-    const now = new Date().toISOString();
+    const bypassRaio = ses.name === 'beto'; // gestor testando remotamente
 
-    // Regra: check-in só é permitido dentro de RAIO_CHECKIN_METROS do cliente.
-    // Se GPS não capturou OU o cliente não tem lat/lng cadastrada, deixa passar
-    // (não dá pra validar sem ambos). Do contrário, calcula e bloqueia se longe.
+    if (gpsFalhou && !bypassRaio) { alertGPS(gps.motivo); return; }
+
+    const now = new Date().toISOString();
     const cliLat = v.cliente?.lat;
     const cliLng = v.cliente?.lng;
-    const bypassRaio = ses.name === 'beto'; // gestor testando remotamente
-    if (!bypassRaio && !gpsFalhou && cliLat != null && cliLng != null) {
+    if (!bypassRaio && cliLat != null && cliLng != null) {
       const dist = distanciaMetros(gps.lat, gps.lng, cliLat, cliLng);
       if (dist != null && dist > RAIO_CHECKIN_METROS) {
         alert(
@@ -1394,7 +1385,16 @@ export async function addPhoto(input) {
     try {
       p.file = await comprimirImagem(p.file);
     } catch (e) {
-      console.warn('Compressão falhou, usando original:', e);
+      // Tentativa 1 falhou — tenta com resolução menor e sem HEIC
+      try {
+        p.file = await comprimirImagem(p.file, 800, 0.7);
+      } catch (e2) {
+        // Ambas falharam — marca erro e não envia o original para não estourar storage
+        p.error = 'Não foi possível processar esta foto. Tente novamente.';
+        p._comprimindo = false;
+        renderCurrentView();
+        continue;
+      }
     }
     p._comprimindo = false;
   }
@@ -1709,6 +1709,9 @@ export async function submit() {
 
   toast('Capturando localização...');
   const gps = await captureGPS();
+  const bypassGPS = AUTH.getSession()?.name === 'beto';
+  if ((gps.lat == null) && !bypassGPS) { alertGPS(gps.motivo); return; }
+
   const now = new Date().toISOString();
 
   const { error: err1 } = await supabase

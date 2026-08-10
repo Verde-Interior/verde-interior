@@ -1,5 +1,5 @@
 // src/context/CRMContext.jsx
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const CRMContext = createContext(null);
@@ -215,19 +215,48 @@ export function CRMProvider({ children }) {
   const [modalAberto, setModalAberto] = useState(false);
   const [tarefas, setTarefas] = useState(() => carregarCache(STORAGE_KEY_TAREFAS));
 
+  async function recarregarLeads() {
+    const { data, error } = await supabase
+      .from('leads').select('*').order('created_at', { ascending: false });
+    if (!error && data) setLeads(data.map(rowToLead));
+  }
+
+  async function recarregarTarefas() {
+    const { data, error } = await supabase
+      .from('tarefas').select('*').order('created_at', { ascending: false });
+    if (!error && data) setTarefas(data.map(rowToTarefa));
+  }
+
   // Bootstrap: puxa leads e tarefas do Supabase ao montar. Se falhar (offline
   // ou tabela indisponível), mantém o cache local carregado no init.
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from('leads').select('*').order('created_at', { ascending: false });
-      if (!error && data) setLeads(data.map(rowToLead));
-    })();
-    (async () => {
-      const { data, error } = await supabase
-        .from('tarefas').select('*').order('created_at', { ascending: false });
-      if (!error && data) setTarefas(data.map(rowToTarefa));
-    })();
+    recarregarLeads();
+    recarregarTarefas();
+  }, []); // eslint-disable-line
+
+  // Realtime — sincroniza leads e tarefas entre gestores
+  const recarregarLeadsRef  = useRef(recarregarLeads);
+  const recarregarTarefasRef = useRef(recarregarTarefas);
+  useEffect(() => { recarregarLeadsRef.current  = recarregarLeads; });
+  useEffect(() => { recarregarTarefasRef.current = recarregarTarefas; });
+
+  useEffect(() => {
+    const chLeads = supabase
+      .channel('ctx-leads')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        recarregarLeadsRef.current();
+      })
+      .subscribe();
+    const chTarefas = supabase
+      .channel('ctx-tarefas')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tarefas' }, () => {
+        recarregarTarefasRef.current();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(chLeads);
+      supabase.removeChannel(chTarefas);
+    };
   }, []);
 
   useEffect(() => {
