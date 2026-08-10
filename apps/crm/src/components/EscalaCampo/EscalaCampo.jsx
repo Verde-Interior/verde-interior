@@ -3,23 +3,27 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { createPortal } from 'react-dom';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
-import { dateParaISO, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
+import { dateParaISO, addDias, getSemana as getSemanaUtil, getDiaSlug as getDiaSlugUtil, formatarDataCurta } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
 import {
   DIAS_LABEL, DIAS_NOME,
   checarRestricoes, bloqueioNoDia,
   calcPrioridade, calcClientesAtrasados, calcConflitosDia,
+  calcularAlertaFalta,
 } from '../../utils/escalaHelpers';
 import { minutosParaHora, otimizarRotaComRestricoes } from '../../utils/otimizadorRota';
 import CartaoVisita from './CartaoVisita';
 import ModalAddVisita from './ModalAddVisita';
 import ModalEditVisita from './ModalEditVisita';
+import ModalDuplicarVisita from './ModalDuplicarVisita';
 import ModalRelatorioVisita from './ModalRelatorioVisita';
 import ModalPreviewRota from './ModalPreviewRota';
 import ModalRedistribuir from './ModalRedistribuir';
 import ModalBloqueios from './ModalBloqueios';
 import PainelAtrasados from './PainelAtrasados';
 import ModalCopiarAgenda from './ModalCopiarAgenda';
+import EscalaCalendario from './EscalaCalendario';
+import { addMes } from '../../utils/calendarioUtils';
 import './EscalaCampo.css';
 
 // ── Wrappers finos para os utils centralizados (mantém API interna do arquivo) ──
@@ -27,6 +31,89 @@ const getSemana   = ref => getSemanaUtil(ref);
 const getDiaId    = iso => getDiaSlugUtil(iso);
 const formatarDia = iso => formatarDataCurta(iso);
 const getHoje     = () => dateParaISO(new Date());
+
+const ORDEM_COLUNAS_KEY = 'vi-escala-ordem-funcionarios';
+
+// Enriquece uma visita crua vinda de agenda (join clientes/leads) — cartões e
+// modais da Escala esperam sempre v.clientes preenchido, mesmo quando a
+// visita veio de um lead ou é uma tarefa interna sem cadastro. Extraído de
+// carregarAgenda() pra também poder ser aplicado a uma única visita buscada
+// avulsa (reagendamento por drag no calendário Quinzenal/Mês).
+function normalizarVisita(v) {
+  // Tarefa interna: sem cliente nem lead — usa nome_cliente/endereco_tarefa
+  if (!v.clientes && !v.leads && v.nome_cliente) {
+    return {
+      ...v,
+      __isTarefa: true,
+      clientes: {
+        id:           null,
+        __isTarefa:   true,
+        nome_empresa: v.nome_cliente,
+        endereco:     v.endereco_tarefa ?? '',
+        bairro:       '',
+        lat:          null,
+        lng:          null,
+        cliente_servicos: [],
+      },
+    };
+  }
+  if (!v.clientes && v.leads) {
+    const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
+      ? v.leads.tipos_servico[0]
+      : null;
+    // Serviço sintético com id prefixado — ArrayVisita e ModalEditVisita
+    // usam esse id como chave; prefixo `lead-` evita colisão com id real.
+    const servicoSintetico = tipoPrimario ? {
+      id:           `lead-${v.leads.id}-${tipoPrimario}`,
+      tipo_servico: tipoPrimario,
+      frequencia:   v.leads.frequencia_visita ?? null,
+      ativo:        true,
+      __isLead:     true,
+    } : null;
+    return {
+      ...v,
+      __isLead: true,
+      leadId:   v.leads.id,
+      clientes: {
+        id:                `lead-${v.leads.id}`,   // id sintético prefixado
+        __isLead:          true,
+        nome_empresa:      v.leads.empresa,
+        bairro:            v.leads.bairro,
+        lat:               v.leads.lat,
+        lng:               v.leads.lng,
+        frequencia_visita: v.leads.frequencia_visita,
+        contato_nome:      v.leads.contato,
+        contato_telefone:  v.leads.telefone,
+        endereco:          v.leads.endereco,
+        // Array (mesma shape de cliente real) — consumido pelo ModalEditVisita
+        cliente_servicos:  servicoSintetico ? [servicoSintetico] : [],
+        // dias_disponiveis, janela_entrada_* ausentes ⇒ sem restrição pro otimizador.
+      },
+      // Objeto único (join FK do agenda.cliente_servico_id) — consumido pelo CartaoVisita
+      cliente_servicos: v.cliente_servicos ?? servicoSintetico,
+    };
+  }
+  return v;
+}
+
+const SELECT_AGENDA_COMPLETA = '*, nome_cliente, endereco_tarefa, clientes(nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, janela_bloqueada_inicio, janela_bloqueada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)';
+
+// Ícone de "pode arrastar" — mesmo desenho do DragHandle do Dashboard, pra
+// manter o mesmo sinal visual de reordenável em telas diferentes.
+function DragHandleColuna() {
+  return (
+    <span className="ec__coluna-handle" title="Arraste para reorganizar">
+      <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+        <circle cx="3" cy="2.5"  r="1.4" fill="currentColor"/>
+        <circle cx="7" cy="2.5"  r="1.4" fill="currentColor"/>
+        <circle cx="3" cy="7"    r="1.4" fill="currentColor"/>
+        <circle cx="7" cy="7"    r="1.4" fill="currentColor"/>
+        <circle cx="3" cy="11.5" r="1.4" fill="currentColor"/>
+        <circle cx="7" cy="11.5" r="1.4" fill="currentColor"/>
+      </svg>
+    </span>
+  );
+}
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -37,47 +124,46 @@ export default function EscalaCampo() {
   const [clientes,    setClientes]    = useState([]);
   const [agenda,      setAgenda]      = useState([]);
   const [bloqueios,   setBloqueios]   = useState([]);
+  const [checkins,    setCheckins]    = useState(new Map()); // agendamento_id -> checkin_at
   const [modalBloqueio, setModalBloqueio] = useState(null); // { funcionarioId? }
   const [modalRedistrib, setModalRedistrib] = useState(false);
   const [loading,     setLoading]     = useState(true);
   const [modal,       setModal]       = useState(null);
   const [salvando,    setSalvando]    = useState(false);
 
-  // ── Drag & Drop (cartões entre colunas) ─────────────────────────────────────
-  const [dragId,      setDragId]      = useState(null);
-  const [dragOverEmp, setDragOverEmp] = useState(null);
+  // ── Visão de calendário (quinzenal/mês) — complementa a Semana ──────────────
+  const [modoVisao,   setModoVisao]   = useState('semana'); // 'semana' | 'quinzenal' | 'mes'
+  const hojeDate = new Date();
+  const [calAno,       setCalAno]       = useState(hojeDate.getFullYear());
+  const [calMes,       setCalMes]       = useState(hojeDate.getMonth());
+  const [quinzenaBase, setQuinzenaBase] = useState(getHoje);
+  const [agendaCalendario, setAgendaCalendario] = useState([]);
+  const [loadingCal,       setLoadingCal]       = useState(false);
 
-  // ── Reordenar colunas (arrastar header) ──────────────────────────────────────
-  const [dragColId,    setDragColId]    = useState(null);
-  const [ordemColunas, setOrdemColunas] = useState([]);
+  // ── Drag & Drop ──────────────────────────────────────────────────────────────
+  const [dragId,      setDragId]      = useState(null); // id da visita sendo arrastada
+  const [dragOverEmp, setDragOverEmp] = useState(null); // empId da coluna com hover
+
+  // ── Ordem das colunas de funcionário (arrastar pra reorganizar) ────────────
+  // Salva só no navegador (localStorage), igual ao mesmo recurso já usado nos
+  // blocos do Dashboard — cada gestor organiza do seu jeito, sem afetar os
+  // outros. Se um dia precisar ficar igual pra todo mundo, troca só a leitura/
+  // gravação abaixo por uma tabela no banco; o drag-and-drop em si não muda.
+  const [ordemColunas, setOrdemColunas] = useState(() => {
+    try {
+      const s = localStorage.getItem(ORDEM_COLUNAS_KEY);
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
+  // Estado de verdade (não ref) — mutar uma ref não re-renderiza, então a
+  // classe visual de "arrastando" ficava dependendo de algum outro re-render
+  // acontecer por acaso pra atualizar, travando cinza às vezes.
+  const [colDragSrc, setColDragSrc] = useState(null); // id do funcionário sendo arrastado (coluna)
+  const [colDragOver, setColDragOver] = useState(null); // id do funcionário-alvo
 
   useEffect(() => {
-    if (employees.length === 0) return;
-    const saved = localStorage.getItem('escala-ordem-colunas');
-    if (saved) {
-      try {
-        const ids = JSON.parse(saved);
-        const conhecidos = ids.filter(id => employees.some(e => String(e.id) === id));
-        const novos = employees.filter(e => !ids.includes(String(e.id))).map(e => String(e.id));
-        setOrdemColunas([...conhecidos, ...novos]);
-        return;
-      } catch { /* segue para o fallback */ }
-    }
-    setOrdemColunas(employees.map(e => String(e.id)));
-  }, [employees]);
-
-  function reordenarColunas(fromId, toId) {
-    setOrdemColunas(prev => {
-      const arr = [...prev];
-      const fi = arr.indexOf(fromId), ti = arr.indexOf(toId);
-      if (fi === -1 || ti === -1) return prev;
-      arr.splice(fi, 1);
-      arr.splice(ti, 0, fromId);
-      localStorage.setItem('escala-ordem-colunas', JSON.stringify(arr));
-      return arr;
-    });
-    setDragOverEmp(null);
-  }
+    localStorage.setItem(ORDEM_COLUNAS_KEY, JSON.stringify(ordemColunas));
+  }, [ordemColunas]);
 
   // ── Seleção múltipla ─────────────────────────────────────────────────────────
   const [modoSelecao,  setModoSelecao]  = useState(false);
@@ -92,6 +178,7 @@ export default function EscalaCampo() {
 
   // ── Edição de visita ────────────────────────────────────────────────────────
   const [modalEdit,     setModalEdit]     = useState(null); // visita sendo editada
+  const [modalEditDataAlvo, setModalEditDataAlvo] = useState(null); // pré-preenche a data no form (reagendamento por drag), sem sobrescrever modalEdit.data_agendada
   const [modalRel,      setModalRel]      = useState(null); // visita cujo relatório está aberto
   const [salvandoEdit,  setSalvandoEdit]  = useState(false);
 
@@ -103,6 +190,15 @@ export default function EscalaCampo() {
 
   const hoje = getHoje();
 
+  // ── Relógio pro alerta de falta (atrasado / possível falta) ────────────────
+  // Recalcula a cada minuto pra o alerta avançar sozinho na tela, sem precisar
+  // recarregar a agenda.
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   // ── Dados estáticos ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -110,7 +206,7 @@ export default function EscalaCampo() {
       const [empRes, cliRes, bloqRes] = await Promise.all([
         supabase.from('employees').select('id, name, cargo, daily_hours').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
         supabase.from('clientes')
-          .select('id, nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
+          .select('id, nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, janela_bloqueada_inicio, janela_bloqueada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),
         supabase.from('employee_bloqueios').select('*').order('data_inicio'),
       ]);
@@ -135,9 +231,9 @@ export default function EscalaCampo() {
     // é a fonte de dados exibidos no cartão.
     const { data, error } = await supabase
       .from('agenda')
-      .select('*, nome_cliente, endereco_tarefa, clientes(nome_empresa, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, lat, lng, ultima_visita, frequencia_visita), cliente_servicos(tipo_servico, frequencia), leads(empresa, bairro, contato, telefone, endereco, lat, lng, tipos_servico, frequencia_visita)')
+      .select(SELECT_AGENDA_COMPLETA)
       .gte('data_agendada', semana[0])
-      .lte('data_agendada', semana[5])
+      .lte('data_agendada', semana[6])
       .neq('status', 'cancelado')
       .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
     setLoading(false);
@@ -147,63 +243,22 @@ export default function EscalaCampo() {
       // copiamos os campos essenciais do lead pra dentro de `.clientes`,
       // marcamos `__isLead` e fabricamos um id sintético com prefixo `lead-`
       // pra distinguir claramente de ids reais de cliente cadastrado.
-      const enriched = (data ?? []).map((v) => {
-        // Tarefa interna: sem cliente nem lead — usa nome_cliente/endereco_tarefa
-        if (!v.clientes && !v.leads && v.nome_cliente) {
-          return {
-            ...v,
-            __isTarefa: true,
-            clientes: {
-              id:           null,
-              __isTarefa:   true,
-              nome_empresa: v.nome_cliente,
-              endereco:     v.endereco_tarefa ?? '',
-              bairro:       '',
-              lat:          null,
-              lng:          null,
-              cliente_servicos: [],
-            },
-          };
-        }
-        if (!v.clientes && v.leads) {
-          const tipoPrimario = Array.isArray(v.leads.tipos_servico) && v.leads.tipos_servico.length
-            ? v.leads.tipos_servico[0]
-            : null;
-          // Serviço sintético com id prefixado — ArrayVisita e ModalEditVisita
-          // usam esse id como chave; prefixo `lead-` evita colisão com id real.
-          const servicoSintetico = tipoPrimario ? {
-            id:           `lead-${v.leads.id}-${tipoPrimario}`,
-            tipo_servico: tipoPrimario,
-            frequencia:   v.leads.frequencia_visita ?? null,
-            ativo:        true,
-            __isLead:     true,
-          } : null;
-          return {
-            ...v,
-            __isLead: true,
-            leadId:   v.leads.id,
-            clientes: {
-              id:                `lead-${v.leads.id}`,   // id sintético prefixado
-              __isLead:          true,
-              nome_empresa:      v.leads.empresa,
-              bairro:            v.leads.bairro,
-              lat:               v.leads.lat,
-              lng:               v.leads.lng,
-              frequencia_visita: v.leads.frequencia_visita,
-              contato_nome:      v.leads.contato,
-              contato_telefone:  v.leads.telefone,
-              endereco:          v.leads.endereco,
-              // Array (mesma shape de cliente real) — consumido pelo ModalEditVisita
-              cliente_servicos:  servicoSintetico ? [servicoSintetico] : [],
-              // dias_disponiveis, janela_entrada_* ausentes ⇒ sem restrição pro otimizador.
-            },
-            // Objeto único (join FK do agenda.cliente_servico_id) — consumido pelo CartaoVisita
-            cliente_servicos: v.cliente_servicos ?? servicoSintetico,
-          };
-        }
-        return v;
-      });
+      const enriched = (data ?? []).map(normalizarVisita);
       setAgenda(enriched);
+
+      // Busca check-ins da semana carregada, pra saber quais visitas
+      // publicadas já tiveram o colaborador chegando de fato (usado no
+      // alerta de atraso/possível falta — ver calcularAlertaFalta).
+      const ids = enriched.map(v => v.id);
+      if (ids.length) {
+        const { data: relData } = await supabase
+          .from('relatorios')
+          .select('agendamento_id, checkin_at')
+          .in('agendamento_id', ids);
+        setCheckins(new Map((relData ?? []).map(r => [r.agendamento_id, r.checkin_at])));
+      } else {
+        setCheckins(new Map());
+      }
     }
   }
 
@@ -212,7 +267,173 @@ export default function EscalaCampo() {
   // ── Realtime — sincroniza agenda entre gestores ────────────────────────────
   useRealtimeRefresh('agenda', carregarAgenda);
 
+  // ── Dados pra visão de calendário (quinzenal/mês) ───────────────────────────
+  // Busca separada da agenda da Semana: intervalo maior (14 ou ~35 dias) e só
+  // os campos necessários pro resumo por dia — não reaproveita `agenda`/
+  // `carregarAgenda` pra não arriscar mexer no pipeline já testado da Semana.
+  function rangeDoMes(ano, mes) {
+    const primeiro = new Date(ano, mes, 1);
+    const inicio = new Date(primeiro); inicio.setDate(inicio.getDate() - primeiro.getDay());
+    const ultimoDiaMes = new Date(ano, mes + 1, 0);
+    const fim = new Date(ultimoDiaMes); fim.setDate(fim.getDate() + (6 - ultimoDiaMes.getDay()));
+    return [dateParaISO(inicio), dateParaISO(fim)];
+  }
+  function rangeDaQuinzena(baseIso) {
+    const inicio = getSemana(baseIso)[0];
+    return [inicio, addDias(inicio, 13)];
+  }
+
+  useEffect(() => {
+    if (modoVisao === 'semana') return;
+    let cancelado = false;
+    (async () => {
+      setLoadingCal(true);
+      const [inicio, fim] = modoVisao === 'mes' ? rangeDoMes(calAno, calMes) : rangeDaQuinzena(quinzenaBase);
+      const { data } = await supabase
+        .from('agenda')
+        .select(`
+          id, data_agendada, hora_estimada_chegada, funcionario_id, status,
+          duracao_estimada_min, observacoes_gestor, tipos_tarefa,
+          nome_cliente, endereco_tarefa,
+          cliente:clientes(nome_empresa, endereco, lat, lng, frequencia_visita, ultima_visita),
+          lead:leads(empresa, endereco, lat, lng),
+          relatorios(checkin_at, checkout_at)
+        `)
+        .gte('data_agendada', inicio)
+        .lte('data_agendada', fim)
+        .neq('status', 'cancelado')
+        .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
+      if (cancelado) return;
+      setAgendaCalendario(data ?? []);
+      setLoadingCal(false);
+    })();
+    return () => { cancelado = true; };
+  }, [modoVisao, calAno, calMes, quinzenaBase]);
+
+  const visitasPorDia = useMemo(() => {
+    const empMap = new Map(employees.map(e => [String(e.id), e.name]));
+    const mapa = new Map();
+    agendaCalendario.forEach(v => {
+      const cliente  = v.cliente?.nome_empresa ?? v.lead?.empresa ?? v.nome_cliente ?? '—';
+      const endereco = v.cliente?.endereco ?? v.lead?.endereco ?? v.endereco_tarefa ?? null;
+      const lat = v.cliente?.lat ?? v.lead?.lat ?? null;
+      const lng = v.cliente?.lng ?? v.lead?.lng ?? null;
+      const relatorio = Array.isArray(v.relatorios) ? v.relatorios[0] : v.relatorios;
+      const item = {
+        id: v.id,
+        hora: v.hora_estimada_chegada?.slice(0, 5) ?? null,
+        cliente,
+        endereco,
+        lat, lng,
+        funcionario: empMap.get(String(v.funcionario_id)) ?? '—',
+        status: v.status,
+        duracao: v.duracao_estimada_min ?? null,
+        observacoes: v.observacoes_gestor ?? null,
+        tiposTarefa: v.tipos_tarefa ?? [],
+        prioridade: v.cliente ? calcPrioridade(v.cliente, v.data_agendada) : null,
+        frequenciaVisita: v.cliente?.frequencia_visita ?? null,
+        checkinAt: relatorio?.checkin_at ?? null,
+        checkoutAt: relatorio?.checkout_at ?? null,
+        dataAgendada: v.data_agendada,
+      };
+      if (!mapa.has(v.data_agendada)) mapa.set(v.data_agendada, []);
+      mapa.get(v.data_agendada).push(item);
+    });
+    return mapa;
+  }, [agendaCalendario, employees]);
+
+  function navMes(delta) {
+    const { ano, mes } = addMes(calAno, calMes, delta);
+    setCalAno(ano);
+    setCalMes(mes);
+  }
+
+  function abrirDiaNoCalendario(iso) {
+    setDiaSel(iso);
+    setSemana(getSemana(new Date(iso + 'T12:00')));
+    setModoVisao('semana');
+  }
+
+  // "Selecionar" na Quinzenal/Mês não seleciona entre dias diferentes — pula
+  // pra Semana já naquele dia com o modo seleção ativo, reaproveitando a
+  // mesma lógica de sempre (que já lida com mover/cancelar em lote dentro de
+  // um dia). Evita duplicar esse comportamento pra grade do calendário.
+  function abrirSelecaoNoDia(iso) {
+    setDiaSel(iso);
+    setSemana(getSemana(new Date(iso + 'T12:00')));
+    setModoVisao('semana');
+    ativarModoSelecao();
+  }
+
+  function abrirAdicionarTarefaNoCalendario(iso) {
+    setDiaSel(iso);
+    setModal({ funcionarioId: employeesOrdenados[0]?.id?.toString() ?? '' });
+  }
+
+  // Arrastar uma visita pra outro dia na Quinzenal/Mês não move direto —
+  // abre o modal de edição já com a nova data preenchida, reaproveitando
+  // toda a validação que ele já tem (restrição de dia, janela bloqueada
+  // etc.) em vez de gravar uma mudança de data sem checar nada. Importante:
+  // NÃO sobrescreve data_agendada na própria visita — salvarEdicao compara
+  // campos.data com modalEdit.data_agendada pra saber se "mudou de destino"
+  // (e recalcular ordem_rota); se os dois já viessem iguais, achava que não
+  // mudou nada. O valor pré-preenchido vai só no form via dataAlvo.
+  async function reagendarPorDrag(visitaId, novoIso) {
+    const { data, error } = await supabase
+      .from('agenda')
+      .select(SELECT_AGENDA_COMPLETA)
+      .eq('id', visitaId)
+      .single();
+    if (error || !data) return;
+    if (data.data_agendada === novoIso) return; // soltou no mesmo dia — nada a fazer
+    setModalEdit(normalizarVisita(data));
+    setModalEditDataAlvo(novoIso);
+  }
+
+  // Clique numa visita da Quinzenal/Mês — mesma regra de editabilidade já
+  // usada pelo cartão da Semana (rascunho/publicado editam, em_execucao vai
+  // pro relatório em andamento). Busca a visita completa (não a versão leve
+  // usada só pra listar no calendário) porque os modais reais esperam todos
+  // os campos — inclusive se o usuário clicar em "Editar agendamento" de
+  // dentro do relatório.
+  async function abrirVisitaDoCalendario(visitaId, comoRelatorio) {
+    const { data, error } = await supabase
+      .from('agenda')
+      .select(SELECT_AGENDA_COMPLETA)
+      .eq('id', visitaId)
+      .single();
+    if (error || !data) return;
+    const enriched = normalizarVisita(data);
+    if (comoRelatorio) setModalRel(enriched);
+    else setModalEdit(enriched);
+  }
+
   // ── Derivações ─────────────────────────────────────────────────────────────
+
+  // employees na ordem alfabética (vinda do banco) reorganizada pela
+  // preferência salva em ordemColunas — funcionário novo (ainda não presente
+  // na ordem salva) aparece no fim, sem precisar resetar tudo.
+  const employeesOrdenados = useMemo(() => {
+    if (!ordemColunas.length) return employees;
+    const porId = new Map(employees.map(e => [String(e.id), e]));
+    const ordenados = ordemColunas.map(id => porId.get(id)).filter(Boolean);
+    const faltando  = employees.filter(e => !ordemColunas.includes(String(e.id)));
+    return [...ordenados, ...faltando];
+  }, [employees, ordemColunas]);
+
+  function reordenarColunas(fromId, toId) {
+    if (fromId === toId) return;
+    setOrdemColunas(prev => {
+      const base = prev.length ? [...prev] : employees.map(e => String(e.id));
+      employees.forEach(e => { if (!base.includes(String(e.id))) base.push(String(e.id)); });
+      const from = base.indexOf(fromId);
+      const to   = base.indexOf(toId);
+      if (from < 0 || to < 0) return prev;
+      base.splice(from, 1);
+      base.splice(to, 0, fromId);
+      return base;
+    });
+  }
 
   const agendaOrg = useMemo(() => {
     const org = {};
@@ -256,15 +477,31 @@ export default function EscalaCampo() {
   // visita agendada nesse dia)
   const visitasConflitantesComBloq = useMemo(() => {
     return agenda.filter(v => {
-      if (v.status === 'concluido' || v.status === 'cancelado') return false;
+      if (v.status === 'concluido' || v.status === 'cancelado' || v.status === 'faltou') return false;
       return !!bloqueioNoDia(bloqueios, v.funcionario_id, v.data_agendada);
     });
   }, [agenda, bloqueios]);
 
+  // Alerta de atraso/possível falta por visita (id -> 'atrasado' | 'falta_provavel').
+  // Não mexe no status oficial — é só sinalização até o gestor confirmar
+  // manualmente com "Marcar falta" (ver marcarFalta).
+  const alertasPorVisita = useMemo(() => {
+    const map = new Map();
+    agenda.forEach(v => {
+      const bloqueado = !!bloqueioNoDia(bloqueios, v.funcionario_id, v.data_agendada);
+      const temCheckin = !!checkins.get(v.id);
+      const alerta = calcularAlertaFalta(v, agora, temCheckin, bloqueado);
+      if (alerta) map.set(v.id, alerta);
+    });
+    return map;
+  }, [agenda, bloqueios, checkins, agora]);
+
   const conflitosPorEmp = useMemo(() => {
     const c = {};
     employees.forEach(emp => {
-      const visitas = agendaOrg[diaSel]?.[emp.id] ?? [];
+      // 'faltou' não ocupou tempo de fato — exclui do cálculo de sobreposição/
+      // estouro de expediente, senão um horário livre acusaria conflito.
+      const visitas = (agendaOrg[diaSel]?.[emp.id] ?? []).filter(v => v.status !== 'faltou');
       c[emp.id] = calcConflitosDia(visitas, emp.daily_hours);
     });
     return c;
@@ -560,6 +797,24 @@ export default function EscalaCampo() {
     }
   }
 
+  // ── Marcar falta (confirmação manual do alerta de atraso) ──────────────────
+  async function marcarFalta() {
+    if (!modalEdit) return;
+    const v = modalEdit;
+    if (!confirm(`Marcar falta de ${employees.find(e => String(e.id) === String(v.funcionario_id))?.name ?? 'colaborador'} em "${v.clientes?.nome_empresa ?? '—'}"?\n\nA visita fica registrada como falta — você ainda pode duplicá-la pra outro funcionário se precisar cobrir o cliente.`)) return;
+    setSalvandoEdit(true);
+    try {
+      const { error } = await supabase.from('agenda').update({ status: 'faltou' }).eq('id', v.id);
+      if (error) throw error;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao marcar falta: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
   // ── Voltar visita publicada para rascunho ───────────────────────────────────
   async function despublicarVisita() {
     if (!modalEdit) return;
@@ -594,15 +849,33 @@ export default function EscalaCampo() {
     try {
       const payload = {
         funcionario_id:        String(campos.funcionarioId),
+        data_agendada:         campos.data,
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         hora_estimada_chegada: campos.hora || null,
         duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
+        endereco_tarefa:       campos.endereco?.trim() || null,
         tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
         observacoes_gestor:    campos.obs || null,
       };
+      // Nome só é editável (e só existe como coluna própria) pra tarefa
+      // avulsa — cliente/lead cadastrado têm o nome no próprio cadastro.
+      if (!modalEdit.cliente_id && !modalEdit.lead_id) {
+        payload.nome_cliente = campos.nomeTarefa?.trim() || null;
+      }
+      // Mudou de dia e/ou funcionário — manda pro fim da lista do destino
+      // pra não colidir com a ordem de rota de quem já está lá.
+      const mudouDestino = campos.data !== modalEdit.data_agendada
+        || String(campos.funcionarioId) !== String(modalEdit.funcionario_id);
+      if (mudouDestino) {
+        const visitasDestino = agendaOrg[campos.data]?.[campos.funcionarioId] ?? [];
+        payload.ordem_rota = visitasDestino.length > 0
+          ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
+          : 0;
+      }
       const { error } = await supabase.from('agenda').update(payload).eq('id', modalEdit.id);
       if (error) throw error;
       setModalEdit(null);
+      setModalEditDataAlvo(null);
       await carregarAgenda();
     } catch (e) {
       alert('Erro ao salvar: ' + e.message);
@@ -633,6 +906,8 @@ export default function EscalaCampo() {
       const { error } = await supabase.from('agenda').insert({
         cliente_id:            modalEdit.cliente_id,
         lead_id:               modalEdit.lead_id,
+        nome_cliente:          campos.nomeTarefa?.trim() || null,
+        endereco_tarefa:       campos.endereco?.trim() || null,
         funcionario_id:        String(alvoId),
         cliente_servico_id:    idServicoParaBanco(campos.servicoId),
         data_agendada:         modalEdit.data_agendada,
@@ -653,6 +928,50 @@ export default function EscalaCampo() {
     }
   }
 
+  // ── Duplicar visita escolhendo funcionário e data de destino ───────────────
+  // Botão "⧉ Duplicar" no ModalEditVisita — diferente do "+ Funcionário"
+  // acima (que fixa o mesmo dia), aqui o destino é livre.
+  const [modalDuplicar, setModalDuplicar] = useState(null); // { campos: form } | null
+
+  function abrirModalDuplicar(campos) {
+    setModalDuplicar({ campos });
+  }
+
+  async function executarDuplicacaoGeral({ funcionarioId, data }) {
+    if (!modalEdit || !modalDuplicar) return;
+    const campos = modalDuplicar.campos;
+    setSalvandoEdit(true);
+    try {
+      const visitasDestino = agendaOrg[data]?.[funcionarioId] ?? [];
+      const proximaOrdem = visitasDestino.length > 0
+        ? Math.max(...visitasDestino.map(v => v.ordem_rota)) + 1
+        : 0;
+      const { error } = await supabase.from('agenda').insert({
+        cliente_id:            modalEdit.cliente_id,
+        lead_id:               modalEdit.lead_id,
+        nome_cliente:          campos.nomeTarefa?.trim() || null,
+        funcionario_id:        String(funcionarioId),
+        cliente_servico_id:    idServicoParaBanco(campos.servicoId),
+        data_agendada:         data,
+        hora_estimada_chegada: campos.hora || null,
+        duracao_estimada_min:  campos.duracao ? Number(campos.duracao) : null,
+        endereco_tarefa:       campos.endereco?.trim() || null,
+        tipos_tarefa:          campos.tipos?.length ? campos.tipos : null,
+        observacoes_gestor:    campos.obs || null,
+        ordem_rota:            proximaOrdem,
+        status:                'rascunho',
+      });
+      if (error) throw error;
+      setModalDuplicar(null);
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao duplicar: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
   // Funcionários candidatos: os que ainda não têm essa visita nesse dia
   const funcionariosParaDuplicar = pickerDup && modalEdit ? (() => {
     const idsExistentes = new Set(
@@ -662,7 +981,7 @@ export default function EscalaCampo() {
                   && v.data_agendada === modalEdit.data_agendada)
         .map(v => String(v.funcionario_id))
     );
-    return employees.filter(e => !idsExistentes.has(String(e.id)));
+    return employeesOrdenados.filter(e => !idsExistentes.has(String(e.id)));
   })() : [];
 
   // ── Adicionar visita a partir do painel "atrasados" ────────────────────────
@@ -694,7 +1013,9 @@ export default function EscalaCampo() {
       <header className="ec__header">
         <div className="ec__header-esq">
           <h2 className="ec__titulo">Escala de Campo</h2>
-          <p className="ec__sub">Agenda semanal de visitas · {employees.length} funcionários</p>
+          <p className="ec__sub">
+            Agenda {modoVisao === 'semana' ? 'semanal' : modoVisao === 'quinzenal' ? 'quinzenal' : 'mensal'} de visitas · {employees.length} funcionários
+          </p>
         </div>
         <div className="ec__header-dir">
           <button
@@ -731,15 +1052,59 @@ export default function EscalaCampo() {
           >
             ↺ Copiar agenda
           </button>
+          <div className="ec__modo-visao">
+            {[
+              { id: 'semana',    label: 'Semana' },
+              { id: 'quinzenal', label: 'Quinzenal' },
+              { id: 'mes',       label: 'Mês' },
+            ].map(m => (
+              <button
+                key={m.id}
+                className={`ec__modo-pill ${modoVisao === m.id ? 'ec__modo-pill--ativo' : ''}`}
+                onClick={() => setModoVisao(m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* ── Navegação de Semana — linha própria, igual Quinzenal/Mês já fazem
+          com a data deles, pra fileira de cima (Atrasados/Prioridade/Copiar
+          agenda/pills) nunca mudar de largura nem de posição ao trocar de
+          modo. ── */}
+      {modoVisao === 'semana' && (
+        <div className="ec__semana-toolbar">
           <div className="ec__nav-semana">
             <button className="ec__nav-btn" onClick={() => navSemana(-1)}>‹</button>
-            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[5])}</span>
+            <span className="ec__semana-label">{formatarDia(semana[0])} – {formatarDia(semana[6])}</span>
             <button className="ec__nav-btn" onClick={() => navSemana(+1)}>›</button>
           </div>
           <button className="ec__btn-hoje" onClick={irHoje}>Hoje</button>
         </div>
-      </header>
+      )}
 
+      {modoVisao !== 'semana' ? (
+        <EscalaCalendario
+          modo={modoVisao}
+          visitasPorDia={visitasPorDia}
+          loading={loadingCal}
+          calAno={calAno}
+          calMes={calMes}
+          onNavMes={navMes}
+          quinzenaBase={quinzenaBase}
+          onNavQuinzena={deltaDias => setQuinzenaBase(b => addDias(b, deltaDias))}
+          hojeIso={hoje}
+          onAbrirDia={abrirDiaNoCalendario}
+          onSelecionarDia={abrirSelecaoNoDia}
+          onAdicionarTarefa={abrirAdicionarTarefaNoCalendario}
+          onReagendar={reagendarPorDrag}
+          onEditarVisita={visitaId => abrirVisitaDoCalendario(visitaId, false)}
+          onVerRelatorioVisita={visitaId => abrirVisitaDoCalendario(visitaId, true)}
+        />
+      ) : (
+      <>
       {/* ── Tabs dos dias ── */}
       <div className="ec__tabs">
         {semana.map(d => {
@@ -801,41 +1166,58 @@ export default function EscalaCampo() {
         <div className="ec__estado"><p>Nenhum funcionário de campo cadastrado.</p></div>
       ) : (
         <div className="ec__colunas">
-          {[...employees].sort((a, b) => {
-            const ia = ordemColunas.indexOf(String(a.id));
-            const ib = ordemColunas.indexOf(String(b.id));
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          }).map(emp => {
+          {employeesOrdenados.map(emp => {
+            const empId      = String(emp.id);
             const visitas    = visitasDiaSel[emp.id] ?? [];
-            const isDragAlvo = dragOverEmp === String(emp.id);
+            const isDragAlvo = dragOverEmp === empId;
             const conflitos  = conflitosPorEmp[emp.id] ?? { sobreposicoes: [], estouraDia: false, fimMin: 0 };
             const rascunhos  = visitas.filter(v => v.status === 'rascunho').length;
             const podeOtimizar = rascunhos >= 2 && !modoSelecao;
             const bloqueio   = bloqueioNoDia(bloqueios, emp.id, diaSel);
+            const isColDragSrc = colDragSrc === empId;
+            const isColDropTgt = colDragOver === empId;
 
             return (
               <div
                 key={emp.id}
-                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''} ${bloqueio ? 'ec__coluna--bloqueada' : ''}`}
-                onDragOver={e => { e.preventDefault(); setDragOverEmp(String(emp.id)); }}
+                className={`ec__coluna ${isDragAlvo ? 'ec__coluna--drag-over' : ''} ${bloqueio ? 'ec__coluna--bloqueada' : ''} ${isColDragSrc ? 'ec__coluna--arrastando' : ''}`}
+                onDragOver={e => { if (bloqueio) return; e.preventDefault(); setDragOverEmp(empId); }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverEmp(null); }}
-                onDrop={() => {
-                  if (dragColId) { reordenarColunas(dragColId, String(emp.id)); return; }
-                  if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; }
-                  handleDrop(emp.id);
-                }}
+                onDrop={() => { if (bloqueio) { alert(`${emp.name} está ausente neste dia (${bloqueio.motivo || 'bloqueio'}). Escolha outro funcionário.`); return; } handleDrop(emp.id); }}
               >
                 <div
-                  className="ec__coluna-header"
+                  className={`ec__coluna-header ${isColDropTgt ? 'ec__coluna-header--drop' : ''}`}
                   draggable
-                  onDragStart={e => { e.dataTransfer.setData('col', String(emp.id)); setDragColId(String(emp.id)); }}
-                  onDragEnd={() => { setDragColId(null); setDragOverEmp(null); }}
+                  onDragStart={e => {
+                    if (e.target.closest('button')) { e.preventDefault(); return; }
+                    setColDragSrc(empId);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={e => {
+                    if (!colDragSrc) return; // não é drag de coluna — deixa borbulhar pro drop de visita
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (colDragSrc !== empId) setColDragOver(empId);
+                  }}
+                  onDragLeave={() => setColDragOver(null)}
+                  onDrop={e => {
+                    if (!colDragSrc) return; // idem — deixa a visita cair na coluna normalmente
+                    e.preventDefault();
+                    e.stopPropagation();
+                    reordenarColunas(colDragSrc, empId);
+                    setColDragSrc(null);
+                    setColDragOver(null);
+                  }}
+                  onDragEnd={() => { setColDragSrc(null); setColDragOver(null); }}
                 >
-                  <div>
-                    <span className="ec__coluna-nome">{emp.name}</span>
-                    <span className="ec__coluna-cargo">{emp.cargo}</span>
+                  <div className="ec__coluna-titulo">
+                    <DragHandleColuna />
+                    <div>
+                      <span className="ec__coluna-nome">{emp.name}</span>
+                      <span className="ec__coluna-cargo">{emp.cargo}</span>
+                    </div>
                   </div>
-                  <div className="ec__coluna-header-dir" onMouseDown={e => e.stopPropagation()}>
+                  <div className="ec__coluna-header-dir">
                     <button
                       className="ec__coluna-bloq"
                       onClick={() => setModalBloqueio({ funcionarioId: String(emp.id), funcionarioNome: emp.name })}
@@ -912,7 +1294,7 @@ export default function EscalaCampo() {
                         onCima={() => moverVisita(v, -1)}
                         onBaixo={() => moverVisita(v, +1)}
                         onDeletar={() => deletarVisita(v.id)}
-                        onDragStart={e => { e.dataTransfer.setData('text/plain', String(v.id)); handleDragStart(v.id); }}
+                        onDragStart={() => handleDragStart(v.id)}
                         onDragEnd={handleDragEnd}
                         isDragging={dragId === v.id}
                         modoSelecao={modoSelecao}
@@ -923,6 +1305,7 @@ export default function EscalaCampo() {
                         prioridade={calcPrioridade(v.clientes, v.data_agendada)}
                         mostrarPrioridade={mostrarPrioridade}
                         restricao={checarRestricoes(v.clientes, v.data_agendada, v.hora_estimada_chegada)}
+                        alerta={alertasPorVisita.get(v.id)}
                         onEditar={() => setModalEdit(v)}
                         onVerRelatorio={(vis) => setModalRel(vis)}
                       />
@@ -943,9 +1326,11 @@ export default function EscalaCampo() {
           })}
         </div>
       )}
+      </>
+      )}
 
       {/* ── Barra de ação: mover/reverter/cancelar selecionadas ── */}
-      {modoSelecao && (
+      {modoVisao === 'semana' && modoSelecao && (
         <div className="ec__bulk-bar">
           <span className="ec__bulk-info">
             {qtdSel === 0
@@ -959,7 +1344,7 @@ export default function EscalaCampo() {
               value={movParaEmp}
               onChange={e => setMovParaEmp(e.target.value)}
             >
-              {employees.map(emp => (
+              {employeesOrdenados.map(emp => (
                 <option key={emp.id} value={String(emp.id)}>{emp.name}</option>
               ))}
             </select>
@@ -995,7 +1380,7 @@ export default function EscalaCampo() {
       {modal && (
         <ModalAddVisita
           clientes={clientes}
-          funcionarios={employees}
+          funcionarios={employeesOrdenados}
           dataInicial={diaSel}
           funcionarioIdInicial={modal.funcionarioId}
           clienteIdPre={modal.clienteIdPre}
@@ -1018,14 +1403,28 @@ export default function EscalaCampo() {
       {modalEdit && (
         <ModalEditVisita
           visita={modalEdit}
-          funcionarios={employees}
+          dataAlvo={modalEditDataAlvo}
+          funcionarios={employeesOrdenados}
           clientes={clientes}
           onSalvar={salvarEdicao}
-          onFechar={() => setModalEdit(null)}
+          onFechar={() => { setModalEdit(null); setModalEditDataAlvo(null); }}
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
+          onMarcarFalta={marcarFalta}
+          alerta={alertasPorVisita.get(modalEdit.id)}
           onDuplicarFuncionario={abrirPickerDuplicar}
+          onDuplicar={abrirModalDuplicar}
           salvando={salvandoEdit}
+        />
+      )}
+
+      {modalDuplicar && (
+        <ModalDuplicarVisita
+          visita={modalEdit}
+          funcionarios={employeesOrdenados}
+          duplicando={salvandoEdit}
+          onFechar={() => setModalDuplicar(null)}
+          onDuplicar={executarDuplicacaoGeral}
         />
       )}
 
@@ -1033,7 +1432,10 @@ export default function EscalaCampo() {
       {modalRel && (
         <ModalRelatorioVisita
           visita={modalRel}
+          funcNome={employees.find(e => String(e.id) === String(modalRel.funcionario_id))?.name ?? '—'}
           onFechar={() => setModalRel(null)}
+          onRemovido={() => { setModalRel(null); carregarAgenda(); }}
+          onEditarAgendamento={() => { setModalEdit(modalRel); setModalRel(null); }}
         />
       )}
 
@@ -1101,7 +1503,7 @@ export default function EscalaCampo() {
       {modalRedistrib && (
         <ModalRedistribuir
           visitas={visitasConflitantesComBloq}
-          employees={employees}
+          employees={employeesOrdenados}
           agendaOrg={agendaOrg}
           bloqueios={bloqueios}
           clientes={clientes}
@@ -1113,7 +1515,7 @@ export default function EscalaCampo() {
       {/* ── Modal de copiar agenda (dia+pessoa origem → dia+pessoa destino) ── */}
       {modalCopiar && (
         <ModalCopiarAgenda
-          employees={employees}
+          employees={employeesOrdenados}
           clientes={clientes}
           diaSel={diaSel}
           onFechar={() => setModalCopiar(false)}
