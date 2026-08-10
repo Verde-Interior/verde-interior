@@ -168,8 +168,8 @@
 html, body, #root { height: 100%; }
 
 /* Cursor de seta por padrão em toda a UI — evita o I-beam em títulos e labels */
-* { cursor: default; }
-input, textarea, select, [contenteditable] { cursor: text; }
+* { cursor: default; caret-color: transparent; }
+input, textarea, select, [contenteditable] { cursor: text; caret-color: auto; }
 a, button, [role="button"], label[for], summary { cursor: pointer; }
 
 body {
