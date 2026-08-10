@@ -11,6 +11,8 @@ import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
 import ModalDetalhesCliente from '../ModalDetalhesCliente/ModalDetalhesCliente';
 import ModalDetalhesAgendamento from '../Dashboard/ModalDetalhesAgendamento';
 import { corStatusVisita as corStatus } from '../../utils/escalaHelpers';
+import { calcSemanaCiclo, ehSemanaOrquidea, ultimaTrocaPorClienteMap, candidatosTroca } from '../../utils/trocaHelpers';
+import { addDias } from '../../utils/dateUtils';
 import './Mapa.css';
 
 const CENTRO_SP = [-23.5614, -46.6558];
@@ -185,6 +187,39 @@ function RotaLayer({ visitas, onAbrirVisita }) {
   );
 }
 
+// Candidatos a troca da semana: pino roxo pros selecionados (vão virar
+// tarefa), cinza pros demais — clique alterna a seleção direto no mapa.
+function TrocaLayer({ candidatos, selecionados, onToggle }) {
+  const map = useMap();
+  const comGeo = useMemo(() => candidatos.filter((c) => c.lat && c.lng), [candidatos]);
+
+  useEffect(() => {
+    if (comGeo.length === 0) return;
+    const bounds = L.latLngBounds(comGeo.map((c) => [c.lat, c.lng]));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comGeo.length, map]);
+
+  useEffect(() => {
+    const markers = comGeo.map((c) => {
+      const sel = selecionados.has(c.id);
+      const icon = L.divIcon({
+        className: 'mapa-troca-pin-wrap',
+        html: `<span class="mapa-troca-pin ${sel ? 'mapa-troca-pin--sel' : ''}">${sel ? '✓' : ''}</span>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      const marker = L.marker([c.lat, c.lng], { icon }).addTo(map);
+      marker.bindTooltip(c.nome_empresa, { direction: 'top', offset: [0, -10] });
+      marker.on('click', () => onToggle(c.id));
+      return marker;
+    });
+    return () => markers.forEach((m) => map.removeLayer(m));
+  }, [comGeo, selecionados, onToggle, map]);
+
+  return null;
+}
+
 export default function Mapa({ onNavegar }) {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +243,7 @@ export default function Mapa({ onNavegar }) {
     (async () => {
       const { data } = await supabase
         .from('employees')
-        .select('id, name, cargo')
+        .select('id, name, cargo, daily_hours')
         .in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo'])
         .order('name');
       setFuncionarios(data ?? []);
@@ -255,12 +290,110 @@ export default function Mapa({ onNavegar }) {
   const rotaFuncionarioNome = funcionarios.find((f) => String(f.id) === String(rotaFuncionarioId))?.name;
   const rotaSemGeo = rotaVisitas.filter((v) => !v.cliente?.lat || !v.cliente?.lng).length;
 
+  // ── Planejador de troca (Fase 2 — assistido: sugere, quem decide é o
+  // gestor) ── Semanas 1/3 do ciclo = candidatos com orquídea; 2/4 = troca
+  // geral (Manutenção com troca / Locação). Não cria nada sozinho — só
+  // sugere, você seleciona e confirma.
+  const [modoTroca, setModoTroca] = useState(false);
+  const [semanaCiclo, setSemanaCiclo] = useState(() => calcSemanaCiclo(hojeStr()));
+  const [agendaTrocas, setAgendaTrocas] = useState([]);
+  const [trocasLoading, setTrocasLoading] = useState(false);
+  const [selecionadosTroca, setSelecionadosTroca] = useState(new Set());
+  const [trocaFuncionarioId, setTrocaFuncionarioId] = useState('');
+  const [trocaData, setTrocaData] = useState(hojeStr);
+  const [criandoTrocas, setCriandoTrocas] = useState(false);
+  const [msgTroca, setMsgTroca] = useState('');
+
+  useEffect(() => {
+    if (!modoTroca) return;
+    let cancelado = false;
+    (async () => {
+      setTrocasLoading(true);
+      // Últimos 90 dias bastam pra saber "há quanto tempo trocou" — o ciclo
+      // reavalia a cada 2 semanas (orquídea) ou mensalmente (geral), então
+      // nenhuma troca relevante fica fora dessa janela.
+      const desde = addDias(hojeStr(), -90);
+      const { data } = await supabase
+        .from('agenda')
+        .select('cliente_id, data_agendada, status, tipos_tarefa')
+        .contains('tipos_tarefa', ['troca'])
+        .gte('data_agendada', desde);
+      if (cancelado) return;
+      setAgendaTrocas(data ?? []);
+      setTrocasLoading(false);
+    })();
+    return () => { cancelado = true; };
+  }, [modoTroca]);
+
+  const candidatosDaSemana = useMemo(() => {
+    if (!modoTroca) return [];
+    const ultimaTrocaPorCliente = ultimaTrocaPorClienteMap(agendaTrocas);
+    return candidatosTroca({ clientes, ultimaTrocaPorCliente, semanaCiclo, hojeIso: hojeStr() });
+  }, [modoTroca, clientes, agendaTrocas, semanaCiclo]);
+
+  function toggleCandidatoTroca(id) {
+    setSelecionadosTroca((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  const trocaFuncionario = funcionarios.find((f) => String(f.id) === String(trocaFuncionarioId));
+  const minutosSelecionados = candidatosDaSemana
+    .filter((c) => selecionadosTroca.has(c.id))
+    .reduce((s, c) => s + (c.duracao_estimada_min || 60), 0);
+  const capacidadeMin = trocaFuncionario?.daily_hours ? trocaFuncionario.daily_hours * 60 : null;
+  const estouraCapacidade = capacidadeMin != null && minutosSelecionados > capacidadeMin;
+
+  async function criarTarefasTroca() {
+    const selecionados = candidatosDaSemana.filter((c) => selecionadosTroca.has(c.id));
+    if (!selecionados.length || !trocaFuncionarioId || !trocaData) return;
+    setCriandoTrocas(true);
+    setMsgTroca('');
+    try {
+      // ordem_rota é usado pra reordenar a rota do dia na Escala — mesmo
+      // padrão de EscalaCampo.jsx (próxima posição livre daquele
+      // funcionário/dia, não pode ficar nulo).
+      const { data: existentes } = await supabase
+        .from('agenda')
+        .select('ordem_rota')
+        .eq('funcionario_id', trocaFuncionarioId)
+        .eq('data_agendada', trocaData);
+      let proximaOrdem = existentes?.length
+        ? Math.max(...existentes.map((v) => v.ordem_rota ?? 0)) + 1
+        : 0;
+
+      const linhas = selecionados.map((c) => ({
+        cliente_id:            c.id,
+        funcionario_id:        trocaFuncionarioId,
+        data_agendada:         trocaData,
+        duracao_estimada_min:  c.duracao_estimada_min || null,
+        tipos_tarefa:          ['troca'],
+        ordem_rota:            proximaOrdem++,
+        status:                'rascunho',
+      }));
+      const { error } = await supabase.from('agenda').insert(linhas);
+      if (error) throw error;
+      setMsgTroca(`${linhas.length} tarefa${linhas.length !== 1 ? 's' : ''} de troca criada${linhas.length !== 1 ? 's' : ''} como rascunho — revise na Escala antes de publicar.`);
+      setSelecionadosTroca(new Set());
+    } catch (e) {
+      setMsgTroca('Erro ao criar: ' + e.message);
+    } finally {
+      setCriandoTrocas(false);
+    }
+  }
+
   useEffect(() => {
     (async () => {
       setLoading(true);
       const { data } = await supabase
         .from('clientes')
-        .select('id, nome_empresa, endereco, bairro, lat, lng, grupo_servico, contato_nome, contato_telefone')
+        .select(`
+          id, nome_empresa, endereco, bairro, regiao, lat, lng, grupo_servico,
+          contato_nome, contato_telefone, tem_orquidea, duracao_estimada_min,
+          cliente_servicos(valor_mensal, ativo)
+        `)
         .eq('ativo', true);
       setClientes((data ?? []).filter((c) => c.lat && c.lng));
       setLoading(false);
@@ -316,14 +449,16 @@ export default function Mapa({ onNavegar }) {
           <div>
             <h2 className="mapa__titulo">Mapa de Clientes</h2>
             <p className="mapa__subtitulo">
-              {modoRota
-                ? `Rota de ${rotaFuncionarioNome ?? '—'} · ${new Date(rotaData + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${rotaVisitas.length} visita${rotaVisitas.length !== 1 ? 's' : ''}`
-                : `Localização dos clientes ativos · ${filtrados.length} no mapa`}
+              {modoTroca
+                ? `Semana ${semanaCiclo} do ciclo · ${ehSemanaOrquidea(semanaCiclo) ? 'foco em orquídea' : 'troca geral'} · ${candidatosDaSemana.length} candidato${candidatosDaSemana.length !== 1 ? 's' : ''}`
+                : modoRota
+                  ? `Rota de ${rotaFuncionarioNome ?? '—'} · ${new Date(rotaData + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${rotaVisitas.length} visita${rotaVisitas.length !== 1 ? 's' : ''}`
+                  : `Localização dos clientes ativos · ${filtrados.length} no mapa`}
             </p>
           </div>
         </div>
         <div className="mapa__filtros">
-          {!modoRota && (
+          {!modoRota && !modoTroca && (
             <>
               <div className="mapa__busca-wrap">
                 <span className="mapa__busca-icon">⌕</span>
@@ -349,14 +484,16 @@ export default function Mapa({ onNavegar }) {
             </>
           )}
 
-          <select
-            className="mapa__select"
-            value={rotaFuncionarioId}
-            onChange={(e) => setRotaFuncionarioId(e.target.value)}
-          >
-            <option value="">🧭 Planejar rota de...</option>
-            {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
+          {!modoTroca && (
+            <select
+              className="mapa__select"
+              value={rotaFuncionarioId}
+              onChange={(e) => setRotaFuncionarioId(e.target.value)}
+            >
+              <option value="">🧭 Planejar rota de...</option>
+              {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          )}
           {modoRota && (
             <>
               <input
@@ -366,6 +503,29 @@ export default function Mapa({ onNavegar }) {
                 onChange={(e) => setRotaData(e.target.value)}
               />
               <button className="mapa__rota-sair" onClick={() => setRotaFuncionarioId('')} title="Sair do modo rota">
+                ✕ Ver todos os clientes
+              </button>
+            </>
+          )}
+
+          {!modoRota && (
+            <button
+              className={`mapa__btn-troca ${modoTroca ? 'mapa__btn-troca--ativo' : ''}`}
+              onClick={() => setModoTroca((v) => !v)}
+              title="Planejar as trocas do ciclo mensal (orquídea / troca geral)"
+            >
+              🔄 Planejar trocas
+            </button>
+          )}
+          {modoTroca && (
+            <>
+              <select className="mapa__select" value={semanaCiclo} onChange={(e) => setSemanaCiclo(Number(e.target.value))}>
+                <option value={1}>Semana 1 — orquídea</option>
+                <option value={2}>Semana 2 — troca geral</option>
+                <option value={3}>Semana 3 — orquídea</option>
+                <option value={4}>Semana 4 — troca geral + solicitações</option>
+              </select>
+              <button className="mapa__rota-sair" onClick={() => setModoTroca(false)} title="Sair do planejador de troca">
                 ✕ Ver todos os clientes
               </button>
             </>
@@ -404,6 +564,67 @@ export default function Mapa({ onNavegar }) {
           </aside>
         )}
 
+        {modoTroca && (
+          <aside className="mapa__rota-painel">
+            <div className="mapa__rota-painel-header">
+              <div className="mapa__rota-painel-titulo">Candidatos a troca</div>
+              <div className="mapa__rota-painel-sub">
+                {trocasLoading ? 'Carregando...' : `${candidatosDaSemana.length} candidato${candidatosDaSemana.length !== 1 ? 's' : ''} · ${selecionadosTroca.size} selecionado${selecionadosTroca.size !== 1 ? 's' : ''}`}
+              </div>
+            </div>
+
+            {!trocasLoading && candidatosDaSemana.length === 0 ? (
+              <p className="mapa__rota-vazio">Nenhum candidato pra essa semana do ciclo.</p>
+            ) : (
+              <div className="mapa__rota-lista">
+                {candidatosDaSemana.map((c) => {
+                  const sel = selecionadosTroca.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      className={`mapa__troca-item ${sel ? 'mapa__troca-item--sel' : ''}`}
+                      onClick={() => toggleCandidatoTroca(c.id)}
+                    >
+                      <span className="mapa__troca-item__check">{sel ? '✓' : ''}</span>
+                      <span className="mapa__rota-item__info">
+                        <span className="mapa__rota-item__nome">{c.nome_empresa}</span>
+                        <span className="mapa__rota-item__meta">
+                          {c.regiao || c.bairro || '—'}
+                          {c.porte > 0 && ` · R$ ${c.porte.toLocaleString('pt-BR')}/mês`}
+                        </span>
+                        <span className="mapa__rota-item__meta">
+                          {c.diasDesdeTroca == null ? 'nunca trocou' : `há ${c.diasDesdeTroca}d`}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mapa__troca-rodape">
+              <select className="mapa__select" value={trocaFuncionarioId} onChange={(e) => setTrocaFuncionarioId(e.target.value)}>
+                <option value="">Equipe/funcionário...</option>
+                {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+              <input type="date" className="mapa__select" value={trocaData} onChange={(e) => setTrocaData(e.target.value)} />
+              {estouraCapacidade && (
+                <p className="mapa__troca-aviso">
+                  ⚠ {Math.round(minutosSelecionados / 60 * 10) / 10}h selecionadas passam da jornada de {trocaFuncionario.daily_hours}h de {trocaFuncionario.name}.
+                </p>
+              )}
+              {msgTroca && <p className="mapa__troca-msg">{msgTroca}</p>}
+              <button
+                className="ec__btn-add"
+                disabled={selecionadosTroca.size === 0 || !trocaFuncionarioId || !trocaData || criandoTrocas}
+                onClick={criarTarefasTroca}
+              >
+                {criandoTrocas ? 'Criando...' : `Criar ${selecionadosTroca.size || ''} tarefa${selecionadosTroca.size !== 1 ? 's' : ''} de troca`}
+              </button>
+            </div>
+          </aside>
+        )}
+
         <div className="mapa__mapa-wrap">
           {loading ? (
             <div className="mapa__estado">
@@ -422,6 +643,8 @@ export default function Mapa({ onNavegar }) {
               />
               {modoRota ? (
                 <RotaLayer key={`${rotaFuncionarioId}-${rotaData}`} visitas={rotaVisitas} onAbrirVisita={setAgendamentoSelecionado} />
+              ) : modoTroca ? (
+                <TrocaLayer key={semanaCiclo} candidatos={candidatosDaSemana} selecionados={selecionadosTroca} onToggle={toggleCandidatoTroca} />
               ) : (
                 <>
                   <ClusterLayer clientes={filtrados} />

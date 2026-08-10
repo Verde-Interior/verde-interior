@@ -108,6 +108,26 @@
 }
 .mapa__rota-sair:hover { background: var(--cream-50); color: var(--text-primary); }
 
+.mapa__btn-troca {
+  padding: 9px 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.mapa__btn-troca:hover { background: var(--cream-50); color: var(--text-primary); }
+.mapa__btn-troca--ativo {
+  background: var(--color-primary-lt);
+  border-color: var(--color-primary);
+  color: var(--vinho-500);
+  font-weight: 600;
+}
+
 /* ── Área do mapa ── */
 .mapa__area {
   flex: 1;
@@ -260,6 +280,61 @@
   margin-top: 2px;
 }
 
+/* ── Candidato a troca (checkbox-like) ── */
+.mapa__troca-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast);
+}
+.mapa__troca-item:hover { background: var(--cream-50); }
+.mapa__troca-item--sel { background: var(--color-primary-lt); }
+
+.mapa__troca-item__check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 4px;
+  border: 1.5px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+}
+.mapa__troca-item--sel .mapa__troca-item__check {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.mapa__troca-rodape {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+.mapa__troca-rodape .mapa__select { width: 100%; }
+
+.mapa__troca-aviso {
+  font-size: 12px;
+  color: var(--color-warning);
+}
+.mapa__troca-msg {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* ── Pino numerado da rota ── */
 .mapa-rota-pin-wrap { background: transparent; border: none; }
 .mapa-rota-pin {
@@ -297,6 +372,28 @@
   animation: mapa-spin 0.7s linear infinite;
 }
 @keyframes mapa-spin { to { transform: rotate(360deg); } }
+
+/* ── Pino de candidato a troca ── */
+.mapa-troca-pin-wrap { background: transparent; border: none; }
+.mapa-troca-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-card);
+  border: 2px solid var(--text-muted);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mapa-troca-pin--sel {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
 
 /* ── Pino individual ── */
 .mapa-pin-wrap { background: transparent; border: none; }
