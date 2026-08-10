@@ -188,15 +188,21 @@
 }
 .leaflet-control-attribution a { color: var(--text-secondary); }
 
-/* ── Painel do itinerário (modo rota) ── */
+/* ── Painel do itinerário (modo rota) / candidatos (modo troca) ──
+   overflow:hidden aqui, não auto — quem rola é só a lista (.mapa__rota-lista,
+   flex:1), pra cabeçalho e rodapé (funcionário/data/criar, no modo troca)
+   ficarem sempre visíveis mesmo com dezenas de candidatos na lista. Sem
+   isso o painel inteiro virava um scroll só, e o rodapé ficava escondido
+   lá embaixo, dando a impressão de que nada acontecia ao selecionar. */
 .mapa__rota-painel {
   width: 280px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   border-right: 1px solid var(--surface-border);
   background: var(--surface-card);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .mapa__rota-painel-header {
@@ -229,6 +235,9 @@
   flex-direction: column;
   padding: 8px;
   gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .mapa__rota-item {
