@@ -1,7 +1,16 @@
 /* src/components/EscalaCampo/EscalaCalendario.css */
 /* Visão de calendário (quinzenal/mês) da Escala */
 
+/* .ec (EscalaCampo.jsx) é overflow:hidden com altura fixa da página — sem
+   flex+min-height:0 aqui, o calendário simplesmente crescia além da tela e
+   as últimas linhas do mês (ex: 30/31) ficavam cortadas, sem como rolar até
+   elas. Vira coluna flex: nav/ações ficam fixos no topo, só a grade
+   (.ec-cal__grid) rola por dentro. */
 .ec-cal {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: var(--glass-light);
   border: 1px solid var(--glass-light-border);
   border-radius: var(--radius-lg);
@@ -14,6 +23,7 @@
   justify-content: center;
   gap: 16px;
   margin-bottom: 14px;
+  flex-shrink: 0;
 }
 
 .ec-cal__nav-btn {
@@ -42,6 +52,7 @@
   display: flex;
   justify-content: flex-end;
   margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .ec-cal__grid {
@@ -52,15 +63,26 @@
      scroll horizontal — era o bug do "falta sábado/domingo" nos prints. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
+  align-content: flex-start;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
+/* Sticky: fica visível no topo da grade rolável, pra sempre dar pra ver em
+   qual dia da semana cada coluna está mesmo rolando pra ver 30/31. */
 .ec-cal__dow {
+  position: sticky;
+  top: 0;
+  background: var(--glass-light);
   text-align: center;
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   padding-bottom: 4px;
+  z-index: 1;
 }
 
 /* Célula do dia — lista as visitas em linha, não é mais um botão único (tem
@@ -84,14 +106,14 @@
 
 /* Altura fixa só nos quadrados do dia (não na linha do grid inteira, que
    também contém o cabeçalho DOM/SEG/... — fixar ali infla o cabeçalho
-   junto). Sem isso, cada semana tomava altura independente baseada no
+   junto), e igual em Mês e Quinzenal — mesmo tamanho de quadrado nos dois
+   modos. Sem isso, cada semana tomava altura independente baseada no
    próprio conteúdo: uma semana cheia de visitas ficava alta, uma quase
-   vazia (comum na última linha do mês) ficava espremida, sumindo perto das
-   linhas de cima. 112px cobre cabeçalho do dia + as 4 visitas visíveis
-   (.ec-cal__cel-lista, 76px) + padding — mesmo padrão de quadrado uniforme
-   do Auvo/Google Calendar. */
-.ec-cal__grid--mes .ec-cal__cel,
-.ec-cal__grid--mes .ec-cal__cel--vazia-clicavel {
+   vazia ficava espremida, sumindo perto das linhas de cima. 112px cobre
+   cabeçalho do dia + as 4 visitas visíveis (.ec-cal__cel-lista, 76px) +
+   padding — mesmo padrão de quadrado uniforme do Auvo/Google Calendar. */
+.ec-cal__cel,
+.ec-cal__cel--vazia-clicavel {
   height: 112px;
 }
 
