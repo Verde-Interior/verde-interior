@@ -29,52 +29,74 @@ export function enderecoSimplificado(endereco) {
   return `${partes[0]}, ${partes[1]}`;
 }
 
-// Uma chamada ao Nominatim — usado internamente por geocodeEndereco (2
-// tentativas). countrycodes=br já restringe ao Brasil, não precisa repetir
-// "Brasil" no texto da busca (só some espaço útil e pode até atrapalhar).
-async function buscarNominatim(query) {
-  if (!query) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=br&q=${encodeURIComponent(query)}`;
+// Faz uma chamada ao Nominatim com parâmetros arbitrários (object → URLSearchParams).
+async function chamarNominatim(params) {
+  const p = new URLSearchParams({
+    format: 'json', limit: '1', addressdetails: '1', countrycodes: 'br',
+    ...params,
+  });
   try {
-    const r = await fetch(url, {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?${p}`, {
       headers: { 'Accept-Language': 'pt-BR' },
     });
     if (!r.ok) return null;
     const arr = await r.json();
     if (!Array.isArray(arr) || arr.length === 0) return null;
     const hit = arr[0];
-    return {
-      lat: parseFloat(hit.lat),
-      lng: parseFloat(hit.lon),
-      display_name: hit.display_name,
-    };
-  } catch {
-    return null;
-  }
+    return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), display_name: hit.display_name };
+  } catch { return null; }
 }
+
+// Extrai número, CEP e UF de um endereço brasileiro formatado livremente.
+// Ex: "Rua Castilho 392, São Paulo-SP, 04568-010"
+//  → { rua: "Rua Castilho", numero: "392", cep: "04568-010", uf: "SP" }
+function parsearEndereco(endereco) {
+  const cep    = (endereco.match(/\b(\d{5}-?\d{3})\b/) ?? [])[1] ?? null;
+  const uf     = (endereco.match(/[,\s-]([A-Z]{2})(?:[,\s]|$)/) ?? [])[1] ?? null;
+  const partes = endereco.split(',')[0].trim(); // "Rua Castilho 392"
+  const numM   = partes.match(/^(.*?)\s+(\d+[A-Za-z]?)$/);
+  return {
+    rua:    numM ? numM[1] : partes,
+    numero: numM ? numM[2] : null,
+    cep,
+    uf,
+  };
+}
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
 
 // Geocoding via Nominatim (OpenStreetMap) — grátis, respeitar 1 req/s.
 // Retorna { lat, lng, display_name } ou null se não achou.
 //
-// Duas tentativas, porque o "endereco" recebido varia de lugar pra lugar no
-// app: às vezes já vem completo (rua+bairro+cidade+UF+CEP, como o cadastro
-// de cliente formata), às vezes é só "Rua X, 64" digitado corrido, sem
-// cidade nenhuma. Tentar sempre com cidade/UF grudados quebra o primeiro
-// caso (duplica e confunde a busca); nunca tentar quebra o segundo (Nominatim
-// não acha uma rua sem nenhuma pista de região). Por isso: tenta cru primeiro
-// (resolve o caso "já está completo" com precisão), só complementa com
-// cidade/UF se a primeira tentativa não achar nada.
-export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo', uf = 'SP' }) {
+// Estratégia (3 tentativas em cascata):
+// 1. Busca estruturada: street (rua+número) + postalcode — mais precisa, pina
+//    no número exato quando o CEP confirma a rua.
+// 2. Busca estruturada sem CEP: street + city + state — fallback se o CEP
+//    não estiver no banco do Nominatim.
+// 3. Busca livre com endereço+bairro+cidade+UF — mesmo comportamento antigo,
+//    garante compatibilidade com endereços já salvos em formato variado.
+export async function geocodeEndereco({ endereco, bairro, cidade = 'São Paulo', uf: ufParam = 'SP' }) {
   if (!endereco?.trim()) return null;
 
-  const bruto = [endereco, bairro].filter(Boolean).join(', ');
-  const resultadoBruto = await buscarNominatim(bruto);
-  if (resultadoBruto) return resultadoBruto;
+  const { rua, numero, cep, uf } = parsearEndereco(endereco);
+  const street = numero ? `${numero} ${rua}` : rua; // Nominatim: número antes da rua
+  const state  = uf ?? ufParam;
 
-  await new Promise(resolve => setTimeout(resolve, 1000)); // respeita o limite de ~1 req/s do Nominatim antes de tentar de novo
+  // 1. Estruturada com CEP
+  if (cep) {
+    const r = await chamarNominatim({ street, postalcode: cep });
+    if (r) return r;
+    await delay(1000);
+  }
 
-  const completo = [endereco, bairro, cidade, uf].filter(Boolean).join(', ');
-  return buscarNominatim(completo);
+  // 2. Estruturada com cidade/estado
+  const r2 = await chamarNominatim({ street, city: cidade, state, country: 'Brazil' });
+  if (r2) return r2;
+  await delay(1000);
+
+  // 3. Busca livre (compatibilidade com endereços antigos sem número/CEP)
+  const q = [endereco, bairro, cidade, state].filter(Boolean).join(', ');
+  return chamarNominatim({ q });
 }
 
 // Reverse geocoding via Nominatim (OpenStreetMap) — free, sem chave de API.
