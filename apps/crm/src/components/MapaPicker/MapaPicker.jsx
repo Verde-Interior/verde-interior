@@ -1,19 +1,20 @@
-// src/components/Clientes/ClienteMapaPicker.jsx
-// Mapa com pino arrastável para confirmar/corrigir visualmente a coordenada
-// de um cliente. O geocoder (Nominatim) às vezes erra em vias longas — o
-// gestor vê onde ele apontou e ajusta com o dedo/mouse antes de salvar,
-// em vez de confiar cegamente no número calculado.
+// src/components/MapaPicker/MapaPicker.jsx
+// Mapa com pino arrastável para confirmar/corrigir visualmente uma coordenada
+// (cliente ou lead). O geocoder (Nominatim) às vezes erra em vias longas — o
+// gestor vê onde ele apontou e ajusta com o dedo/mouse antes de salvar, em
+// vez de confiar cegamente no número calculado. Também serve pra marcar a
+// posição na mão quando só se tem o endereço e o geocoder não acha nada.
 import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import './ClienteMapaPicker.css';
+import './MapaPicker.css';
 
 const CENTRO_SP = [-23.5505, -46.6333];
 
 const pinIcon = L.divIcon({
-  className: 'cmp-pin-wrap',
-  html: '<span class="cmp-pin"></span>',
+  className: 'mpk-pin-wrap',
+  html: '<span class="mpk-pin"></span>',
   iconSize: [22, 22],
   iconAnchor: [11, 22],
 });
@@ -34,7 +35,7 @@ function CliqueParaMarcar({ onPick }) {
   return null;
 }
 
-export default function ClienteMapaPicker({ lat, lng, onChange }) {
+export default function MapaPicker({ lat, lng, onChange }) {
   const latN = Number(lat);
   const lngN = Number(lng);
   const posicao = Number.isFinite(latN) && Number.isFinite(lngN) && lat !== '' && lng !== ''
@@ -42,11 +43,11 @@ export default function ClienteMapaPicker({ lat, lng, onChange }) {
     : null;
 
   return (
-    <div className="cmp">
+    <div className="mpk">
       <MapContainer
         center={posicao ?? CENTRO_SP}
         zoom={posicao ? 17 : 11}
-        className="cmp__map"
+        className="mpk__map"
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -68,7 +69,7 @@ export default function ClienteMapaPicker({ lat, lng, onChange }) {
           />
         )}
       </MapContainer>
-      <p className="cmp__dica">
+      <p className="mpk__dica">
         {posicao
           ? 'Arraste o pino ou clique no mapa para corrigir a posição exata.'
           : 'Busque as coordenadas do endereço ou clique no mapa para marcar a posição.'}

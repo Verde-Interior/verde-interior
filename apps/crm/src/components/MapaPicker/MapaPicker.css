@@ -1,18 +1,18 @@
-/* src/components/Clientes/ClienteMapaPicker.css */
+/* src/components/MapaPicker/MapaPicker.css */
 
-.cmp {
+.mpk {
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--surface-border);
 }
 
-.cmp__map {
+.mpk__map {
   height: 260px;
   width: 100%;
   cursor: crosshair;
 }
 
-.cmp__dica {
+.mpk__dica {
   margin: 0;
   padding: 8px 10px;
   font-size: 12px;
@@ -21,8 +21,8 @@
   border-top: 1px solid var(--surface-border);
 }
 
-.cmp-pin-wrap { background: transparent; border: none; }
-.cmp-pin {
+.mpk-pin-wrap { background: transparent; border: none; }
+.mpk-pin {
   display: block;
   width: 22px;
   height: 22px;
@@ -33,4 +33,4 @@
   transform: rotate(-45deg);
   cursor: grab;
 }
-.cmp-pin:active { cursor: grabbing; }
+.mpk-pin:active { cursor: grabbing; }

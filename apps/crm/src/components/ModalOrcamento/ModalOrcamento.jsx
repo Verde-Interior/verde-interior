@@ -4,6 +4,8 @@ import { useCRM } from '../../context/CRMContext';
 import { supabase } from '../../lib/supabase';
 import SecaoHistorico from './sections/SecaoHistorico';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
+import { geocodeEndereco } from '../../utils/geoUtils';
+import MapaPicker from '../MapaPicker/MapaPicker';
 import './ModalOrcamento.css';
 
 const ICONE_CANAL = { WhatsApp: '💬', 'E-mail': '✉️', Telefone: '📞', Indicação: '🤝' };
@@ -74,6 +76,7 @@ export default function ModalOrcamento() {
   // ── Modo edição dos dados do lead ─────────────────────────────────────────
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [geocoding, setGeocoding] = useState(false);
 
   // ── Contrato ──────────────────────────────────────────────────────────────
   const [contrato, setContrato] = useState({
@@ -218,6 +221,8 @@ export default function ModalOrcamento() {
       email:            lead.email ?? '',
       bairro:           lead.bairro ?? '',
       endereco:         lead.endereco ?? '',
+      lat:              lead.lat ?? '',
+      lng:              lead.lng ?? '',
       tiposServico:     getTiposServico(lead),
       canalOrigem:      lead.canalOrigem ?? 'WhatsApp',
       quantidadeVasos:  lead.quantidadeVasos ?? '',
@@ -237,6 +242,25 @@ export default function ModalOrcamento() {
 
   function setEdit(campo, valor) {
     setEditForm((f) => ({ ...f, [campo]: valor }));
+  }
+
+  async function buscarCoordenadasLead() {
+    if (!editForm.endereco?.trim()) {
+      alert('Informe o endereço antes de buscar as coordenadas');
+      return;
+    }
+    setGeocoding(true);
+    try {
+      const r = await geocodeEndereco({ endereco: editForm.endereco, bairro: editForm.bairro });
+      if (!r) {
+        alert('Endereço não encontrado. Marque a posição direto no mapa.');
+        return;
+      }
+      setEdit('lat', r.lat.toFixed(6));
+      setEdit('lng', r.lng.toFixed(6));
+    } finally {
+      setGeocoding(false);
+    }
   }
 
   // ── Anexo ─────────────────────────────────────────────────────────────────
@@ -392,6 +416,8 @@ export default function ModalOrcamento() {
         email:           editForm.email,
         bairro:          editForm.bairro,
         endereco:        editForm.endereco,
+        lat:             editForm.lat !== '' ? Number(editForm.lat) : null,
+        lng:             editForm.lng !== '' ? Number(editForm.lng) : null,
         tiposServico:    editForm.tiposServico ?? [],
         canalOrigem:     editForm.canalOrigem,
         quantidadeVasos: editForm.quantidadeVasos ? Number(editForm.quantidadeVasos) : undefined,
@@ -480,6 +506,10 @@ export default function ModalOrcamento() {
   // Uma tarefa correspondente também é criada em `tarefas` para não perder rastro no CRM.
   async function publicarAgendaLead() {
     setAgendarErro('');
+    if (lead.lat == null || lead.lng == null) {
+      setAgendarErro('Confirme a coordenada do endereço (seção "Dados do Cliente" → Editar) antes de publicar — sem isso o funcionário pode não conseguir fazer check-in no local.');
+      return;
+    }
     const { funcionarioId, dataAgendada, horaEstimada, duracaoMin, observacoes } = agendarForm;
     if (!funcionarioId) { setAgendarErro('Selecione o funcionário responsável.'); return; }
     if (!dataAgendada)  { setAgendarErro('Escolha a data da visita.'); return; }
@@ -734,6 +764,44 @@ export default function ModalOrcamento() {
                   <input className="modal__input" value={editForm.endereco} onChange={(e) => setEdit('endereco', e.target.value)} placeholder="Opcional" />
                 </div>
                 <div className="modal__campo-editavel">
+                  <label className="modal__label">Latitude</label>
+                  <input
+                    className="modal__input" type="number" step="any"
+                    value={editForm.lat} onChange={(e) => setEdit('lat', e.target.value)}
+                    placeholder="-23.5489"
+                  />
+                </div>
+                <div className="modal__campo-editavel">
+                  <label className="modal__label">Longitude</label>
+                  <input
+                    className="modal__input" type="number" step="any"
+                    value={editForm.lng} onChange={(e) => setEdit('lng', e.target.value)}
+                    placeholder="-46.6388"
+                  />
+                </div>
+                <div className="modal__campo-editavel modal__campo-readonly--wide">
+                  <button
+                    type="button"
+                    className="modal__btn modal__btn--cancelar"
+                    onClick={buscarCoordenadasLead}
+                    disabled={geocoding || !editForm.endereco?.trim()}
+                    title="Buscar latitude/longitude a partir do endereço via OpenStreetMap"
+                  >
+                    {geocoding ? 'Buscando...' : '📍 Buscar coordenadas do endereço'}
+                  </button>
+                </div>
+                <div className="modal__campo-editavel modal__campo-readonly--wide">
+                  <label className="modal__label">
+                    Confirmar posição no mapa
+                    <span className="modal__label-max"> — importante pra visita técnica não estourar o raio de check-in</span>
+                  </label>
+                  <MapaPicker
+                    lat={editForm.lat}
+                    lng={editForm.lng}
+                    onChange={(lat, lng) => { setEdit('lat', lat.toFixed(6)); setEdit('lng', lng.toFixed(6)); }}
+                  />
+                </div>
+                <div className="modal__campo-editavel">
                   <label className="modal__label">Canal de Origem</label>
                   <select className="modal__select" value={editForm.canalOrigem} onChange={(e) => setEdit('canalOrigem', e.target.value)}>
                     {(CANAIS_ORIGEM ?? ['WhatsApp', 'E-mail', 'Telefone', 'Indicação']).map((c) => (
@@ -759,7 +827,13 @@ export default function ModalOrcamento() {
                 {lead.endereco && (
                   <div className="modal__campo-readonly modal__campo-readonly--wide">
                     <span className="modal__label">Endereço</span>
-                    <span>{lead.endereco}</span>
+                    <span>
+                      {lead.endereco}
+                      {' '}
+                      {(lead.lat == null || lead.lng == null)
+                        ? <span title="Sem coordenada confirmada — visita técnica pode falhar no check-in">⚠️ sem coordenada</span>
+                        : <span title="Coordenada confirmada">✅</span>}
+                    </span>
                   </div>
                 )}
                 <div className="modal__campo-readonly">
@@ -874,6 +948,11 @@ export default function ModalOrcamento() {
               Ao publicar, esta visita aparece na Escala do funcionário escolhido, sem precisar cadastrar como Cliente.
               Ideal para visitas técnicas antes do orçamento fechar.
             </p>
+            {(lead.lat == null || lead.lng == null) && (
+              <p className="modal__anexo-erro">
+                ⚠️ Este lead ainda não tem coordenada confirmada. Abra "Editar" em Dados do Cliente e confirme a posição no mapa antes de publicar — senão o funcionário pode não conseguir fazer check-in no endereço.
+              </p>
+            )}
 
             {/* Visitas já publicadas */}
             {agendasDoLead.length > 0 && (

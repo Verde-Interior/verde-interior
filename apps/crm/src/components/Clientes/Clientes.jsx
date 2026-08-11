@@ -7,7 +7,7 @@ import { tempoRelativo } from '../../utils/formatUtils';
 import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import SugestoesDropdown from '../SugestoesDropdown/SugestoesDropdown';
-import ClienteMapaPicker from './ClienteMapaPicker';
+import MapaPicker from '../MapaPicker/MapaPicker';
 import { DIAS_SEMANA, TIPO_LABEL, FREQ_LABEL, FREQ_VISITA_LABEL } from '../../utils/clienteConstants';
 import { situacaoRecenciaVisita } from '../../utils/escalaHelpers';
 import { dateParaISO } from '../../utils/dateUtils';
@@ -906,7 +906,7 @@ export default function Clientes() {
                       Confirmar posição no mapa
                       <span className="cl-label-hint">arraste o pino ou clique pra ajustar — o cálculo automático pode errar</span>
                     </label>
-                    <ClienteMapaPicker
+                    <MapaPicker
                       lat={form.lat}
                       lng={form.lng}
                       onChange={(lat, lng) => { setF('lat', lat.toFixed(6)); setF('lng', lng.toFixed(6)); }}
