@@ -245,15 +245,30 @@ function statusLabel(s) {
     cancelado:   { txt: 'Cancelada',    cls: 'ag-badge--cancel' },
   })[s] || { txt: s, cls: '' };
 }
-async function captureGPS() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve({ lat: null, lng: null, motivo: 'indisponivel' });
-    navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, motivo: null }),
-      (err) => resolve({ lat: null, lng: null, motivo: err.code === 1 ? 'negado' : 'falhou' }),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
+function getPosition(options) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
   });
+}
+
+// Tenta com alta precisão (GPS) primeiro; se falhar ou estourar o tempo
+// (comum dentro de prédios, onde o GPS demora ou não pega sinal), tenta de
+// novo com precisão menor (wifi/rede), que costuma responder mais rápido
+// em ambiente interno. Permissão negada não tem fallback — repetir não muda o resultado.
+async function captureGPS() {
+  if (!navigator.geolocation) return { lat: null, lng: null, motivo: 'indisponivel' };
+  try {
+    const p = await getPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+    return { lat: p.coords.latitude, lng: p.coords.longitude, motivo: null };
+  } catch (err) {
+    if (err.code === 1) return { lat: null, lng: null, motivo: 'negado' };
+    try {
+      const p = await getPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 20000 });
+      return { lat: p.coords.latitude, lng: p.coords.longitude, motivo: null };
+    } catch {
+      return { lat: null, lng: null, motivo: 'falhou' };
+    }
+  }
 }
 
 function alertGPS(motivo) {
