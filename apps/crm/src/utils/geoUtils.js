@@ -48,19 +48,25 @@ async function chamarNominatim(params) {
 }
 
 // Extrai número, CEP e UF de um endereço brasileiro formatado livremente.
-// Ex: "Rua Castilho 392, São Paulo-SP, 04568-010"
-//  → { rua: "Rua Castilho", numero: "392", cep: "04568-010", uf: "SP" }
+// Aceita dois formatos comuns nos cadastros:
+//   "Rua Castilho 392, São Paulo-SP, 04568-010"      (número grudado na rua)
+//   "Av. Léonil Cré Bortolosso, 88 - Vila Quitaúna"  (número no 2º pedaço, após a vírgula)
+// Sem isso, endereços no 2º formato perdem o número na busca estruturada do
+// Nominatim e o geocoder cai pra interpolação de rua inteira — impreciso o
+// bastante pra estourar o raio de 300m do check-in.
 function parsearEndereco(endereco) {
-  const cep    = (endereco.match(/\b(\d{5}-?\d{3})\b/) ?? [])[1] ?? null;
-  const uf     = (endereco.match(/[,\s-]([A-Z]{2})(?:[,\s]|$)/) ?? [])[1] ?? null;
-  const partes = endereco.split(',')[0].trim(); // "Rua Castilho 392"
-  const numM   = partes.match(/^(.*?)\s+(\d+[A-Za-z]?)$/);
-  return {
-    rua:    numM ? numM[1] : partes,
-    numero: numM ? numM[2] : null,
-    cep,
-    uf,
-  };
+  const cep = (endereco.match(/\b(\d{5}-?\d{3})\b/) ?? [])[1] ?? null;
+  const uf  = (endereco.match(/[,\s-]([A-Z]{2})(?:[,\s]|$)/) ?? [])[1] ?? null;
+  const seg = endereco.split(',').map(p => p.trim()).filter(Boolean);
+  const rua = seg[0] ?? '';
+
+  const numGrudado = rua.match(/^(.*?)\s+(\d+[A-Za-z]?)$/);
+  if (numGrudado) return { rua: numGrudado[1], numero: numGrudado[2], cep, uf };
+
+  const numSeparado = (seg[1] ?? '').match(/^(\d+[A-Za-z]?)\b/);
+  if (numSeparado) return { rua, numero: numSeparado[1], cep, uf };
+
+  return { rua, numero: null, cep, uf };
 }
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
