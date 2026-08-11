@@ -1566,21 +1566,38 @@ export function sigClear() {
   }
 }
 
-async function uploadSignature(canvas, relatorioId) {
+const UPLOAD_TIMEOUT_MS = 15000;
+
+// Sem timeout, uma conexão ruim deixa o fetch pendurado indefinidamente —
+// o toast "Enviando..." some sozinho e o app parece travado sem erro nenhum.
+function comTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
-    canvas.toBlob(async (blob) => {
-      if (!blob) return reject(new Error('Falha ao gerar imagem'));
-      const path = `${relatorioId}/assinatura.png`;
-      const { error } = await supabase.storage
-        .from('field-photos')
-        .upload(path, blob, { contentType: 'image/png', upsert: true });
-      if (error) return reject(error);
-      const { data: signed } = await supabase.storage
-        .from('field-photos')
-        .createSignedUrl(path, 60 * 60 * 24 * 30);
-      resolve({ url: signed?.signedUrl ?? path, path });
-    }, 'image/png');
+    const timer = setTimeout(
+      () => reject(new Error('Sem conexão — verifique o sinal e tente novamente')),
+      ms
+    );
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
   });
+}
+
+async function uploadSignature(canvas, relatorioId) {
+  return comTimeout((async () => {
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((b) => b ? resolve(b) : reject(new Error('Falha ao gerar imagem')), 'image/png');
+    });
+    const path = `${relatorioId}/assinatura.png`;
+    const { error } = await supabase.storage
+      .from('field-photos')
+      .upload(path, blob, { contentType: 'image/png', upsert: true });
+    if (error) throw error;
+    const { data: signed } = await supabase.storage
+      .from('field-photos')
+      .createSignedUrl(path, 60 * 60 * 24 * 30);
+    return { url: signed?.signedUrl ?? path, path };
+  })(), UPLOAD_TIMEOUT_MS);
 }
 
 // Salva assinatura agora (não espera checkout) e volta pro menu
