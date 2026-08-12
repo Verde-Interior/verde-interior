@@ -45,7 +45,7 @@ const SELECT_RELATORIO = `
   agendamento_id,
   agenda:agenda(
     id, data_agendada, hora_estimada_chegada, duracao_estimada_min,
-    observacoes_gestor, ordem_rota,
+    observacoes_gestor, ordem_rota, nome_cliente, endereco_tarefa,
     cliente:clientes(id, nome_empresa, endereco, bairro, lat, lng, contato_nome, grupo_servico)
   ),
   fotos:fotos_relatorio(id, url, storage_path, observacao, tipo, ordem, tamanho_bytes)
@@ -55,6 +55,17 @@ function formatarBytes(n) {
   if (!n) return '0 KB';
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Nome exibido do local visitado: cliente cadastrado, ou nome_cliente da
+// tarefa avulsa (agenda sem cliente_id — ver migration 030_agenda_tarefa_interna).
+function nomeLocal(r) {
+  return r.agenda?.cliente?.nome_empresa ?? r.agenda?.nome_cliente ?? '—';
+}
+
+// Idem para endereço.
+function enderecoLocal(r) {
+  return r.agenda?.cliente?.endereco ?? r.agenda?.endereco_tarefa ?? null;
 }
 
 // Link direto para um relatório específico (usado no card e no deep-link de abertura)
@@ -265,7 +276,7 @@ export default function Relatorios() {
       if (filtroFunc !== 'todos' && String(r.funcionario_id) !== filtroFunc) return false;
       if (filtroGrupo !== 'todos' && r.agenda?.cliente?.grupo_servico !== filtroGrupo) return false;
       if (q) {
-        const nomeEmp = r.agenda?.cliente?.nome_empresa?.toLowerCase() ?? '';
+        const nomeEmp = nomeLocal(r).toLowerCase();
         const bairro  = r.agenda?.cliente?.bairro?.toLowerCase() ?? '';
         if (!nomeEmp.includes(q) && !bairro.includes(q)) return false;
       }
@@ -495,7 +506,7 @@ function CartaoRelatorio({ relatorio: r, funcNome, onAbrir }) {
       onClick={handleClick}
     >
       <div className="rel-card__topo">
-        <div className="rel-card__nome">{c?.nome_empresa ?? '—'}</div>
+        <div className="rel-card__nome">{nomeLocal(r)}</div>
         <div className="rel-card__data">{formatarData(r.agenda?.data_agendada)}</div>
       </div>
       <div className="rel-card__meta">
@@ -539,7 +550,7 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
     })).filter((f) => f.url);
 
     baixarPDF({
-      cliente:      c?.nome_empresa ?? r.agenda?.nome_cliente ?? '—',
+      cliente:      nomeLocal(r),
       bairro:       c?.bairro ?? '',
       data:         formatarData(r.agenda?.data_agendada),
       status:       { em_execucao: 'Em execução', concluido: 'Concluída' }[r.status] ?? r.status,
@@ -555,7 +566,7 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
   }
 
   function remover() {
-    const nome = c?.nome_empresa ?? 'este relatório';
+    const nome = nomeLocal(r) !== '—' ? nomeLocal(r) : 'este relatório';
     setConfirmar({
       titulo: `Remover relatório de "${nome}"?`,
       mensagem: `Isso apaga ${r.fotos?.length ?? 0} foto(s), a assinatura e o registro. A visita volta para "publicado" para ser refeita. Ação não pode ser desfeita.`,
@@ -668,7 +679,7 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
       <div className="rel-modal">
         <header className="rel-modal__header">
           <div>
-            <h3 className="rel-modal__titulo">{c?.nome_empresa ?? 'Relatório'}</h3>
+            <h3 className="rel-modal__titulo">{c?.nome_empresa ?? r.agenda?.nome_cliente ?? 'Relatório'}</h3>
             <p className="rel-modal__sub">
               {formatarData(r.agenda?.data_agendada)} · {funcNome}
             </p>
@@ -705,10 +716,11 @@ function DetalheRelatorio({ relatorio: r, funcNome, onFechar, onRemovido }) {
           <section className="rel-sec">
             <h4 className="rel-sec__titulo">Cliente</h4>
             <div className="rel-info">
-              <div><strong>{c?.endereco ?? '—'}</strong></div>
+              <div><strong>{enderecoLocal(r) ?? '—'}</strong></div>
               {c?.bairro && <div className="rel-hint">{c.bairro}</div>}
               {c?.grupo_servico && <div className="rel-hint">Grupo: {c.grupo_servico}</div>}
               {c?.contato_nome && <div className="rel-hint">Contato: {c.contato_nome}</div>}
+              {!c && <div className="rel-hint">Tarefa avulsa (sem cliente cadastrado)</div>}
             </div>
           </section>
 
