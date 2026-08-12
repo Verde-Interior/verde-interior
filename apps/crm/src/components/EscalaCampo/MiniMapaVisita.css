@@ -5,6 +5,12 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--surface-border);
+  /* Isola o Leaflet num contexto de empilhamento próprio — os panes internos
+     dele (marker/tooltip/popup, z-index até 700, controles até 1000) senão
+     vazam por cima de outros elementos da página (ex: dropdowns) mesmo
+     estando visualmente abaixo, porque .leaflet-container não cria esse
+     contexto sozinho. */
+  isolation: isolate;
 }
 
 .mmv__map {
