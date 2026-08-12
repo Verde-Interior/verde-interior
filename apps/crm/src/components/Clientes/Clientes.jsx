@@ -86,6 +86,7 @@ const FORM_VAZIO = {
   lat: '',
   lng: '',
   dias_disponiveis: [],
+  dias_bloqueados: [],
   janela_entrada_inicio: '',
   janela_entrada_fim: '',
   janela_bloqueada_inicio: '',
@@ -242,6 +243,7 @@ export default function Clientes() {
       lat:                   c.lat                   ?? '',
       lng:                   c.lng                   ?? '',
       dias_disponiveis:        c.dias_disponiveis        ?? [],
+      dias_bloqueados:         c.dias_bloqueados         ?? [],
       janela_entrada_inicio:   c.janela_entrada_inicio   ?? '',
       janela_entrada_fim:      c.janela_entrada_fim      ?? '',
       janela_bloqueada_inicio: c.janela_bloqueada_inicio ?? '',
@@ -276,12 +278,12 @@ export default function Clientes() {
     setForm(f => ({ ...f, [key]: val }));
   }
 
-  function toggleDia(dia) {
+  function toggleDia(dia, campo = 'dias_disponiveis') {
     setForm(f => ({
       ...f,
-      dias_disponiveis: f.dias_disponiveis.includes(dia)
-        ? f.dias_disponiveis.filter(d => d !== dia)
-        : [...f.dias_disponiveis, dia],
+      [campo]: f[campo].includes(dia)
+        ? f[campo].filter(d => d !== dia)
+        : [...f[campo], dia],
     }));
   }
 
@@ -749,6 +751,26 @@ export default function Clientes() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                  <div className="cl-campo cl-campo--wide">
+                    <label>Dias não autorizados <span className="cl-label-hint">ex: condomínio não libera entrada; opcional</span></label>
+                    <div className="cl-dias">
+                      {DIAS_SEMANA.map(d => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className={`cl-dia cl-dia--bloqueio ${form.dias_bloqueados.includes(d.id) ? 'cl-dia--bloqueado' : ''}`}
+                          onClick={() => toggleDia(d.id, 'dias_bloqueados')}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                    {DIAS_SEMANA.some(d => form.dias_disponiveis.includes(d.id) && form.dias_bloqueados.includes(d.id)) && (
+                      <p className="cl-aviso-conflito">
+                        ⚠ Há dia marcado como disponível e não autorizado ao mesmo tempo — confira antes de salvar.
+                      </p>
+                    )}
                   </div>
                   <div className="cl-campo">
                     <label>Horário — chegada a partir de</label>

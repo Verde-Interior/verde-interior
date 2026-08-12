@@ -599,6 +599,20 @@
   color: white;
 }
 
+.cl-dia--bloqueio:hover { border-color: var(--color-danger); color: var(--color-danger); }
+.cl-dia--bloqueado {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: white;
+}
+
+.cl-aviso-conflito {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
 /* ── Contratos ── */
 .cl-servicos-lista {
   display: flex;

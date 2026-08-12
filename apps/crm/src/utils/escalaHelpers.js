@@ -155,6 +155,18 @@ function horaNoBloqueio(cliente, hora) {
   return `Cliente não recebe entre ${ini} e ${fim} · marcado ${h}`;
 }
 
+// Checa se uma data cai em um dia da semana NÃO autorizado do cliente
+// (dias_bloqueados — ex: condomínio não libera entrada às segundas).
+// Diferente de dias_disponiveis, que é a lista de dias de rotina (vazia =
+// sem restrição), este é um conjunto PROIBIDO que vale mesmo com
+// dias_disponiveis vazio.
+function diaNoBloqueio(cliente, dataAgendada) {
+  if (!dataAgendada || !cliente?.dias_bloqueados?.length) return null;
+  const diaId = getDiaSlugUtil(dataAgendada);
+  if (!cliente.dias_bloqueados.includes(diaId)) return null;
+  return `Cliente não autoriza visita às ${DIAS_NOME[diaId] ?? diaId}s`;
+}
+
 // Igual checarRestricoes, mas só a checagem de horário bloqueado — usada nos
 // modais de criar/editar visita pra bloquear o salvamento (com opção de
 // forçar), separado da checagem de dia (verificarConflitos) porque tem
@@ -169,7 +181,7 @@ export function verificarBloqueioHorario(cliente, hora) {
 // horário bloqueado)
 export function checarRestricoes(cliente, dataAgendada, horaChegada) {
   const motivos = [];
-  let restricaoDia = false, restricaoHora = false, restricaoBloqueio = false;
+  let restricaoDia = false, restricaoHora = false, restricaoBloqueio = false, restricaoDiaBloqueado = false;
 
   if (cliente?.dias_disponiveis?.length > 0) {
     const diaId = getDiaSlugUtil(dataAgendada);
@@ -178,6 +190,12 @@ export function checarRestricoes(cliente, dataAgendada, horaChegada) {
       const dias = cliente.dias_disponiveis.map(d => DIAS_LABEL[d] ?? d).join(', ');
       motivos.push(`Cliente só atende: ${dias}`);
     }
+  }
+
+  const motivoDiaBloqueado = diaNoBloqueio(cliente, dataAgendada);
+  if (motivoDiaBloqueado) {
+    restricaoDiaBloqueado = true;
+    motivos.push(motivoDiaBloqueado);
   }
 
   if (horaChegada && (cliente?.janela_entrada_inicio || cliente?.janela_entrada_fim)) {
@@ -204,7 +222,7 @@ export function checarRestricoes(cliente, dataAgendada, horaChegada) {
     motivos.push(motivoBloqueio);
   }
 
-  return { restricaoDia, restricaoHora, restricaoBloqueio, motivos };
+  return { restricaoDia, restricaoHora, restricaoBloqueio, restricaoDiaBloqueado, motivos };
 }
 
 // Retorna o bloqueio ativo para um funcionário em uma data, se houver
@@ -330,6 +348,9 @@ export function verificarConflitos(cliente, isoDate) {
   if ((cliente.dias_disponiveis?.length ?? 0) > 0 && !cliente.dias_disponiveis.includes(diaId)) {
     const diasFormatados = (cliente.dias_disponiveis ?? []).map(d => DIAS_LABEL[d] ?? d).join(', ');
     erros.push(`${cliente.nome_empresa} não atende ${DIAS_NOME[diaId] ?? diaId}s · dias disponíveis: ${diasFormatados}`);
+  }
+  if ((cliente.dias_bloqueados?.length ?? 0) > 0 && cliente.dias_bloqueados.includes(diaId)) {
+    erros.push(`${cliente.nome_empresa} não autoriza visita ${DIAS_NOME[diaId] ?? diaId}s`);
   }
   return erros;
 }

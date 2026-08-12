@@ -46,6 +46,7 @@ Criar novo arquivo em `apps/ponto/supabase/migrations/NNN_descricao.sql` (increm
 **`clientes`** — carteira de clientes
 - `id uuid PK`, `nome_empresa`, `contato_nome/telefone/email`, `endereco`, `bairro`, `lat/lng`, `observacoes`, `grupo_servico`, `frequencia_visita` (011: `1x_semana`/`quinzenal`/`mensal`/`sem_frequencia`), `ultima_visita`, `ativo`, `data_inicio_contrato`
 - `cli_id text` (019: `CLI-NNN`), `dias_disponiveis text[]`, `janela_entrada_inicio/fim`, `duracao_estimada_min` (007)
+- `janela_bloqueada_inicio/fim TIME` (038: faixa de horário proibida, ex: almoço); `dias_bloqueados text[]` (039: dias da semana proibidos, ex: condomínio não libera entrada)
 - 120 clientes importados (023); duplicados mergeados (024)
 - RLS: `clientes_auth_all` (authenticated)
 

@@ -503,7 +503,8 @@
 /* Horário bloqueado (janela_bloqueada) — restrição direta do cliente, não
    só "fora do horário ideal" como a janela de entrada. Vermelho, mais grave
    que dia/hora (que são laranja). */
-.ec-cartao--restr-bloqueio {
+.ec-cartao--restr-bloqueio,
+.ec-cartao--restr-dia-bloqueado {
   background: color-mix(in srgb, #DC2626 14%, var(--surface-card));
   border-color: color-mix(in srgb, #DC2626 45%, var(--surface-border));
   border-left: 4px solid #DC2626;

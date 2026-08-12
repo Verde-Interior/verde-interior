@@ -70,6 +70,7 @@ export default function ModalDetalhesCliente({ clienteId, onFechar, onEditar }) 
   const overlayClose = useOverlayClose(onFechar);
   const tel = telefoneLimpo(cliente?.contato_telefone);
   const diasLabels = (cliente?.dias_disponiveis ?? []).map((d) => DIAS_SEMANA.find((x) => x.id === d)?.label ?? d);
+  const diasBloqueadosLabels = (cliente?.dias_bloqueados ?? []).map((d) => DIAS_SEMANA.find((x) => x.id === d)?.label ?? d);
   const servicosAtivos = (cliente?.cliente_servicos ?? []).filter((s) => s.ativo);
 
   return (
@@ -144,6 +145,9 @@ export default function ModalDetalhesCliente({ clienteId, onFechar, onEditar }) 
                 <h4 className="mdc-sec__titulo">Disponibilidade</h4>
                 <div className="mdc-grid">
                   <div className="mdc-mc"><div className="mdc-mc__lbl">Dias</div><div className="mdc-mc__val">{diasLabels.length ? diasLabels.join(', ') : '—'}</div></div>
+                  {diasBloqueadosLabels.length > 0 && (
+                    <div className="mdc-mc"><div className="mdc-mc__lbl">Dias não autorizados</div><div className="mdc-mc__val">🚫 {diasBloqueadosLabels.join(', ')}</div></div>
+                  )}
                   <div className="mdc-mc">
                     <div className="mdc-mc__lbl">Janela</div>
                     <div className="mdc-mc__val">
