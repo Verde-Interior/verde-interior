@@ -502,8 +502,11 @@ function cardVisitaLista(v, idx) {
         <div class="ag-card__meta">
           <span><i class="fa-regular fa-clock"></i> ${fmtHora(v.hora_estimada_chegada)}</span>
           <span>· ${fmtDur(v.duracao_estimada_min)}</span>
-          ${c?.grupo_servico ? `<span>· ${esc(c.grupo_servico)}</span>` : ''}
         </div>
+        ${v.observacoes_gestor ? `
+        <div class="ag-card__obs">
+          <i class="fa-solid fa-comment"></i> ${esc(v.observacoes_gestor)}
+        </div>` : ''}
       </div>
       <div class="ag-card__acao">
         <span class="ag-badge ${s.cls}">${s.txt}</span>
