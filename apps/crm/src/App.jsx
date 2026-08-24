@@ -20,6 +20,7 @@ import EscalaCampo from './components/EscalaCampo/EscalaCampo';
 import Relatorios from './components/Relatorios/Relatorios';
 import Estoque from './components/Estoque/Estoque';
 import OrdensServico from './components/OrdensServico/OrdensServico';
+import Orcamentos from './components/Orcamentos/Orcamentos';
 import ModalAtribuirQR from './components/Estoque/qr/ModalAtribuirQR';
 import './App.css';
 
@@ -136,11 +137,21 @@ const IconOS = () => (
   </svg>
 );
 
+const IconOrcamentos = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="1.5" width="9" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M5 5.5h6M5 8h6M5 10.5h3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <circle cx="12.5" cy="12.5" r="2.8" fill="currentColor"/>
+    <path d="M11.5 12.5h2M12.5 11.5v2" stroke="white" strokeWidth="1" strokeLinecap="round"/>
+  </svg>
+);
+
 const NAV_ITEMS_TOP = [
-  { id: 'dashboard',  Icon: IconDashboard, label: 'Dashboard' },
-  { id: 'kanban',     Icon: IconPipeline,  label: 'Pipeline'  },
-  { id: 'execucao',   Icon: IconExecucao,  label: 'Execução'  },
-  { id: 'os',         Icon: IconOS,        label: 'Ordens OS' },
+  { id: 'dashboard',  Icon: IconDashboard,  label: 'Dashboard'   },
+  { id: 'kanban',     Icon: IconPipeline,   label: 'Pipeline'    },
+  { id: 'orcamentos', Icon: IconOrcamentos, label: 'Orçamentos'  },
+  { id: 'execucao',   Icon: IconExecucao,   label: 'Execução'    },
+  { id: 'os',         Icon: IconOS,         label: 'Ordens OS'   },
   { id: 'clientes',   Icon: IconClientes,  label: 'Clientes'  },
   { id: 'mapa',       Icon: IconMapa,      label: 'Mapa'      },
   { id: 'escala',     Icon: IconEscala,    label: 'Escala'    },
@@ -160,6 +171,15 @@ function AppLayout({ tema, onToggleTema }) {
     const t = params.get('tela');
     return TELAS_VALIDAS.includes(t) ? t : 'dashboard';
   });
+  // navKey incrementa toda navegação, garantindo remount de <main> mesmo
+  // quando setTela é chamado com a mesma tela (ex: botão "Gerar Orçamento"
+  // enquanto já estamos em 'orcamentos' — precisa remontar para o IIFE de
+  // sessionStorage rodar novamente).
+  const [navKey, setNavKey] = useState(0);
+  function navegar(novaTela) {
+    setNavKey(k => k + 1);
+    setTela(novaTela);
+  }
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [drawerAberto, setDrawerAberto] = useState(false);
   const [qrScan,      setQrScan]      = useState(() => {
@@ -191,7 +211,7 @@ function AppLayout({ tema, onToggleTema }) {
     return (
       <button
         className={`app__nav-item ${ativo ? 'app__nav-item--ativo' : ''}`}
-        onClick={() => { setTela(item.id); setDrawerAberto(false); }}
+        onClick={() => { navegar(item.id); setDrawerAberto(false); }}
       >
         <span className="app__nav-icon"><item.Icon /></span>
         {item.label}
@@ -279,14 +299,15 @@ function AppLayout({ tema, onToggleTema }) {
       </aside>
 
       {/* ── Main ── */}
-      <main className="app__main" key={tela}>
-        {tela === 'dashboard'     && <Dashboard onNavegar={setTela} />}
-        {tela === 'kanban'        && <Pipeline />}
+      <main className="app__main" key={navKey}>
+        {tela === 'dashboard'     && <Dashboard onNavegar={navegar} />}
+        {tela === 'kanban'        && <Pipeline onNavegar={navegar} />}
         {tela === 'execucao'      && <FunilExecucao />}
         {tela === 'os'            && <OrdensServico />}
         {tela === 'clientes'      && <Clientes />}
-        {tela === 'mapa'          && <Mapa onNavegar={setTela} />}
-        {tela === 'escala'        && <EscalaCampo onNavegar={setTela} />}
+        {tela === 'mapa'          && <Mapa onNavegar={navegar} />}
+        {tela === 'escala'        && <EscalaCampo onNavegar={navegar} />}
+        {tela === 'orcamentos'    && <Orcamentos onNavegar={navegar} />}
         {tela === 'relatorios'    && <Relatorios />}
         {tela === 'estoque'       && <Estoque />}
         {tela === 'agenda'        && <Agenda />}
@@ -306,7 +327,7 @@ function AppLayout({ tema, onToggleTema }) {
 
       <ModalOrcamento />
       {buscaAberta && (
-        <GlobalSearch onFechar={() => setBuscaAberta(false)} onNavegar={setTela} />
+        <GlobalSearch onFechar={() => setBuscaAberta(false)} onNavegar={navegar} />
       )}
     </div>
   );

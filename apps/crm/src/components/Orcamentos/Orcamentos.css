@@ -1,0 +1,172 @@
+/* Orcamentos.css */
+.orc-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.orc-lista__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.orc-lista__titulo-area {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.orc-lista__titulo {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.orc-lista__contagem {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.orc-lista__btn-novo {
+  background: var(--verde-600, #16a34a);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.orc-lista__btn-novo:hover { background: var(--verde-700, #15803d); }
+
+/* métricas */
+.orc-lista__metricas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.orc-lista__metrica {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.orc-lista__metrica-valor {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.orc-lista__metrica-valor--verde { color: #16a34a; }
+
+.orc-lista__metrica-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* filtros */
+.orc-lista__filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.orc-lista__busca,
+.orc-lista__select {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  background: var(--surface-card, #fff);
+  color: var(--text-primary);
+  outline: none;
+}
+.orc-lista__busca { flex: 1; min-width: 200px; }
+.orc-lista__busca:focus,
+.orc-lista__select:focus { border-color: var(--verde-500, #22c55e); }
+
+/* tabela */
+.orc-lista__tabela-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.orc-lista__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.orc-lista__tabela thead th {
+  background: var(--surface-hover, #f9fafb);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.orc-lista__linha {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.orc-lista__linha:hover { background: var(--surface-hover, #f9fafb); }
+.orc-lista__linha td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+.orc-lista__linha:last-child td { border-bottom: none; }
+
+.orc-lista__cell-nome {
+  font-weight: 500;
+  max-width: 260px;
+}
+
+/* badges de status */
+.orc-lista__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.orc-lista__badge--cinza    { background: #f3f4f6; color: #6b7280; }
+.orc-lista__badge--azul     { background: #dbeafe; color: #1d4ed8; }
+.orc-lista__badge--verde    { background: #dcfce7; color: #15803d; }
+.orc-lista__badge--vermelho { background: #fee2e2; color: #b91c1c; }
+
+/* vazio */
+.orc-lista__vazio {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 60px 20px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .orc-lista { padding: 16px; gap: 16px; }
+  .orc-lista__metricas { grid-template-columns: repeat(2, 1fr); }
+}

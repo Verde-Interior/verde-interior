@@ -14,7 +14,7 @@ const ORDENACOES = [
   { value: 'empresa',    label: 'A–Z Empresa'   },
 ];
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ onNavegar }) {
   const { ESTAGIOS, TIPOS_SERVICO, leads, metricas, getTiposServico, abrirModal } = useCRM();
 
   const [busca, setBusca]                 = useState('');
@@ -171,7 +171,7 @@ export default function KanbanBoard() {
       {modoVista === 'kanban' ? (
         <div className="kanban-board__colunas">
           {ESTAGIOS.map((estagio) => (
-            <KanbanColumn key={estagio.id} estagio={estagio} leadsFiltrados={leadsFiltrados} />
+            <KanbanColumn key={estagio.id} estagio={estagio} leadsFiltrados={leadsFiltrados} onNavegar={onNavegar} />
           ))}
         </div>
       ) : (

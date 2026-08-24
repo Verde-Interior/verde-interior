@@ -12,7 +12,7 @@ function telefoneLimpo(tel) {
   return tel?.replace(/\D/g, '') ?? '';
 }
 
-export default function LeadCard({ lead }) {
+export default function LeadCard({ lead, onNavegar }) {
   const { abrirModal, TIPOS_SERVICO, dragLeadId, setDragLeadId, ESTAGIOS_EXECUCAO, promoverParaCliente, removerLead, getTiposServico } = useCRM();
   const [promovendo, setPromovendo] = useState(false);
   const [confirmar, setConfirmar] = useState(null);
@@ -35,7 +35,13 @@ export default function LeadCard({ lead }) {
 
   function handleGerarOrcamento(e) {
     e.stopPropagation();
-    abrirModal(lead, { focarSecao: 'anexo' });
+    if (onNavegar) {
+      // armazena o lead para o gerador pré-preencher os dados
+      sessionStorage.setItem('orc-lead-inicial', JSON.stringify({ id: lead.id, empresa: lead.empresa, contato: lead.contato, email: lead.email, telefone: lead.telefone, bairro: lead.bairro, tiposServico: lead.tiposServico }));
+      onNavegar('orcamentos');
+    } else {
+      abrirModal(lead, { focarSecao: 'anexo' });
+    }
   }
 
   function handlePromover(e) {

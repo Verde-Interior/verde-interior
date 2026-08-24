@@ -101,3 +101,116 @@
   color: var(--vinho-600);
   background: color-mix(in srgb, var(--vinho-700) 6%, transparent);
 }
+
+/* ── Modal de aprovação de orçamento ── */
+.kanban-modal-orc__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.kanban-modal-orc {
+  background: var(--surface-card, #fff);
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+}
+
+.kanban-modal-orc__titulo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+
+.kanban-modal-orc__sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+.kanban-modal-orc__vazio {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 16px 0;
+  margin: 0;
+}
+
+.kanban-modal-orc__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.kanban-modal-orc__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.kanban-modal-orc__item:hover { background: var(--surface-hover, #f9fafb); }
+.kanban-modal-orc__item--selecionado {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.kanban-modal-orc__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.kanban-modal-orc__item-nome {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.kanban-modal-orc__item-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.kanban-modal-orc__acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.kanban-modal-orc__btn-pular {
+  background: none;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.kanban-modal-orc__btn-pular:hover { background: var(--surface-hover, #f3f4f6); }
+
+.kanban-modal-orc__btn-confirmar {
+  background: #16a34a;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+.kanban-modal-orc__btn-confirmar:hover:not(:disabled) { background: #15803d; }
+.kanban-modal-orc__btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }

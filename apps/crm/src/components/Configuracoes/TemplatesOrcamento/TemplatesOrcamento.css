@@ -1,0 +1,159 @@
+/* TemplatesOrcamento.css */
+
+.tmpl {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 340px;
+}
+
+/* ── lista de tipos (coluna esquerda) ─────────────────── */
+.tmpl__tipos {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color, #e5e7eb);
+  background: var(--surface-bg, #f9fafb);
+  flex-shrink: 0;
+  width: 155px;
+}
+
+.tmpl__tipo-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  text-align: left;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s;
+  position: relative;
+}
+.tmpl__tipo-btn:last-child { border-bottom: none; }
+.tmpl__tipo-btn:hover { background: #f0fdf4; color: var(--text-primary); }
+.tmpl__tipo-btn--ativo {
+  background: #f0fdf4;
+  color: #15803d;
+  font-weight: 600;
+  border-left: 3px solid #15803d;
+}
+
+.tmpl__tipo-badge {
+  margin-left: auto;
+  background: #d1fae5;
+  color: #15803d;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ── editor (coluna direita) ──────────────────────────── */
+.tmpl__editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 10px;
+  background: var(--surface-card, #fff);
+}
+
+.tmpl__editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tmpl__editor-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tmpl__editor-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.tmpl__loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.tmpl__textarea {
+  flex: 1;
+  resize: vertical;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  background: var(--surface-bg, #f9fafb);
+  outline: none;
+  font-family: inherit;
+  min-height: 200px;
+}
+.tmpl__textarea:focus {
+  border-color: #16a34a;
+  background: #fff;
+}
+
+/* ── rodapé de ações ──────────────────────────────────── */
+.tmpl__acoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.tmpl__acoes-dir {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tmpl__status {
+  font-size: 12px;
+  font-weight: 600;
+}
+.tmpl__status--ok   { color: #16a34a; }
+.tmpl__status--erro { color: #dc2626; }
+
+.tmpl__btn-restaurar {
+  background: none;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.tmpl__btn-restaurar:hover:not(:disabled) { background: #f3f4f6; }
+.tmpl__btn-restaurar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tmpl__btn-salvar {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tmpl__btn-salvar:hover:not(:disabled) { background: #15803d; }
+.tmpl__btn-salvar:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -1,6 +1,7 @@
 // src/components/Configuracoes/Configuracoes.jsx
 import { useState, useEffect } from 'react';
 import { useCRM } from '../../context/CRMContext';
+import TemplatesOrcamento from './TemplatesOrcamento/TemplatesOrcamento';
 import './Configuracoes.css';
 
 const ESCALAS = [
@@ -434,6 +435,13 @@ export default function Configuracoes() {
                   </div>
                 ))}
               </div>
+            </section>
+
+            {/* Templates de Orçamento */}
+            <section className="config__card">
+              <h2 className="config__card-titulo">Templates de Orçamento</h2>
+              <p className="config__card-desc">Descrições padrão exibidas no preview do orçamento por tipo de serviço · Uma por linha</p>
+              <TemplatesOrcamento />
             </section>
 
             {/* Dados */}

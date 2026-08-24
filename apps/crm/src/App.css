@@ -269,7 +269,9 @@
 /* ── Main ── */
 .app__main {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -377,5 +379,19 @@
     flex: 1;
     min-height: 0;
     order: 2;
+  }
+}
+
+/* ── Impressão (PDF) ── */
+@media print {
+  .app__sidebar,
+  .app__topbar,
+  .app__drawer-backdrop { display: none !important; }
+
+  .app { display: block; }
+
+  .app__main {
+    width: 100%;
+    overflow: visible;
   }
 }

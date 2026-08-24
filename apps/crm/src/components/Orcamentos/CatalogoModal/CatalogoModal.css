@@ -1,0 +1,154 @@
+/* CatalogoModal.css */
+.cat-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cat-modal {
+  background: var(--surface-card, #fff);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 860px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.cat-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.cat-modal__titulo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cat-modal__fechar {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.cat-modal__fechar:hover { background: var(--surface-hover, #f3f4f6); }
+
+.cat-modal__filtros {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.cat-modal__busca,
+.cat-modal__select {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--surface-bg, #f9fafb);
+  color: var(--text-primary);
+  outline: none;
+}
+.cat-modal__busca { flex: 1; }
+.cat-modal__busca:focus,
+.cat-modal__select:focus { border-color: var(--verde-500, #22c55e); }
+
+.cat-modal__corpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.cat-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.cat-modal__card {
+  background: var(--surface-bg, #f9fafb);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cat-modal__card:hover {
+  border-color: var(--verde-500, #22c55e);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.cat-modal__foto-wrap {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #fff;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.cat-modal__foto {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cat-modal__foto-placeholder {
+  font-size: 36px;
+}
+
+.cat-modal__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cat-modal__nome {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.cat-modal__cientifico {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.cat-modal__preco {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--verde-700, #15803d);
+  margin-top: 2px;
+}
+
+.cat-modal__vazio {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 40px;
+  font-size: 14px;
+}

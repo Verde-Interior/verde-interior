@@ -6,7 +6,7 @@ import './Pipeline.css';
 
 const STORAGE_KEY = 'crm-pipeline-aba';
 
-export default function Pipeline() {
+export default function Pipeline({ onNavegar }) {
   const [aba, setAba] = useState(() => localStorage.getItem(STORAGE_KEY) || 'escritorios');
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, aba); }, [aba]);
@@ -29,7 +29,7 @@ export default function Pipeline() {
       </div>
 
       <div className="pipeline__conteudo">
-        {aba === 'escritorios' && <KanbanBoard />}
+        {aba === 'escritorios' && <KanbanBoard onNavegar={onNavegar} />}
         {aba === 'ceasa'       && <CeasaHolambra />}
       </div>
     </div>
