@@ -1,78 +1,73 @@
-# Gerador de Orçamentos — Status Atual
+# Gerador de Orçamentos — Estado do Código
 
-**Arquivos:**
-- `tools/orcamentos/verde_interior_gerador_orcamento_10.html` — original standalone
-- `apps/crm/public/gerador-orcamento.html` — cópia servida pelo Vite (idêntica). Os dois DEVEM ficar em sync (`cp` entre eles a cada mudança).
+**Última atualização da doc:** 24/08/2026
+**Requisitos:** [[REQUISITOS-REFORMA]] — entrevista completa (Blocos 1–11) e backlog priorizado.
 
-**Stack:** HTML único, offline, sem dependências externas
-**Fontes:** Inter + Montserrat (Google Fonts)
-**Status:** ✅ 3 bugs corrigidos + 6 features essenciais implementadas + integração com CRM via query string
-**Última atualização da doc:** 20/07/2026
+> ⚠️ Até 20/07/2026 o gerador era um **HTML standalone** (`tools/orcamentos/verde_interior_gerador_orcamento_10.html`, ~1,4 MB). Ele foi **substituído** por um módulo React dentro do CRM. O arquivo antigo continua no repo apenas como referência; **não está mais em uso e não é mais mantido**.
+
+---
+
+## Onde vive
+
+| Peça | Caminho |
+|---|---|
+| Lista de orçamentos | `apps/crm/src/components/Orcamentos/Orcamentos.jsx` |
+| Editor | `apps/crm/src/components/Orcamentos/GeradorOrcamento/GeradorOrcamento.jsx` |
+| Preview / documento A4 | `apps/crm/src/components/Orcamentos/OrcamentoPreview/` |
+| Modal de catálogo | `apps/crm/src/components/Orcamentos/CatalogoModal/` |
+| Templates por serviço (Configurações) | `apps/crm/src/components/Configuracoes/TemplatesOrcamento/` |
+| Helpers | `apps/crm/src/lib/orcamento-templates.js`, `orcamento-titulo.js` |
+| Schema | `apps/ponto/supabase/migrations/040`–`047` |
+| Seed do catálogo | `tools/seed-catalogo/seed-catalogo.mjs` |
+
+**Stack:** React + Supabase. Não há dependência de PDF nesta feature — a saída é `window.print()` com CSS de impressão.
+
+**Status:** funcional de ponta a ponta, **ainda sem commit** (~2.700 linhas). Migrations 040–046 já aplicadas em produção; a **047 ainda precisa ser rodada**.
 
 ---
 
 ## O que funciona
 
-- Painel lateral (formulário) + preview em tempo real do documento
-- Página 1: proposta comercial com tabela de itens, subtotais, condições
-- Página 2: galeria de fotos (Anexo)
-- Logo da Verde Interior embutido em base64
-- Campo "AC:" (Aos Cuidados de) no cabeçalho
-- Consultor visível apenas no painel interno, não no impresso
-- Título do documento editável inline, duplo-clique para resetar
+- **Aba Orçamentos** no menu lateral do CRM (`App.jsx`).
+- **Lista** com busca, filtro por status e por tipo, e 4 métricas (em aberto, aprovados, valor em aberto, taxa de aprovação).
+- **Editor em duas colunas**: formulário à esquerda, proposta e seções à direita, com **auto-save a cada 2s**.
+- **7 tipos de serviço multi-seleção**: venda · reforma · locação · manut-rec · manut-pont · eventos · outros. Locação ativa e trava manutenção.
+- **Painel condicional por serviço**: prazo e frequência (locação), reposição estruturada e desconto de localização (manutenção), data/hora de entrega e retirada + estacionamento + trabalho noturno (eventos).
+- **Catálogo de plantas com fotos**, com troca automática da foto ao mudar cor/modelo/tamanho do vaso.
+- **Preview A4 editável inline** — clicar no texto edita; duplo-clique no título volta ao automático.
+- **Galeria de fotos** como página 2 do documento.
+- **Numeração `ORC-NNN`** automática por trigger no banco, ao marcar como enviado.
+- **Templates de descrição por tipo de serviço** editáveis em Configurações.
+- **Integração com o Pipeline**: "Gerar orçamento" no card do lead abre o editor pré-preenchido; arrastar o lead para "Orçamento Aprovado" pergunta qual orçamento foi aprovado e marca o status.
 
-## 7 modelos de serviço
+## Modelo de dados
 
-| Modelo | Regras especiais |
+`orcamentos` (cabeçalho) → `orcamento_opcoes` (proposta principal + seções) → `orcamento_itens` (produtos, custos extras e blocos de imagem). Mais `catalogo_itens` e `orcamento_templates_servico`.
+
+A **categoria de serviço vive na seção**, não no cabeçalho: `categoria_servico ∈ {locacao, manut-rec}` faz a seção entrar como **recorrente mensal**; qualquer outra entra como **investimento único**.
+
+## Migrations
+
+| # | O que faz |
 |---|---|
-| Venda de Vasos e Plantas / Implantação | — |
-| Reforma de Vasos e Plantas | — |
-| Locação de Vasos e Plantas | Auto-ativa Manutenção de Vasos e Plantas + Fidelidade obrigatória |
-| Manutenção de Vasos e Plantas | — |
-| Manutenção Pontual | Opção de frequência Pontual |
-| Locação de Vasos e Plantas para Eventos | Campos de entrega e retirada |
-| Outros Serviços | — |
+| 040 | `catalogo_itens` |
+| 041 | `orcamentos`, `orcamento_opcoes`, `orcamento_itens` |
+| 042 | `dados_servico`, cor e tamanho do vaso, `is_principal` |
+| 043 | `nome_planta`, `tipo_secao`, `preview_overrides` |
+| 044 | `modelo_vaso` |
+| 045 | multi-serviço (`tipos_servico[]`), `categoria_servico` por seção, numeração ORC, desconto, origem, galeria, `orcamento_templates_servico` |
+| 046 | corrige o trigger de numeração para `BEFORE INSERT OR UPDATE` |
+| 047 | libera `tipo='imagem'` em `orcamento_itens` — **pendente de aplicação** |
 
-**Lógica de reposição:** Locação → trava em "ilimitado". Outros → toggle quantidade/ilimitado.
+## Correções de 24/08/2026
 
----
+1. **Bloco de imagem não salvava, em silêncio.** `tipo='imagem'` violava o CHECK da 041 e o INSERT do item não checava erro. Migration 047 + `if (eIns) throw eIns` no `salvar()`.
+2. **Manutenção recorrente cobrada como valor único.** A proposta principal não tinha seletor de `categoria_servico` — só as seções adicionais tinham — então caía sempre em `total_unico`. Adicionado o seletor, com default coerente com os tipos marcados e sufixo "/mês" nos totais quando a categoria é recorrente.
 
-## Bugs corrigidos (20/07/2026, commit sprint 1+2)
+## Próximos passos
 
-1. ✅ **Proposta gerada sem itens** — `gerarProposta()` agora valida `modelosAtivos` e `itensValidos.length === 0`, bloqueia com mensagem clara.
-2. ✅ **Override do título editável** — listener `input` reseta ao vazio ou quando bate com `gerarTitulo()`; `title` no `dblclick` explica o comportamento.
-3. ✅ **Toggle reposição não sincronizava** — `syncCamposCondicionais` agora reseta toggle e rádios ao entrar em Locação (força "quantidade específica").
-
-## 6 features essenciais implementadas (20/07/2026, sprint 3-B)
-
-1. ✅ **Numeração automática `ORC-NNN`** — contador em `localStorage['verde-orc-contador']`, exibido no cabeçalho. Só incrementa quando `gerarProposta()` passa validação. Botão ↺ para resetar.
-2. ✅ **Salvamento de rascunho** — `localStorage['verde-orc-rascunho']` com debounce de 1500ms. Query string tem prioridade ao carregar (para não sobrepor pré-preenchimento do CRM). Botão "🗑 Rascunho" limpa.
-3. ✅ **Data de validade automática** — cabeçalho mostra `Validade: dd/mm/yyyy (30 dias)`, calculada dinamicamente.
-4. ✅ **Campos de e-mail e telefone do cliente** — `#cli-email` e `#cli-telefone` na seção Cliente, pré-preenchimento via query string.
-5. ✅ **Desconto global** — campo `#desconto` (0-100%). Aplica subtotal → desconto → total em Investimento Único e Recorrente. Só aparece quando > 0.
-6. ✅ **Botão "🧹 Limpar tudo"** — reset completo com confirm forte. Preserva o contador de ORC (para não colidir depois).
-
----
-
-## Integração com o CRM (20/07/2026)
-
-Agora o botão "🛠 Gerar orçamento" no `ModalOrcamento` do CRM abre o gerador em nova aba com pré-preenchimento. URL:
-
-```
-/gerador-orcamento.html?empresa=X&contato=Y&bairro=Z&telefone=T&email=E&servico=locacao&qtd_vasos=12&valor=1200&frequencia=Mensal
-```
-
-O gerador lê os query params no `DOMContentLoaded` e preenche os campos correspondentes + ativa o modelo (`toggleM(...)`) do serviço primário do lead.
-
-Mapeamento tipoServico do CRM → modelo do gerador:
-- `venda` → `venda`
-- `reforma` → `reforma`
-- `locacao` → `locacao`
-- `locacao_evento` → `eventos`
-- `manutencao` → `manut-rec`
-
-## Próxima ação
-
-Ver [[PROXIMOS-PASSOS]]. Do gerador especificamente:
-- (nice-to-have) Ler o `tipos_servico` array e pré-marcar múltiplos modelos quando lead tem mais de um tipo.
-- (nice-to-have) Após gerar PDF, sinalizar de volta ao CRM (via `postMessage` ou parâmetro `?return_to=...`) que o anexo pode ser upado automaticamente.
+Ver o backlog priorizado em [[REQUISITOS-REFORMA]]. Os quatro primeiros:
+1. Estacionamento e trabalho noturno somando no total (hoje são só texto no documento).
+2. Múltiplas opções concorrentes (Opção 1 / Opção 2, cliente escolhe uma).
+3. Redesenhar o preview em estilo apresentação.
+4. Download direto do PDF em vez do diálogo de impressão.
