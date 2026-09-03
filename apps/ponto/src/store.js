@@ -7,6 +7,7 @@ export const state = {
   HIST: {},
   JUSTS: [],
   BLOQ: new Map(), // employee_id -> motivo (ausência justificada hoje: férias/folga/atestado — ver employee_bloqueios)
+  BLOQUEIOS: [],   // todas as linhas de employee_bloqueios (qualquer data), usado no relatório de frequência
   cu: 0,
   eu: 0,
   pendingFiles: [],
@@ -94,6 +95,13 @@ export async function load() {
     .lte('data_inicio', hoje)
     .gte('data_fim', hoje);
   state.BLOQ = new Map((bloqueios ?? []).map(b => [String(b.funcionario_id), b.motivo || 'Ausência justificada']));
+
+  // Todos os bloqueios (passado, presente e futuro) — usado pelo relatório de
+  // frequência pra não contar férias/folga/feriado/atestado como falta.
+  const { data: bloqueiosAll } = await supabase
+    .from('employee_bloqueios')
+    .select('funcionario_id, data_inicio, data_fim, motivo');
+  state.BLOQUEIOS = bloqueiosAll ?? [];
 
   await closeOpenShifts();
 }

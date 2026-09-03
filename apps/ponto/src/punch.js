@@ -1,5 +1,5 @@
 import { state, save, dbAddPunch, dbDeletePunch, dbUpdateEmployeeStats, queuePendingPunch } from './store.js';
-import { F, HM, TM, getHoje, calcWork, getStatus, getNext, toast } from './utils.js';
+import { F, HM, TM, getHoje, calcWork, calcWorkClosed, getStatus, getNext, toast } from './utils.js';
 import { AUTH } from './auth.js';
 import { renderPunchMap } from './admin.js';
 
@@ -132,6 +132,16 @@ export function doExit() {
   const n = new Date();
   const t = F(n.getHours()) + ':' + F(n.getMinutes());
   if (!state.PS[idx]) state.PS[idx] = [];
+
+  // Uma pessoa pode finalizar o expediente mais de uma vez no mesmo dia (ex:
+  // voltou depois para resolver algo urgente). Se já havia uma saída hoje, a
+  // jornada-alvo (emp.j) já foi descontada do banco na finalização anterior —
+  // aqui só entra o trecho novo trabalhado, sem descontar a meta de novo nem
+  // contar mais um dia. `trabalhadoAntes` usa calcWorkClosed (não fecha o
+  // trecho aberto atual) para capturar só o que já tinha sido fechado antes.
+  const jaHaviaSaidaHoje = state.PS[idx].some(p => p.type === 'exit');
+  const trabalhadoAntes  = calcWorkClosed(state.PS[idx]);
+
   (async () => {
     const geo = await getCoords();
     const rec = { type: 'exit', time: t, ...(geo.coords || {}) };
@@ -158,11 +168,12 @@ export function doExit() {
     // Atualizar banco de horas com até 3 tentativas
     const emp = state.EMP[idx];
     if (emp) {
-      const workedMin  = calcWork(state.PS[idx]);
-      const dailySaldo = workedMin - emp.j * 60;
+      const trabalhadoTotal = calcWork(state.PS[idx]);
+      const incremento = jaHaviaSaidaHoje ? (trabalhadoTotal - trabalhadoAntes) : trabalhadoTotal;
+      const dailySaldo = jaHaviaSaidaHoje ? incremento : (incremento - emp.j * 60);
       emp.bank  += dailySaldo;
-      emp.days  += 1;
-      emp.worked = Number((emp.worked + workedMin / 60).toFixed(2));
+      if (!jaHaviaSaidaHoje) emp.days += 1;
+      emp.worked = Number((emp.worked + incremento / 60).toFixed(2));
       if (dailySaldo > 0) emp.extra = Number((emp.extra + dailySaldo / 60).toFixed(2));
       else                emp.due   = Number((emp.due   - dailySaldo / 60).toFixed(2));
       let statsOk = false;

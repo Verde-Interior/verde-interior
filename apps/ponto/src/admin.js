@@ -45,10 +45,15 @@ export function renderAdmin() {
   _initReportDates();
   const pres = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; const l = p[p.length - 1]; return l.type === 'entry' || l.type === 'return'; }).length;
   const brk  = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; return p[p.length - 1].type === 'break'; }).length;
+  const enc  = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; return p[p.length - 1].type === 'exit'; }).length;
   const late = Object.values(state.PS).filter(p => { if (!p || !p.length) return false; const e = p.find(x => x.type === 'entry'); if (!e) return false; const [h, m] = e.time.split(':').map(Number); return h * 60 + m > 8 * 60 + 10; }).length;
 
+  // "Presentes" = trabalhando agora ou em intervalo; "Encerrados" = já bateu
+  // saída hoje. Sem essa 2ª categoria, um dia 100% cumprido por todo mundo
+  // aparecia como zero em tudo — parecendo que ninguém tinha vindo trabalhar.
   document.getElementById('dp').textContent   = pres + brk;
-  document.getElementById('da').textContent   = state.EMP.length - pres - brk - Object.values(state.PS).filter(p => p && p.length && p[p.length - 1].type === 'exit').length;
+  document.getElementById('dz').textContent   = enc;
+  document.getElementById('da').textContent   = state.EMP.length - pres - brk - enc;
   document.getElementById('dl').textContent   = late;
   document.getElementById('dbrk').textContent = brk;
 
@@ -67,10 +72,11 @@ export function renderAdmin() {
 
   document.getElementById('tbody').innerHTML = state.EMP.map((e, i) => {
     const ent = (state.PS[i] || []).find(p => p.type === 'entry');
+    const ext = [...(state.PS[i] || [])].reverse().find(p => p.type === 'exit');
     const s   = stOf(i);
     const wk  = calcWork(state.PS[i] || []);
     const sld = wk - e.j * 60;
-    return `<tr><td title="${e.name}">${e.name}</td><td><span class="bc">${e.c}</span></td><td>${ent ? ent.time : '--:--'}</td><td><span class="dot ${s.dot}"></span>${s.lbl}</td><td>${HM(wk)}</td><td style="font-weight:700" class="${sld >= 0 ? 'pos' : 'neg'}">${wk > 0 ? HM(sld) : '--'}</td><td style="font-weight:700;color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</td></tr>`;
+    return `<tr><td title="${e.name}">${e.name}</td><td><span class="bc">${e.c}</span></td><td>${ent ? ent.time : '--:--'}</td><td>${ext ? ext.time : '--:--'}</td><td><span class="dot ${s.dot}"></span>${s.lbl}</td><td>${HM(wk)}</td><td style="font-weight:700" class="${sld >= 0 ? 'pos' : 'neg'}">${wk > 0 ? HM(sld) : '--'}</td><td style="font-weight:700;color:${e.bank >= 0 ? '#1D9E75' : '#E24B4A'}">${HM(e.bank)}</td></tr>`;
   }).join('');
 
   const alerts = genAlerts();
@@ -119,14 +125,40 @@ export function renderAdmin() {
   renderFrequencia();
   renderBankChart();
 
+  // % em relação ao esperado ATÉ HOJE (dias úteis decorridos × jornada), não
+  // à meta do mês inteiro — do contrário todo mundo aparece "atrasado" nos
+  // primeiros dias do mês mesmo trabalhando no ritmo certo.
   const barsHtml = state.EMP.map(e => {
-    const pct = Math.min(100, Math.round((e.worked / meta(e)) * 100));
+    const diasDecorridos = diasUteisDecorridosNoMes(e.id);
+    const metaAteAgora = Math.max(1, e.j * diasDecorridos);
+    const pct = Math.min(150, Math.round((e.worked / metaAteAgora) * 100));
     const bc  = pct >= 100 ? '#1D9E75' : pct >= 80 ? '#EF9F27' : '#E24B4A';
-    return `<div style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;font-weight:500">${esc(e.name)}</span><span style="font-size:11px;color:var(--text3)">${HMh(e.worked)} (${pct}%)</span></div><div class="bar-mini"><div class="bf-mini" style="width:${pct}%;background:${bc}"></div></div></div>`;
+    return `<div style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;font-weight:500">${esc(e.name)}</span><span style="font-size:11px;color:var(--text3)">${HMh(e.worked)} de ${HMh(metaAteAgora)} até hoje (${pct}%)</span></div><div class="bar-mini"><div class="bf-mini" style="width:${Math.min(100, pct)}%;background:${bc}"></div></div></div>`;
   }).join('');
-  document.getElementById('dash-chart').innerHTML = `<div class="sl">Progresso mensal da equipe</div>${barsHtml}`;
+  document.getElementById('dash-chart').innerHTML = `<div class="sl">Ritmo do mês — trabalhado vs. esperado até hoje</div>${barsHtml}`;
 
   renderEdit();
+}
+
+// Dias úteis (seg-sex) já decorridos no mês corrente, incluindo hoje, menos
+// os dias com bloqueio aprovado (feriado/férias/folga/atestado) pra esse
+// funcionário. Base pra medir ritmo: comparar trabalhado com a meta do mês
+// inteiro nos primeiros dias do mês sempre dá uma % baixa e engana o gestor;
+// contar feriado/férias como "devido" faz a mesma pessoa parecer atrasada
+// sem motivo.
+function diasUteisDecorridosNoMes(empId) {
+  const hoje = new Date();
+  const y = hoje.getFullYear(), m = hoje.getMonth();
+  let n = 0;
+  for (let d = 1; d <= hoje.getDate(); d++) {
+    const dt  = new Date(y, m, d);
+    const dow = dt.getDay();
+    if (dow === 0 || dow === 6) continue;
+    const iso = `${y}-${F(m + 1)}-${F(d)}`;
+    if (empId != null && temBloqueio(empId, iso)) continue;
+    n++;
+  }
+  return n;
 }
 
 export function resolveJ(idx, approve) {
@@ -452,15 +484,29 @@ export function expCSV(mode) {
 const LIMITE_ENTRADA_ATRASO = 8 * 60 + 20;    // 08:20 → atraso
 const LIMITE_SAIDA_ANTECIPADA = 17 * 60 + 40; // 17:40 → saída antes
 
+// Feriado, férias, folga ou atestado já aprovado pro funcionário nessa data
+// (mesma tabela que a Escala usa pra bloquear agendamento de visita).
+function temBloqueio(empId, iso) {
+  return state.BLOQUEIOS.some(b =>
+    String(b.funcionario_id) === String(empId) && iso >= b.data_inicio && iso <= b.data_fim
+  );
+}
+
 function contarFrequencia(empIdx, rs, re) {
-  // Gera lista de dias úteis (seg-sex) no intervalo.
+  // Gera lista de dias úteis (seg-sex) no intervalo, sem passar de hoje —
+  // um dia que ainda não aconteceu não pode ser contado como falta — e sem
+  // dias cobertos por férias/folga/feriado/atestado já aprovados.
+  const hoje = getHoje();
+  const empId = state.EMP[empIdx]?.id;
+  const reEfetivo = re > hoje ? hoje : re;
   const previstos = [];
   const cur = new Date(rs + 'T12:00:00');
-  const fim = new Date(re + 'T12:00:00');
+  const fim = new Date(reEfetivo + 'T12:00:00');
   while (cur <= fim) {
     const d = cur.getDay();
-    if (d !== 0 && d !== 6) {
-      previstos.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
+    const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+    if (d !== 0 && d !== 6 && !temBloqueio(empId, iso)) {
+      previstos.push(iso);
     }
     cur.setDate(cur.getDate() + 1);
   }
