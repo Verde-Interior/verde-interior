@@ -1,0 +1,356 @@
+/* src/components/Ponto/Ponto.css */
+
+.ponto {
+  padding: 24px 28px 40px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.ponto--carregando {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.ponto__erro {
+  background: var(--vinho-50);
+  border: 1px solid var(--vinho-100);
+  color: var(--vinho-800);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  font-size: 13px;
+}
+
+.ponto__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ponto__titulo {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.ponto__subtitulo {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.ponto__data {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--forest-700);
+  text-transform: capitalize;
+  background: var(--forest-50);
+  border: 1px solid var(--forest-100);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ponto__aviso {
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--surface-bg));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  color: var(--color-warning);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+/* ── KPIs ── */
+.ponto__kpis {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+}
+
+.ponto__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 15px 16px;
+  border-right: 1px solid var(--surface-border);
+}
+.ponto__kpi:last-child { border-right: none; }
+
+.ponto__kpi-valor {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.ponto__kpi-valor--forest { color: var(--forest-700); }
+.ponto__kpi-valor--vinho  { color: var(--color-danger); }
+.ponto__kpi-valor--warn   { color: var(--color-warning); }
+
+.ponto__kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ── Cards ── */
+.ponto__card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px 22px 22px;
+  margin-bottom: 18px;
+}
+
+.ponto__card-titulo {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ponto__card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+}
+
+.ponto__contador {
+  background: var(--vinho-700);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 8px;
+  line-height: 1.6;
+}
+
+/* ── Tabelas ── */
+.ponto__tabela-wrap {
+  overflow-x: auto;
+}
+
+.ponto__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.ponto__tabela th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--surface-border);
+  white-space: nowrap;
+}
+
+.ponto__tabela td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ponto__tabela tbody tr:last-child td { border-bottom: none; }
+.ponto__tabela tbody tr:hover { background: var(--cream-50); }
+
+.ponto__nome {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ponto__badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  color: var(--text-secondary);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.ponto__pos  { color: var(--color-success); font-weight: 700; }
+.ponto__neg  { color: var(--color-danger);  font-weight: 700; }
+.ponto__warn { color: var(--color-warning); font-weight: 700; }
+
+/* ── Status dot ── */
+.ponto-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.ponto-dot--ativo { background: var(--forest-500); }
+.ponto-dot--pausa { background: var(--color-warning); }
+.ponto-dot--fim   { background: var(--text-muted); }
+.ponto-dot--fora  { background: var(--color-danger); }
+
+/* ── Ritmo do mês ── */
+.ponto__ritmo-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ponto__ritmo-linha {
+  display: grid;
+  grid-template-columns: 130px 1fr 190px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ponto__ritmo-nome {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ponto__ritmo-barra {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-bg);
+  overflow: hidden;
+}
+
+.ponto__ritmo-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--transition-base);
+}
+.ponto__ritmo-fill--ok     { background: var(--color-success); }
+.ponto__ritmo-fill--alerta { background: var(--color-warning); }
+.ponto__ritmo-fill--perigo { background: var(--color-danger); }
+
+.ponto__ritmo-valor {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Grid duas colunas (frequência + justificativas) ── */
+.ponto__grid2 {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* ── Justificativas ── */
+.ponto__vazio {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 18px 0 4px;
+}
+
+.ponto__just-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ponto__just {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--surface-bg);
+}
+
+.ponto__just-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.ponto__just-nome {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ponto__just-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ponto__just-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.ponto__just-acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.ponto__btn {
+  flex: 1;
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: filter var(--transition-fast);
+}
+.ponto__btn:disabled { opacity: 0.6; cursor: default; }
+.ponto__btn:hover:not(:disabled) { filter: brightness(0.96); }
+
+.ponto__btn--ok {
+  background: var(--forest-50);
+  border-color: var(--forest-100);
+  color: var(--forest-700);
+}
+.ponto__btn--rec {
+  background: var(--vinho-50);
+  border-color: var(--vinho-100);
+  color: var(--vinho-800);
+}
+
+@media (max-width: 1080px) {
+  .ponto__grid2 { grid-template-columns: 1fr; }
+  .ponto__kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .ponto { padding: 16px 14px 32px; }
+  .ponto__header { flex-direction: column; align-items: flex-start; }
+  .ponto__kpis { grid-template-columns: repeat(2, 1fr); }
+  .ponto__ritmo-linha { grid-template-columns: 1fr; gap: 4px; }
+  .ponto__ritmo-valor { text-align: left; }
+}

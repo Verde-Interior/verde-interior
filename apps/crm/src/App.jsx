@@ -21,6 +21,7 @@ import Relatorios from './components/Relatorios/Relatorios';
 import Estoque from './components/Estoque/Estoque';
 import OrdensServico from './components/OrdensServico/OrdensServico';
 import Orcamentos from './components/Orcamentos/Orcamentos';
+import Ponto from './components/Ponto/Ponto';
 import ModalAtribuirQR from './components/Estoque/qr/ModalAtribuirQR';
 import './App.css';
 
@@ -48,6 +49,13 @@ const IconTarefas = () => (
     <rect x="1" y="12" width="9" height="2" rx="1" fill="currentColor" opacity="0.7"/>
     <circle cx="13.5" cy="13" r="2" fill="currentColor"/>
     <path d="M12.5 13L13.2 13.8L14.8 12.2" stroke="white" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const IconPonto = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M8 4.5V8l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -159,6 +167,7 @@ const NAV_ITEMS_TOP = [
   { id: 'estoque',    Icon: IconEstoque,   label: 'Estoque'   },
   { id: 'agenda',     Icon: IconAgenda,    label: 'Agenda'    },
   { id: 'tarefas',    Icon: IconTarefas,   label: 'Tarefas'   },
+  { id: 'ponto',      Icon: IconPonto,     label: 'Ponto'     },
 ];
 
 const NAV_ITEM_CONFIG = { id: 'configuracoes', Icon: IconConfig, label: 'Configurações' };
@@ -312,6 +321,7 @@ function AppLayout({ tema, onToggleTema }) {
         {tela === 'estoque'       && <Estoque />}
         {tela === 'agenda'        && <Agenda />}
         {tela === 'tarefas'       && <Tarefas />}
+        {tela === 'ponto'         && <Ponto />}
         {tela === 'configuracoes' && <Configuracoes />}
       </main>
 
