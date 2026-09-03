@@ -52,6 +52,7 @@ export default function ModalCopiarAgenda({ employees, clientes, diaSel, onFecha
         .select('id, cliente_id, lead_id, nome_cliente, endereco_tarefa, funcionario_id, cliente_servico_id, hora_estimada_chegada, duracao_estimada_min, ordem_rota, observacoes_gestor, tipos_tarefa, status, leads(empresa)')
         .eq('funcionario_id', origemFunc)
         .eq('data_agendada', origemData)
+        .not('status', 'in', '(cancelado,faltou)')
         .order('hora_estimada_chegada', { ascending: true, nullsFirst: false });
       if (error) throw error;
       setPreview(data ?? []);
