@@ -1,6 +1,7 @@
 /**
  * Copia dados de produção para staging (READ-ONLY em prod, WRITE em staging).
- * Copia: clientes, cliente_servicos, agenda (últimos 60 dias), leads, ordens_servico, tarefas.
+ * Copia: clientes, cliente_servicos, agenda (últimos 60 dias), leads, ordens_servico,
+ * tarefas, employees, employee_bloqueios, justifications, punch_records (últimos 60 dias).
  *
  * Uso: node scripts/sync-prod-to-staging.js
  *
@@ -66,6 +67,16 @@ async function run() {
   });
 
   await copiarTabela('tarefas');
+
+  // Ponto — equipe de escritório, ausências aprovadas e justificativas
+  await copiarTabela('employees');
+  await copiarTabela('employee_bloqueios');
+  await copiarTabela('justifications');
+
+  // punch_records: só os últimos 60 dias, mesmo critério da agenda
+  await copiarTabela('punch_records', {
+    filtro: q => q.gte('date', dataStr),
+  });
 
   console.log('\n✓ Sync concluído.');
 }

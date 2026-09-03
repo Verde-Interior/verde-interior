@@ -17,9 +17,33 @@ function hojeISO() {
   return `${d.getFullYear()}-${F(d.getMonth() + 1)}-${F(d.getDate())}`;
 }
 
-// Soma os intervalos entrada→(intervalo|saída) de hoje. Se o último registro
-// for entrada/retorno em aberto, conta até agora (igual ao app de Ponto).
-function calcTrabalhado(recs) {
+function isoToDate(iso) { return new Date(iso + 'T12:00:00'); }
+function dateToIso(d) { return `${d.getFullYear()}-${F(d.getMonth() + 1)}-${F(d.getDate())}`; }
+
+function diaLabel(iso) {
+  const texto = isoToDate(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function diaAnterior(iso, minIso) {
+  const d = isoToDate(iso);
+  d.setDate(d.getDate() - 1);
+  const novo = dateToIso(d);
+  return novo < minIso ? minIso : novo;
+}
+
+function diaSeguinte(iso, maxIso) {
+  const d = isoToDate(iso);
+  d.setDate(d.getDate() + 1);
+  const novo = dateToIso(d);
+  return novo > maxIso ? maxIso : novo;
+}
+
+// Soma os intervalos entrada→(intervalo|saída) do dia. Se o último registro
+// for entrada/retorno em aberto E o dia for hoje, conta até agora (igual ao
+// app de Ponto) — num dia passado isso ficaria absurdo, então só fecha o
+// que já tem par.
+function calcTrabalhado(recs, ehHoje) {
   let t = 0, e = null;
   for (const p of recs) {
     const [h, m] = p.time.split(':').map(Number);
@@ -27,19 +51,19 @@ function calcTrabalhado(recs) {
     if (p.type === 'entry' || p.type === 'return') e = min;
     if ((p.type === 'break' || p.type === 'exit') && e !== null) { t += min - e; e = null; }
   }
-  if (e !== null) {
+  if (e !== null && ehHoje) {
     const n = new Date();
     t += n.getHours() * 60 + n.getMinutes() - e;
   }
   return t;
 }
 
-function statusDeHoje(recs) {
+function statusNoDia(recs, ehHoje) {
   if (!recs.length) return { label: 'Sem registro', dot: 'ponto-dot--fora' };
   const last = recs[recs.length - 1];
   if (last.type === 'exit') return { label: 'Encerrado', dot: 'ponto-dot--fim' };
-  if (last.type === 'break') return { label: 'Intervalo', dot: 'ponto-dot--pausa' };
-  return { label: 'Presente', dot: 'ponto-dot--ativo' };
+  if (last.type === 'break') return { label: ehHoje ? 'Intervalo' : 'Não retornou do intervalo', dot: 'ponto-dot--pausa' };
+  return { label: ehHoje ? 'Presente' : 'Não bateu saída', dot: 'ponto-dot--ativo' };
 }
 
 function bloqueadoEm(bloqueios, empId, iso) {
@@ -71,19 +95,19 @@ export default function Ponto() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [employees, setEmployees] = useState([]);
-  const [hojeRecs, setHojeRecs] = useState({});     // employee_id -> records[] (hoje)
-  const [mesRecs, setMesRecs] = useState({});       // employee_id -> { data: records[] }
+  const [mesRecs, setMesRecs] = useState({});       // employee_id -> { data: records[] } (mês inteiro até hoje)
   const [bloqueios, setBloqueios] = useState([]);
   const [pendentes, setPendentes] = useState([]);
   const [aprovando, setAprovando] = useState(null);
 
   const hoje = hojeISO();
   const inicioMes = hoje.slice(0, 8) + '01';
+  const [diaSelecionado, setDiaSelecionado] = useState(hoje);
+  const ehHoje = diaSelecionado === hoje;
 
   const carregar = useCallback(async () => {
-    const [empRes, hojeRes, mesRes, bloqRes, justRes] = await Promise.all([
+    const [empRes, mesRes, bloqRes, justRes] = await Promise.all([
       supabase.from('employees').select('*').order('name'),
-      supabase.from('punch_records').select('employee_id,type,time').eq('date', hoje),
       supabase.from('punch_records').select('employee_id,date,type,time').gte('date', inicioMes).lte('date', hoje),
       supabase.from('employee_bloqueios').select('funcionario_id,data_inicio,data_fim,motivo'),
       supabase.from('justifications').select('*').eq('status', 'pendente').order('date', { ascending: false }),
@@ -95,19 +119,14 @@ export default function Ponto() {
     setBloqueios(bloqRes.data ?? []);
     setPendentes(justRes.data ?? []);
 
-    const porHoje = {};
-    (hojeRes.data ?? []).forEach((r) => {
-      if (!porHoje[r.employee_id]) porHoje[r.employee_id] = [];
-      porHoje[r.employee_id].push(r);
-    });
-    Object.values(porHoje).forEach((arr) => arr.sort((a, b) => a.time.localeCompare(b.time)));
-    setHojeRecs(porHoje);
-
     const porMes = {};
     (mesRes.data ?? []).forEach((r) => {
       if (!porMes[r.employee_id]) porMes[r.employee_id] = {};
       if (!porMes[r.employee_id][r.date]) porMes[r.employee_id][r.date] = [];
       porMes[r.employee_id][r.date].push(r);
+    });
+    Object.values(porMes).forEach((porData) => {
+      Object.values(porData).forEach((arr) => arr.sort((a, b) => a.time.localeCompare(b.time)));
     });
     setMesRecs(porMes);
 
@@ -120,14 +139,14 @@ export default function Ponto() {
   useRealtimeRefresh('justifications', carregar);
 
   const linhas = useMemo(() => employees.map((e) => {
-    const recs = hojeRecs[e.id] || [];
+    const recs = mesRecs[e.id]?.[diaSelecionado] || [];
     const entrada = recs.find((r) => r.type === 'entry');
     const saida   = [...recs].reverse().find((r) => r.type === 'exit');
-    const status  = statusDeHoje(recs);
-    const trabalhadoMin = calcTrabalhado(recs);
+    const status  = statusNoDia(recs, ehHoje);
+    const trabalhadoMin = calcTrabalhado(recs, ehHoje);
     const saldoMin = trabalhadoMin - e.daily_hours * 60;
     return { emp: e, entrada, saida, status, trabalhadoMin, saldoMin, temRegistro: recs.length > 0 };
-  }), [employees, hojeRecs]);
+  }), [employees, mesRecs, diaSelecionado, ehHoje]);
 
   const kpis = useMemo(() => {
     let presentes = 0, encerrados = 0, atrasados = 0, intervalo = 0;
@@ -179,9 +198,9 @@ export default function Ponto() {
   // ninguém ter comparecido. Aviso brando, não trava a tela.
   const suspeitaDePermissao = useMemo(() => {
     const agoraMin = new Date().getHours() * 60 + new Date().getMinutes();
-    return !carregando && !erro && employees.length > 0
-      && Object.keys(hojeRecs).length === 0 && agoraMin > 9 * 60;
-  }, [carregando, erro, employees.length, hojeRecs]);
+    const temAlgumRegistroHoje = Object.values(mesRecs).some((porData) => (porData[hoje] || []).length > 0);
+    return !carregando && !erro && employees.length > 0 && !temAlgumRegistroHoje && agoraMin > 9 * 60;
+  }, [carregando, erro, employees.length, mesRecs, hoje]);
 
   async function aprovar(just, status) {
     setAprovando(just.id);
@@ -224,37 +243,70 @@ export default function Ponto() {
         </div>
       )}
 
-      <section className="ponto__kpis">
-        <div className="ponto__kpi">
-          <span className="ponto__kpi-valor ponto__kpi-valor--forest">{kpis.presentes}</span>
-          <span className="ponto__kpi-label">Presentes</span>
-        </div>
-        <div className="ponto__kpi">
-          <span className="ponto__kpi-valor">{kpis.encerrados}</span>
-          <span className="ponto__kpi-label">Encerrados</span>
-        </div>
-        <div className="ponto__kpi">
-          <span className="ponto__kpi-valor ponto__kpi-valor--vinho">{kpis.ausentes}</span>
-          <span className="ponto__kpi-label">Ausentes</span>
-        </div>
-        <div className="ponto__kpi">
-          <span className="ponto__kpi-valor ponto__kpi-valor--warn">{kpis.atrasados}</span>
-          <span className="ponto__kpi-label">Atrasados</span>
-        </div>
-        <div className="ponto__kpi">
-          <span className="ponto__kpi-valor ponto__kpi-valor--warn">{kpis.intervalo}</span>
-          <span className="ponto__kpi-label">Intervalo</span>
-        </div>
-      </section>
+      {ehHoje && (
+        <section className="ponto__kpis">
+          <div className="ponto__kpi">
+            <span className="ponto__kpi-valor ponto__kpi-valor--forest">{kpis.presentes}</span>
+            <span className="ponto__kpi-label">Presentes</span>
+          </div>
+          <div className="ponto__kpi">
+            <span className="ponto__kpi-valor">{kpis.encerrados}</span>
+            <span className="ponto__kpi-label">Encerrados</span>
+          </div>
+          <div className="ponto__kpi">
+            <span className="ponto__kpi-valor ponto__kpi-valor--vinho">{kpis.ausentes}</span>
+            <span className="ponto__kpi-label">Ausentes</span>
+          </div>
+          <div className="ponto__kpi">
+            <span className="ponto__kpi-valor ponto__kpi-valor--warn">{kpis.atrasados}</span>
+            <span className="ponto__kpi-label">Atrasados</span>
+          </div>
+          <div className="ponto__kpi">
+            <span className="ponto__kpi-valor ponto__kpi-valor--warn">{kpis.intervalo}</span>
+            <span className="ponto__kpi-label">Intervalo</span>
+          </div>
+        </section>
+      )}
 
       <section className="ponto__card">
-        <h2 className="ponto__card-titulo">Hoje</h2>
+        <div className="ponto__card-topo">
+          <h2 className="ponto__card-titulo">
+            {ehHoje ? 'Hoje' : diaLabel(diaSelecionado)}
+          </h2>
+          <div className="ponto__dia-nav">
+            <button
+              type="button"
+              className="ponto__dia-btn"
+              onClick={() => setDiaSelecionado(diaAnterior(diaSelecionado, inicioMes))}
+              disabled={diaSelecionado <= inicioMes}
+              aria-label="Dia anterior"
+            >←</button>
+            <input
+              type="date"
+              className="ponto__dia-input"
+              value={diaSelecionado}
+              min={inicioMes}
+              max={hoje}
+              onChange={(e) => e.target.value && setDiaSelecionado(e.target.value)}
+            />
+            <button
+              type="button"
+              className="ponto__dia-btn"
+              onClick={() => setDiaSelecionado(diaSeguinte(diaSelecionado, hoje))}
+              disabled={diaSelecionado >= hoje}
+              aria-label="Próximo dia"
+            >→</button>
+            {!ehHoje && (
+              <button type="button" className="ponto__dia-hoje" onClick={() => setDiaSelecionado(hoje)}>Hoje</button>
+            )}
+          </div>
+        </div>
         <div className="ponto__tabela-wrap">
           <table className="ponto__tabela">
             <thead>
               <tr>
                 <th>Nome</th><th>Contrato</th><th>Entrada</th><th>Saída</th>
-                <th>Status</th><th>Trabalhado</th><th>Saldo hoje</th>
+                <th>Status</th><th>Trabalhado</th><th>Saldo</th>
               </tr>
             </thead>
             <tbody>
