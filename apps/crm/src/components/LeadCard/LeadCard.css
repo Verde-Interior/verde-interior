@@ -153,6 +153,18 @@
   text-overflow: ellipsis;
 }
 
+.lead-card__dias-parado {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lead-card__dias-parado--alerta {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
 .lead-card__valores {
   display: flex;
   align-items: center;

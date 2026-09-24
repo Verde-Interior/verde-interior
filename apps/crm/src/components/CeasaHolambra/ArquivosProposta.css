@@ -1,0 +1,94 @@
+/* src/components/CeasaHolambra/ArquivosProposta.css */
+
+.arquivos-proposta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+}
+
+.arquivos-proposta--destaque {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.arquivos-proposta__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.arquivos-proposta__titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.arquivos-proposta__btn-add {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.arquivos-proposta__btn-add:hover { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+
+.arquivos-proposta__vazio {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.arquivos-proposta__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arquivos-proposta__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-bg);
+}
+
+.arquivos-proposta__nome {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arquivos-proposta__nome:hover { text-decoration: underline; }
+
+.arquivos-proposta__meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.arquivos-proposta__excluir {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+.arquivos-proposta__excluir:hover { color: var(--color-danger); }

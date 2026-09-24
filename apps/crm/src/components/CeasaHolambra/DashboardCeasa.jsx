@@ -12,8 +12,6 @@ const ETAPAS = [
   { id: 'sem_interesse',    label: 'Sem Interesse',         cor: '#EF4444' },
 ];
 
-const TIPOS = ['atacadista', 'varejista', 'floricultura', 'outros'];
-
 const fmt = (n) => new Intl.NumberFormat('pt-BR', {
   style: 'currency', currency: 'BRL', minimumFractionDigits: 0,
 }).format(n);
@@ -71,10 +69,11 @@ export default function DashboardCeasa() {
     count: prospects.filter(p => p.etapa === e.id).length,
   }));
 
-  const porTipo = TIPOS.map(t => ({
+  const tiposPresentes = [...new Set(prospects.map(p => p.tipo).filter(Boolean))];
+  const porTipo = tiposPresentes.map(t => ({
     label: t.charAt(0).toUpperCase() + t.slice(1),
     count: prospects.filter(p => p.tipo === t).length,
-  })).filter(t => t.count > 0);
+  })).sort((a, b) => b.count - a.count);
 
   return (
     <div className="dceasa">

@@ -331,6 +331,127 @@
 }
 .ceasa__btn-excluir:hover { background: #fef2f2; }
 
+/* ── Modal pequeno (prompt de motivo) ── */
+.ceasa__modal--pequeno {
+  max-width: 380px;
+}
+
+/* ── Aviso de duplicado ── */
+.ceasa__aviso-duplicado {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #FCD34D;
+  background: color-mix(in srgb, #F59E0B 10%, transparent);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.ceasa__aviso-duplicado-acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.ceasa__aviso-duplicado-acoes button {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ceasa__aviso-duplicado-acoes button:hover { background: var(--surface-border); }
+
+/* ── Tipo: adicionar novo inline ── */
+.ceasa__novo-tipo {
+  display: flex;
+  gap: 6px;
+}
+.ceasa__novo-tipo input {
+  flex: 1;
+  padding: 8px 11px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+}
+.ceasa__novo-tipo button {
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ceasa__novo-tipo button:hover { background: var(--surface-border); }
+
+/* ── Telefones múltiplos ── */
+.ceasa__telefones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ceasa__telefones-vazio {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.ceasa__telefone-linha {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ceasa__telefone-numero,
+.ceasa__telefone-rotulo {
+  padding: 7px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+}
+.ceasa__telefone-numero { flex: 1; min-width: 0; }
+.ceasa__telefone-rotulo { flex: 1; min-width: 0; }
+
+.ceasa__telefone-wpp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ceasa__telefone-remover {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+.ceasa__telefone-remover:hover { color: var(--color-danger); }
+
+.ceasa__telefone-adicionar {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.ceasa__telefone-adicionar:hover { background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+
 .ceasa__vazio {
   display: flex;
   flex-direction: column;

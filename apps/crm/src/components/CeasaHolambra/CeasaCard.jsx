@@ -9,8 +9,17 @@ const COR_TIPO = {
   atacadista:  '#8B5CF6',
   varejista:   '#3B82F6',
   floricultura:'#10B981',
+  hospital:    '#EF4444',
+  clinica:     '#EC4899',
+  restaurante: '#F59E0B',
+  hotel:       '#06B6D4',
+  escola:      '#6366F1',
   outros:      '#6B7280',
 };
+
+const ICONE_PREFERENCIA = { telefone: '📞', whatsapp: '💬', email: '✉️', presencial: '🤝' };
+
+const DIAS_PARADO_ALERTA = 14;
 
 function telLimpo(tel) { return tel?.replace(/\D/g, '') ?? ''; }
 
@@ -44,17 +53,42 @@ export default function CeasaCard({ prospect, dragId, setDragId, onEditar, onAtu
   }
 
   const cor = COR_TIPO[prospect.tipo] ?? '#6B7280';
-  const wppUrl = `https://wa.me/55${telLimpo(prospect.whatsapp || prospect.telefone)}`;
-  const telUrl = `tel:${telLimpo(prospect.telefone)}`;
+  const telefones = prospect.telefones ?? [];
+  const telWpp = telefones.find(t => t.whatsapp)?.numero ?? telefones[0]?.numero;
+  const telPrimeiro = telefones[0]?.numero;
+  const wppUrl = `https://wa.me/55${telLimpo(telWpp)}`;
+  const telUrl = `tel:${telLimpo(telPrimeiro)}`;
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const followUpHoje     = prospect.proximo_followup_em === hoje;
+  const followUpAtrasado = prospect.proximo_followup_em && prospect.proximo_followup_em < hoje;
+
+  const etapaTerminal = prospect.etapa === 'fechado' || prospect.etapa === 'sem_interesse';
+  const diasParado = prospect.etapa_atualizada_em
+    ? Math.floor((Date.now() - new Date(prospect.etapa_atualizada_em).getTime()) / 86400000)
+    : null;
+  const paradoDemais = !etapaTerminal && diasParado !== null && diasParado >= DIAS_PARADO_ALERTA;
 
   return (
     <article
-      className={`lead-card ${isDragging ? 'lead-card--dragging' : ''}`}
+      className={[
+        'lead-card',
+        followUpHoje     ? 'lead-card--followup-hoje'     : '',
+        followUpAtrasado ? 'lead-card--followup-atrasado' : '',
+        isDragging        ? 'lead-card--dragging'          : '',
+      ].join(' ')}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={() => onEditar(prospect)}
     >
+      {/* Alerta de follow-up */}
+      {(followUpHoje || followUpAtrasado) && (
+        <div className={`lead-card__followup ${followUpAtrasado ? 'lead-card__followup--atrasado' : ''}`}>
+          {followUpAtrasado ? '⚠ Follow-up atrasado' : '🔔 Follow-up hoje'}
+        </div>
+      )}
+
       {/* Header */}
       <header className="lead-card__header">
         <span className="lead-card__empresa">{prospect.nome_loja}</span>
@@ -75,6 +109,16 @@ export default function CeasaCard({ prospect, dragId, setDragId, onEditar, onAtu
             🌿 {prospect.produtos_interesse}
           </span>
         )}
+        {prospect.preferencia_contato && (
+          <span className="lead-card__badge" style={{ '--badge-cor': '#0EA5E9' }}>
+            {ICONE_PREFERENCIA[prospect.preferencia_contato]} Prefere {prospect.preferencia_contato}
+          </span>
+        )}
+        {prospect.origem && (
+          <span className="lead-card__badge" style={{ '--badge-cor': '#A855F7' }}>
+            🧭 {prospect.origem}
+          </span>
+        )}
       </div>
 
       {/* Footer */}
@@ -82,21 +126,28 @@ export default function CeasaCard({ prospect, dragId, setDragId, onEditar, onAtu
         <span className="lead-card__bairro">
           {prospect.endereco ? `📍 ${prospect.endereco}` : ''}
         </span>
+        {diasParado !== null && (
+          <span className={`lead-card__dias-parado ${paradoDemais ? 'lead-card__dias-parado--alerta' : ''}`}>
+            ⏱ {diasParado}d nesta etapa
+          </span>
+        )}
       </footer>
 
       {/* Ações */}
-      {(prospect.whatsapp || prospect.telefone) && (
+      {(telWpp || telPrimeiro) && (
         <div className="lead-card__acoes">
-          <a
-            className="lead-card__whatsapp"
-            href={wppUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-          >
-            💬 WhatsApp
-          </a>
-          {prospect.telefone && (
+          {telWpp && (
+            <a
+              className="lead-card__whatsapp"
+              href={wppUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              💬 WhatsApp
+            </a>
+          )}
+          {telPrimeiro && (
             <a
               className="lead-card__ligar"
               href={telUrl}
