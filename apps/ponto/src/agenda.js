@@ -1586,6 +1586,32 @@ function comTimeout(promise, ms) {
   });
 }
 
+// "Load failed" (Safari) / "Failed to fetch" (Chrome) = o fetch morreu na rede
+// antes de o servidor responder. É transitório e as operações da assinatura
+// são idempotentes (upload com upsert, update por id), então vale tentar de novo.
+function ehErroDeRede(e) {
+  return /load failed|failed to fetch|networkerror|network request failed|sem conexão/i
+    .test(e?.message || '');
+}
+
+async function comRetry(fn, tentativas = 3) {
+  let ultimo;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      const res = await fn();
+      // postgrest devolve { error } em vez de lançar
+      if (!res?.error || !ehErroDeRede(res.error)) return res;
+      ultimo = res;
+    } catch (e) {
+      if (!ehErroDeRede(e)) throw e;
+      ultimo = { error: e };
+    }
+    console.warn(`[assinatura] falha de rede (tentativa ${i + 1}/${tentativas}):`, ultimo.error?.message);
+    if (i < tentativas - 1) await new Promise(r => setTimeout(r, 800 * (i + 1)));
+  }
+  return ultimo;
+}
+
 async function uploadSignature(canvas, relatorioId) {
   return comTimeout((async () => {
     const blob = await new Promise((resolve, reject) => {
@@ -1632,23 +1658,31 @@ export async function confirmSign() {
   toast('Enviando assinatura...');
   let sigUrl, sigPath;
   try {
-    const res = await uploadSignature(st.sigPad.canvas, r.id);
+    const res = await comRetry(() => uploadSignature(st.sigPad.canvas, r.id));
     sigUrl = res.url;
     sigPath = res.path;
   } catch (e) {
-    toast('Erro no upload da assinatura: ' + e.message, false);
+    toast(ehErroDeRede(e)
+      ? 'Sem conexão com o servidor — o desenho foi mantido, toque em salvar novamente'
+      : 'Erro no upload da assinatura: ' + e.message, false);
     return;
   }
 
-  const { error } = await supabase
+  const { error } = await comRetry(() => supabase
     .from('relatorios')
     .update({
       assinatura_responsavel_nome: nome,
       assinatura_responsavel_img:  sigUrl,
       assinatura_storage_path:     sigPath,
     })
-    .eq('id', r.id);
-  if (error) { toast('Erro ao salvar: ' + error.message, false); return; }
+    .eq('id', r.id));
+  if (error) {
+    console.error('[assinatura] falha ao gravar no relatório:', error);
+    toast(ehErroDeRede(error)
+      ? 'Sem conexão com o servidor — o desenho foi mantido, toque em salvar novamente'
+      : 'Erro ao salvar: ' + error.message, false);
+    return;
+  }
 
   st.relatorioSel = {
     ...r,
