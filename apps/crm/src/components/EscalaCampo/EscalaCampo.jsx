@@ -853,6 +853,42 @@ export default function EscalaCampo({ onNavegar }) {
     }
   }
 
+  // ── Check-in manual (gestor registra a chegada sem depender do GPS) ─────────
+  // Para quando o colaborador esqueceu/não conseguiu fazer o check-in e já saiu
+  // do local. Cria o mesmo relatório que o App Ponto criaria (sem lat/lng) e
+  // põe a visita em execução — o colaborador então anexa fotos/relato e faz o
+  // check-out normalmente (o checkout só exige GPS disponível, não raio).
+  async function registrarCheckinManual(hora) {
+    if (!modalEdit) return;
+    const v = modalEdit;
+    if (!/^\d{2}:\d{2}$/.test(hora ?? '')) { alert('Informe o horário real de chegada.'); return; }
+    const checkinAt = new Date(`${v.data_agendada}T${hora}:00`);
+    if (Number.isNaN(checkinAt.getTime())) { alert('Horário inválido.'); return; }
+    const nomeFunc = employees.find(e => String(e.id) === String(v.funcionario_id))?.name ?? 'colaborador';
+    if (!confirm(`Registrar check-in manual de ${nomeFunc} em "${v.clientes?.nome_empresa ?? '—'}" às ${hora}?\n\nA visita passa para "em execução" e ${nomeFunc} poderá enviar fotos e relato pelo App Ponto. O check-in fica sem localização.`)) return;
+    setSalvandoEdit(true);
+    try {
+      const { error: errRel } = await supabase.from('relatorios').insert({
+        agendamento_id: v.id,
+        funcionario_id: String(v.funcionario_id),
+        checkin_at:     checkinAt.toISOString(),
+        checkin_lat:    null,
+        checkin_lng:    null,
+        status:         'em_andamento',
+      });
+      // 23505 = já existe relatório dessa visita (o colaborador chegou a iniciar) — só alinha o status
+      if (errRel && errRel.code !== '23505') throw errRel;
+      const { error: errAg } = await supabase.from('agenda').update({ status: 'em_execucao' }).eq('id', v.id);
+      if (errAg) throw errAg;
+      setModalEdit(null);
+      await carregarAgenda();
+    } catch (e) {
+      alert('Erro ao registrar check-in: ' + e.message);
+    } finally {
+      setSalvandoEdit(false);
+    }
+  }
+
   // ── Voltar visita publicada para rascunho ───────────────────────────────────
   async function despublicarVisita() {
     if (!modalEdit) return;
@@ -1463,6 +1499,7 @@ export default function EscalaCampo({ onNavegar }) {
           onCancelar={cancelarVisitaPublicada}
           onDespublicar={despublicarVisita}
           onMarcarFalta={marcarFalta}
+          onCheckinManual={registrarCheckinManual}
           alerta={alertasPorVisita.get(modalEdit.id)}
           onDuplicarFuncionario={abrirPickerDuplicar}
           onDuplicar={abrirModalDuplicar}

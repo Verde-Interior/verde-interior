@@ -7,7 +7,11 @@ import { geocodeEndereco } from '../../utils/geoUtils';
 import { useOverlayClose } from '../../hooks/useOverlayClose';
 import MiniMapaVisita from './MiniMapaVisita';
 
-export default function ModalEditVisita({ visita, dataAlvo, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, alerta, onDuplicarFuncionario, onDuplicar }) {
+export default function ModalEditVisita({ visita, dataAlvo, funcionarios, clientes, onSalvar, onFechar, salvando, onCancelar, onDespublicar, onMarcarFalta, onCheckinManual, alerta, onDuplicarFuncionario, onDuplicar }) {
+  // Check-in manual: horário real de chegada (padrão = hora estimada da visita)
+  const [checkinAberto, setCheckinAberto] = useState(false);
+  const [horaCheckin, setHoraCheckin] = useState((visita.hora_estimada_chegada ?? '').slice(0, 5));
+
   // Se é visita real (cliente cadastrado), busca na lista completa de clientes;
   // se é visita de lead (cliente_id null), usa o `visita.clientes` sintético
   // já enriquecido pela EscalaCampo — traz cliente_servicos como array de 1 item
@@ -305,6 +309,30 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
             </div>
           )}
 
+          {publicada && onCheckinManual && checkinAberto && (
+            <div className="ec-alertas">
+              <div className="ec-alerta ec-alerta--aviso" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span>📍 Horário real de chegada:</span>
+                <input
+                  type="time"
+                  value={horaCheckin}
+                  onChange={e => setHoraCheckin(e.target.value)}
+                  style={{ width: 110 }}
+                />
+                <button
+                  className="ec-btn ec-btn--pri"
+                  onClick={() => onCheckinManual(horaCheckin)}
+                  disabled={salvando || !horaCheckin}
+                >
+                  Registrar check-in
+                </button>
+                <button className="ec-btn ec-btn--sec" onClick={() => setCheckinAberto(false)} disabled={salvando}>
+                  Voltar
+                </button>
+              </div>
+            </div>
+          )}
+
           {erros.length > 0 && (
             <div className="ec-alertas">
               {erros.map((e, i) => <div key={i} className="ec-alerta ec-alerta--erro">✗ {e}</div>)}
@@ -330,6 +358,16 @@ export default function ModalEditVisita({ visita, dataAlvo, funcionarios, client
                 >
                   ✕ Cancelar visita
                 </button>
+                {onCheckinManual && (
+                  <button
+                    className="ec-btn ec-btn--sec"
+                    onClick={() => setCheckinAberto(true)}
+                    disabled={salvando}
+                    title="Registra a chegada sem depender do GPS (ex.: o colaborador já saiu do local). A visita vai para 'em execução' e ele pode enviar fotos e relato."
+                  >
+                    📍 Check-in manual
+                  </button>
+                )}
                 {onMarcarFalta && (
                   <button
                     className="ec-btn ec-btn--perigo"
