@@ -2,94 +2,14 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
+import ModalEditarPonto from './ModalEditarPonto';
+import ModalNovoColaborador from './ModalNovoColaborador';
+import { buildExportDataset, exportCSV, exportXLSX } from './pontoExport';
+import {
+  F, HM, HMh, MESES, hojeISO, diaLabel, diaAnterior, diaSeguinte,
+  calcTrabalhado, statusNoDia, diasUteisDoMes,
+} from './pontoCalc';
 import './Ponto.css';
-
-const F = (n) => (n < 10 ? '0' + n : String(n));
-const HM = (min) => {
-  const s = min < 0 ? '-' : '';
-  const v = Math.abs(Math.round(min));
-  return `${s}${Math.floor(v / 60)}h${F(v % 60)}`;
-};
-const HMh = (h) => HM(Math.round(h * 60));
-
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${F(d.getMonth() + 1)}-${F(d.getDate())}`;
-}
-
-function isoToDate(iso) { return new Date(iso + 'T12:00:00'); }
-function dateToIso(d) { return `${d.getFullYear()}-${F(d.getMonth() + 1)}-${F(d.getDate())}`; }
-
-function diaLabel(iso) {
-  const texto = isoToDate(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
-
-function diaAnterior(iso, minIso) {
-  const d = isoToDate(iso);
-  d.setDate(d.getDate() - 1);
-  const novo = dateToIso(d);
-  return novo < minIso ? minIso : novo;
-}
-
-function diaSeguinte(iso, maxIso) {
-  const d = isoToDate(iso);
-  d.setDate(d.getDate() + 1);
-  const novo = dateToIso(d);
-  return novo > maxIso ? maxIso : novo;
-}
-
-// Soma os intervalos entrada→(intervalo|saída) do dia. Se o último registro
-// for entrada/retorno em aberto E o dia for hoje, conta até agora (igual ao
-// app de Ponto) — num dia passado isso ficaria absurdo, então só fecha o
-// que já tem par.
-function calcTrabalhado(recs, ehHoje) {
-  let t = 0, e = null;
-  for (const p of recs) {
-    const [h, m] = p.time.split(':').map(Number);
-    const min = h * 60 + m;
-    if (p.type === 'entry' || p.type === 'return') e = min;
-    if ((p.type === 'break' || p.type === 'exit') && e !== null) { t += min - e; e = null; }
-  }
-  if (e !== null && ehHoje) {
-    const n = new Date();
-    t += n.getHours() * 60 + n.getMinutes() - e;
-  }
-  return t;
-}
-
-function statusNoDia(recs, ehHoje) {
-  if (!recs.length) return { label: 'Sem registro', dot: 'ponto-dot--fora' };
-  const last = recs[recs.length - 1];
-  if (last.type === 'exit') return { label: 'Encerrado', dot: 'ponto-dot--fim' };
-  if (last.type === 'break') return { label: ehHoje ? 'Intervalo' : 'Não retornou do intervalo', dot: 'ponto-dot--pausa' };
-  return { label: ehHoje ? 'Presente' : 'Não bateu saída', dot: 'ponto-dot--ativo' };
-}
-
-function bloqueadoEm(bloqueios, empId, iso) {
-  return bloqueios.some(
-    (b) => String(b.funcionario_id) === String(empId) && iso >= b.data_inicio && iso <= b.data_fim
-  );
-}
-
-// Dias úteis (seg-sex) do mês corrente até `ateISO`, descontando dias com
-// bloqueio aprovado (feriado/férias/folga/atestado) desse funcionário.
-function diasUteisDoMes(bloqueios, empId, ateISO) {
-  const [y, m] = ateISO.split('-').map(Number);
-  const dias = [];
-  const ultimoDia = new Date(y, m, 0).getDate();
-  for (let d = 1; d <= ultimoDia; d++) {
-    const iso = `${y}-${F(m)}-${F(d)}`;
-    if (iso > ateISO) break;
-    const dow = new Date(y, m - 1, d).getDay();
-    if (dow === 0 || dow === 6) continue;
-    if (bloqueadoEm(bloqueios, empId, iso)) continue;
-    dias.push(iso);
-  }
-  return dias;
-}
-
-const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 export default function Ponto() {
   const [carregando, setCarregando] = useState(true);
@@ -99,6 +19,9 @@ export default function Ponto() {
   const [bloqueios, setBloqueios] = useState([]);
   const [pendentes, setPendentes] = useState([]);
   const [aprovando, setAprovando] = useState(null);
+  const [edicao, setEdicao] = useState(null);        // { emp, dia, recs } | null
+  const [novoColab, setNovoColab] = useState(false);
+  const [aviso, setAviso] = useState(null);
 
   const hoje = hojeISO();
   const inicioMes = hoje.slice(0, 8) + '01';
@@ -108,7 +31,7 @@ export default function Ponto() {
   const carregar = useCallback(async () => {
     const [empRes, mesRes, bloqRes, justRes] = await Promise.all([
       supabase.from('employees').select('*').order('name'),
-      supabase.from('punch_records').select('employee_id,date,type,time').gte('date', inicioMes).lte('date', hoje),
+      supabase.from('punch_records').select('id,employee_id,date,type,time,obs').gte('date', inicioMes).lte('date', hoje),
       supabase.from('employee_bloqueios').select('funcionario_id,data_inicio,data_fim,motivo'),
       supabase.from('justifications').select('*').eq('status', 'pendente').order('date', { ascending: false }),
     ]);
@@ -145,7 +68,7 @@ export default function Ponto() {
     const status  = statusNoDia(recs, ehHoje);
     const trabalhadoMin = calcTrabalhado(recs, ehHoje);
     const saldoMin = trabalhadoMin - e.daily_hours * 60;
-    return { emp: e, entrada, saida, status, trabalhadoMin, saldoMin, temRegistro: recs.length > 0 };
+    return { emp: e, entrada, saida, status, trabalhadoMin, saldoMin, temRegistro: recs.length > 0, recs };
   }), [employees, mesRecs, diaSelecionado, ehHoje]);
 
   const kpis = useMemo(() => {
@@ -231,10 +154,17 @@ export default function Ponto() {
           <h1 className="ponto__titulo">Ponto</h1>
           <p className="ponto__subtitulo">Presença e horas da equipe — registrado no app Ponto pelos colaboradores</p>
         </div>
-        <div className="ponto__data">
-          {agora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+        <div className="ponto__header-dir">
+          <button type="button" className="ponto__btn ponto__btn--ok" onClick={() => setNovoColab(true)}>
+            + Novo colaborador
+          </button>
+          <div className="ponto__data">
+            {agora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+          </div>
         </div>
       </header>
+
+      {aviso && <div className="ponto__aviso">{aviso}</div>}
 
       {suspeitaDePermissao && (
         <div className="ponto__aviso">
@@ -301,6 +231,7 @@ export default function Ponto() {
             )}
           </div>
         </div>
+        <p className="ponto__card-sub">Clique numa pessoa pra editar os registros de ponto dela nesse dia</p>
         <div className="ponto__tabela-wrap">
           <table className="ponto__tabela">
             <thead>
@@ -310,8 +241,12 @@ export default function Ponto() {
               </tr>
             </thead>
             <tbody>
-              {linhas.map(({ emp, entrada, saida, status, trabalhadoMin, saldoMin, temRegistro }) => (
-                <tr key={emp.id}>
+              {linhas.map(({ emp, entrada, saida, status, trabalhadoMin, saldoMin, temRegistro, recs }) => (
+                <tr
+                  key={emp.id}
+                  className="ponto__linha-clicavel"
+                  onClick={() => setEdicao({ emp, dia: diaSelecionado, recs })}
+                >
                   <td className="ponto__nome">{emp.name}</td>
                   <td><span className="ponto__badge">{emp.contract_type}</span></td>
                   <td>{entrada ? entrada.time : '--:--'}</td>
@@ -415,6 +350,92 @@ export default function Ponto() {
           )}
         </section>
       </div>
+
+      <ExportarRelatorio employees={employees} inicioMes={inicioMes} hoje={hoje} />
+
+      {novoColab && (
+        <ModalNovoColaborador
+          employees={employees}
+          onFechar={() => setNovoColab(false)}
+          onCriado={async ({ fechar, nome, usuario }) => {
+            await carregar();
+            if (fechar) {
+              setNovoColab(false);
+              setAviso(`✓ ${nome} cadastrado(a) com login "${usuario}"`);
+              setTimeout(() => setAviso(null), 6000);
+            }
+          }}
+        />
+      )}
+
+      {edicao && (
+        <ModalEditarPonto
+          emp={edicao.emp}
+          dia={edicao.dia}
+          recs={edicao.recs}
+          onFechar={() => setEdicao(null)}
+          onMudou={async () => { await carregar(); setEdicao(null); }}
+        />
+      )}
     </div>
+  );
+}
+
+function ExportarRelatorio({ employees, inicioMes, hoje }) {
+  const fimMes = useMemo(() => {
+    const [y, m] = hoje.split('-').map(Number);
+    return `${y}-${F(m)}-${F(new Date(y, m, 0).getDate())}`;
+  }, [hoje]);
+
+  const [rs, setRs] = useState(inicioMes);
+  const [re, setRe] = useState(fimMes);
+  const [colaboradorId, setColaboradorId] = useState('all');
+  const [exportando, setExportando] = useState(null);
+
+  async function exportar(mode, formato) {
+    const chave = `${mode}-${formato}`;
+    setExportando(chave);
+    try {
+      const dataset = await buildExportDataset(mode, { rs, re, colaboradorId });
+      if (formato === 'csv') exportCSV(dataset);
+      else await exportXLSX(dataset, mode === 'espelho' ? 'Espelho' : mode === 'resumo' ? 'Resumo' : 'Banco');
+    } catch (e) {
+      alert('Erro ao exportar: ' + e.message);
+    } finally {
+      setExportando(null);
+    }
+  }
+
+  return (
+    <section className="ponto__card">
+      <h2 className="ponto__card-titulo">Exportar relatório</h2>
+      <div className="ponto__export-filtros">
+        <div className="ponto__campo">
+          <label>Início</label>
+          <input type="date" value={rs} max={re} onChange={(e) => setRs(e.target.value)} />
+        </div>
+        <div className="ponto__campo">
+          <label>Fim</label>
+          <input type="date" value={re} min={rs} onChange={(e) => setRe(e.target.value)} />
+        </div>
+        <div className="ponto__campo ponto__campo--largo">
+          <label>Colaborador</label>
+          <select value={colaboradorId} onChange={(e) => setColaboradorId(e.target.value)}>
+            <option value="all">Todos</option>
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="ponto__export-botoes">
+        <span className="ponto__export-label">CSV</span>
+        <button className="ponto__export-btn" disabled={exportando === 'espelho-csv'} onClick={() => exportar('espelho', 'csv')}>Espelho</button>
+        <button className="ponto__export-btn" disabled={exportando === 'resumo-csv'} onClick={() => exportar('resumo', 'csv')}>Resumo</button>
+        <button className="ponto__export-btn" disabled={exportando === 'banco-csv'} onClick={() => exportar('banco', 'csv')}>Banco</button>
+        <span className="ponto__export-label">XLSX</span>
+        <button className="ponto__export-btn ponto__export-btn--forte" disabled={exportando === 'espelho-xlsx'} onClick={() => exportar('espelho', 'xlsx')}>Espelho</button>
+        <button className="ponto__export-btn" disabled={exportando === 'resumo-xlsx'} onClick={() => exportar('resumo', 'xlsx')}>Resumo</button>
+        <button className="ponto__export-btn" disabled={exportando === 'banco-xlsx'} onClick={() => exportar('banco', 'xlsx')}>Banco</button>
+      </div>
+    </section>
   );
 }
