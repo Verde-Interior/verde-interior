@@ -39,7 +39,7 @@ export default function ModalMovimentoItem({ categoriaFixa, onFechar, onSalvo })
       const [{ data: its }, { data: emps }] = await Promise.all([
         supabase.from('estoque_itens').select('id, nome, unidade, controla_posse')
           .eq('ativo', true).eq('categoria', categoriaFixa).order('nome'),
-        supabase.from('employees').select('id, name').order('name'),
+        supabase.from('employees').select('id, name').eq('ativo', true).order('name'),
       ]);
       setItens(its ?? []);
       setEmployees(emps ?? []);

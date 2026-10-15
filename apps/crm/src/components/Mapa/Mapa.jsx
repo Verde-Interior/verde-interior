@@ -259,6 +259,7 @@ export default function Mapa({ onNavegar }) {
       const { data } = await supabase
         .from('employees')
         .select('id, name, cargo, daily_hours')
+        .eq('ativo', true)
         .in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo'])
         .order('name');
       setFuncionarios(data ?? []);

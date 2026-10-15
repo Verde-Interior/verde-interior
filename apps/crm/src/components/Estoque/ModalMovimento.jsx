@@ -59,6 +59,7 @@ export default function ModalMovimento({ movimento = null, onFechar, onSalvo }) 
         supabase
           .from('employees')
           .select('id, name')
+          .eq('ativo', true)
           .order('name'),
       ]);
       if (mats.error) toast.erro('Erro ao carregar materiais: ' + mats.error.message);

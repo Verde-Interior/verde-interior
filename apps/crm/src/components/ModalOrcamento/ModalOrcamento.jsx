@@ -39,6 +39,7 @@ export default function ModalOrcamento() {
       const { data } = await supabase
         .from('employees')
         .select('id, name, cargo')
+        .eq('ativo', true)
         .order('name');
       setFuncionarios(data ?? []);
     })();

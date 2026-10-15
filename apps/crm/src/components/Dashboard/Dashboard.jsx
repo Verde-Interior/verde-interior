@@ -1185,7 +1185,7 @@ function DashboardOperacional({ onNavegar }) {
           agenda:agenda(nome_cliente, cliente:clientes(nome_empresa, regiao), lead:leads(empresa, bairro))
         `).order('checkin_at', { ascending: false }).limit(6),
         supabase.from('clientes').select('id, nome_empresa, grupo_servico, frequencia_visita, ativo').eq('ativo', true),
-        supabase.from('employees').select('id, name, cargo').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
+        supabase.from('employees').select('id, name, cargo').eq('ativo', true).in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
         supabase.from('employee_bloqueios').select('funcionario_id').lte('data_inicio', hoje).gte('data_fim', hoje),
       ]);
       setBloqueadosHoje(new Set((bloq.data ?? []).map(b => String(b.funcionario_id))));

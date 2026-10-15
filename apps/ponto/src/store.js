@@ -36,7 +36,7 @@ function _loadLocal() {
 }
 
 export async function load() {
-  const { data: emps, error: empErr } = await supabase.from('employees').select('*').order('name');
+  const { data: emps, error: empErr } = await supabase.from('employees').select('*').eq('ativo', true).order('name');
   if (empErr || !emps || !emps.length) { _loadLocal(); return; }
 
   state.EMP = emps.map(e => ({

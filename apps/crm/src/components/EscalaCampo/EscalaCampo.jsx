@@ -209,7 +209,7 @@ export default function EscalaCampo({ onNavegar }) {
   useEffect(() => {
     async function init() {
       const [empRes, cliRes, bloqRes] = await Promise.all([
-        supabase.from('employees').select('id, name, cargo, daily_hours').in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
+        supabase.from('employees').select('id, name, cargo, daily_hours').eq('ativo', true).in('cargo', ['Campo', 'Facilities', 'TI', 'Sócio/Campo']).order('name'),
         supabase.from('clientes')
           .select('id, nome_empresa, endereco, bairro, dias_disponiveis, janela_entrada_inicio, janela_entrada_fim, janela_bloqueada_inicio, janela_bloqueada_fim, duracao_estimada_min, ultima_visita, frequencia_visita, lat, lng, cliente_servicos(id, tipo_servico, frequencia, ativo)')
           .eq('ativo', true).order('nome_empresa'),

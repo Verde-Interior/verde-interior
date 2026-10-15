@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import ModalEditarPonto from './ModalEditarPonto';
 import ModalNovoColaborador from './ModalNovoColaborador';
+import ModalEditarColaborador from './ModalEditarColaborador';
 import { buildExportDataset, exportCSV, exportXLSX } from './pontoExport';
 import {
   F, HM, HMh, MESES, hojeISO, diaLabel, diaAnterior, diaSeguinte,
@@ -14,14 +15,19 @@ import './Ponto.css';
 export default function Ponto() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
-  const [employees, setEmployees] = useState([]);
+  const [todosEmp, setEmployees] = useState([]);      // ativos + desativados
   const [mesRecs, setMesRecs] = useState({});       // employee_id -> { data: records[] } (mês inteiro até hoje)
   const [bloqueios, setBloqueios] = useState([]);
   const [pendentes, setPendentes] = useState([]);
   const [aprovando, setAprovando] = useState(null);
   const [edicao, setEdicao] = useState(null);        // { emp, dia, recs } | null
   const [novoColab, setNovoColab] = useState(false);
+  const [editColab, setEditColab] = useState(null);   // employee | null
+  const [mostrarInativos, setMostrarInativos] = useState(false);
   const [aviso, setAviso] = useState(null);
+
+  const employees = useMemo(() => todosEmp.filter((e) => e.ativo !== false), [todosEmp]);
+  const inativos  = useMemo(() => todosEmp.filter((e) => e.ativo === false), [todosEmp]);
 
   const hoje = hojeISO();
   const inicioMes = hoje.slice(0, 8) + '01';
@@ -132,6 +138,14 @@ export default function Ponto() {
     setAprovando(null);
   }
 
+  async function reativar(emp) {
+    const { error } = await supabase.from('employees').update({ ativo: true }).eq('id', emp.id);
+    if (error) { setAviso('Erro ao reativar: ' + error.message); return; }
+    await carregar();
+    setAviso(`✓ ${emp.name} reativado(a)`);
+    setTimeout(() => setAviso(null), 6000);
+  }
+
   const agora = new Date();
   const mesLabel = `${MESES[agora.getMonth()]} ${agora.getFullYear()}`;
 
@@ -237,7 +251,7 @@ export default function Ponto() {
             <thead>
               <tr>
                 <th>Nome</th><th>Contrato</th><th>Entrada</th><th>Saída</th>
-                <th>Status</th><th>Trabalhado</th><th>Saldo</th>
+                <th>Status</th><th>Trabalhado</th><th>Saldo</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -258,6 +272,15 @@ export default function Ponto() {
                   <td>{HM(trabalhadoMin)}</td>
                   <td className={saldoMin >= 0 ? 'ponto__pos' : 'ponto__neg'}>
                     {temRegistro ? `${saldoMin >= 0 ? '+' : ''}${HM(saldoMin)}` : '--'}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="ponto__icone-btn"
+                      title="Editar colaborador"
+                      aria-label={`Editar ${emp.name}`}
+                      onClick={(ev) => { ev.stopPropagation(); setEditColab(emp); }}
+                    >✎</button>
                   </td>
                 </tr>
               ))}
@@ -323,7 +346,7 @@ export default function Ponto() {
           ) : (
             <div className="ponto__just-lista">
               {pendentes.map((j) => {
-                const emp = employees.find((e) => e.id === j.employee_id);
+                const emp = todosEmp.find((e) => e.id === j.employee_id);
                 return (
                   <div className="ponto__just" key={j.id}>
                     <div className="ponto__just-info">
@@ -351,11 +374,38 @@ export default function Ponto() {
         </section>
       </div>
 
-      <ExportarRelatorio employees={employees} inicioMes={inicioMes} hoje={hoje} />
+      {inativos.length > 0 && (
+        <section className="ponto__card">
+          <button
+            type="button"
+            className="ponto__inativos-toggle"
+            onClick={() => setMostrarInativos((v) => !v)}
+          >
+            {mostrarInativos ? '▾' : '▸'} Colaboradores desativados ({inativos.length})
+          </button>
+          {mostrarInativos && (
+            <div className="ponto__just-lista">
+              {inativos.map((e) => (
+                <div className="ponto__just" key={e.id}>
+                  <div className="ponto__just-info">
+                    <span className="ponto__just-nome">{e.name}</span>
+                    <span className="ponto__just-meta">{e.cargo} · {e.contract_type}</span>
+                  </div>
+                  <div className="ponto__just-acoes">
+                    <button className="ponto__btn ponto__btn--ok" onClick={() => reativar(e)}>Reativar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <ExportarRelatorio employees={todosEmp} inicioMes={inicioMes} hoje={hoje} />
 
       {novoColab && (
         <ModalNovoColaborador
-          employees={employees}
+          employees={todosEmp}
           onFechar={() => setNovoColab(false)}
           onCriado={async ({ fechar, nome, usuario }) => {
             await carregar();
@@ -364,6 +414,19 @@ export default function Ponto() {
               setAviso(`✓ ${nome} cadastrado(a) com login "${usuario}"`);
               setTimeout(() => setAviso(null), 6000);
             }
+          }}
+        />
+      )}
+
+      {editColab && (
+        <ModalEditarColaborador
+          emp={editColab}
+          employees={todosEmp}
+          onFechar={() => setEditColab(null)}
+          onMudou={async (msg) => {
+            await carregar();
+            setEditColab(null);
+            if (msg) { setAviso(msg); setTimeout(() => setAviso(null), 6000); }
           }}
         />
       )}

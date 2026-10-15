@@ -30,9 +30,21 @@ function _buildSession(user) {
   };
 }
 
+// Colaborador desativado no CRM (employees.ativo = false) não pode mais usar o app,
+// mesmo com a senha certa ou com a sessão antiga ainda salva no aparelho.
+async function _contaAtiva(userId) {
+  const { data } = await supabase.from('employees').select('ativo').eq('auth_user_id', userId).maybeSingle();
+  return data?.ativo !== false;
+}
+
 export async function initSession() {
   const { data } = await supabase.auth.getSession();
-  if (data.session) _session = _buildSession(data.session.user);
+  if (!data.session) return;
+  if (!(await _contaAtiva(data.session.user.id))) {
+    await supabase.auth.signOut();
+    return;
+  }
+  _session = _buildSession(data.session.user);
 }
 
 function applySession() {
@@ -78,6 +90,14 @@ function login() {
         document.getElementById('lspinner').style.display = 'none';
         btn.disabled = false;
         showErr('Usuário ou senha incorretos');
+        return;
+      }
+      if (!(await _contaAtiva(data.user.id))) {
+        await supabase.auth.signOut();
+        document.getElementById('lbtntxt').style.display = '';
+        document.getElementById('lspinner').style.display = 'none';
+        btn.disabled = false;
+        showErr('Acesso desativado — fale com a gestão');
         return;
       }
       _session = _buildSession(data.user);
